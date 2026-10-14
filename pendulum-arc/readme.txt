@@ -4,7 +4,7 @@ Tags: seo, analytics
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.2.0
+Stable tag: 0.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,7 +12,7 @@ Connect this WordPress site to a Pendulum Arc account.
 
 == Description ==
 
-Pendulum Arc connects this site to an Arc studio so the dashboard can show the latest site scores and a visitor analytics summary.
+Pendulum Arc connects this site to an Arc studio so the dashboard can show the latest site scores and a preview of each report.
 
 Connect with an API key, or sign in through Arc. Signing in opens Arc, where you pair an existing site or add this site to a project. You return to WordPress already connected.
 
@@ -52,6 +52,12 @@ Add a project in Arc, then connect again with the API key. Sign-in can add a pro
 When the GitHub repository is public and a release is newer than this install, WordPress shows the update on the Plugins screen. Update now installs it. The Arc screens show the same update.
 
 == Changelog ==
+
+= 0.3.0 =
+* Preview each report on the Arc screen, including SEO, accessibility, AI, security, and brand.
+* Generate queues one report, or every report that is not already queued or running.
+* A site signed in before this release must reconnect before Generate is allowed. API keys already include that permission.
+* Ready reports open an Issues menu. Failed Arc requests show in an error card.
 
 = 0.2.0 =
 * Show a visitor analytics summary on the Arc screen, with graphs and top landing pages.
