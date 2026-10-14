@@ -20,6 +20,7 @@ import {
 import { ConnectionSummary, MetaBox } from '../meta';
 import { ArcButton } from '../ui/button';
 import { OpenInArc } from '../ui/open-in-arc';
+import { ArcIntro } from './arc-intro';
 import { ChooseSiteModal } from './choose-site-modal';
 import { CreateSiteModal } from './create-site-modal';
 import { connectReducer, initialConnectState } from './reducer';
@@ -132,6 +133,13 @@ export function ConnectPage( { bootstrap } ) {
 					</a>
 				</Notice>
 			) }
+			<ArcIntro
+				portalUrl={
+					( bootstrap.connection &&
+						bootstrap.connection.portalUrl ) ||
+					bootstrap.urls.portal
+				}
+			/>
 			{ connected ? (
 				<div className="pendulum-arc-connection">
 					<ConnectionSummary

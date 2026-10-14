@@ -21,6 +21,17 @@ function BoxIcon( { name } ) {
 			</Icon>
 		);
 	}
+	if ( name === 'reports' ) {
+		return (
+			<Icon size={ 16 } strokeWidth={ 2 }>
+				<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+				<path d="M14 2v4a2 2 0 0 0 2 2h4" />
+				<path d="M10 9H8" />
+				<path d="M16 13H8" />
+				<path d="M16 17H8" />
+			</Icon>
+		);
+	}
 	return (
 		<Icon size={ 16 } strokeWidth={ 2 }>
 			<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -30,14 +41,14 @@ function BoxIcon( { name } ) {
 }
 
 /**
- * Arc panel. `icon` is link, key, or user.
+ * Arc panel. `icon` is link, key, user, or reports.
  *
- * @param {Object}                    props
- * @param {string}                    props.title
- * @param {'link'|'key'|'user'}       [props.icon]
- * @param {string}                    [props.description]
- * @param {import('react').ReactNode} props.children
- * @param {import('react').ReactNode} [props.footer]
+ * @param {Object}                        props
+ * @param {string}                        props.title
+ * @param {'link'|'key'|'user'|'reports'} [props.icon]
+ * @param {string}                        [props.description]
+ * @param {import('react').ReactNode}     props.children
+ * @param {import('react').ReactNode}     [props.footer]
  */
 export function MetaBox( {
 	title,
