@@ -6,6 +6,7 @@ import { __ } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
+import { ColumnMark } from '../ui/column-icon';
 import { AnalyticsChart } from './analytics-chart';
 import { mergeCharts } from './chart-shells';
 import { ReportCta } from './report-cta';
@@ -48,6 +49,14 @@ function formatRate( value ) {
 		return '-';
 	}
 	return `${ ( number * 100 ).toFixed( 1 ) }%`;
+}
+
+function FooterPill( { accent, children } ) {
+	return (
+		<span className="arc-pill" data-accent={ accent } data-size="xs">
+			<span className="arc-pill__label">{ children }</span>
+		</span>
+	);
 }
 
 const METRIC_SHELLS = [
@@ -157,26 +166,26 @@ export function VisitorAnalytics( { report, portalUrl } ) {
 				</div>
 				{ report &&
 				( report.connectionMeta || report.searchConsoleMeta ) ? (
-					<p className="arc-report-hero__meta">
+					<div className="arc-report-hero__pills">
 						{ report.connectionMeta ? (
-							<span className="arc-report-hero__pair">
-								<span>GA4</span>
-								<span className="arc-report-hero__id">
+							<span className="arc-report-hero__chip">
+								<FooterPill accent="cyan">GA4</FooterPill>
+								<FooterPill accent="muted">
 									{ report.connectionMeta }
-								</span>
+								</FooterPill>
 							</span>
 						) : null }
 						{ report.searchConsoleMeta ? (
-							<span className="arc-report-hero__pair">
-								<span>
+							<span className="arc-report-hero__chip">
+								<FooterPill accent="cyan">
 									{ __( 'Search Console', 'pendulum-arc' ) }
-								</span>
-								<span className="arc-report-hero__id">
+								</FooterPill>
+								<FooterPill accent="muted">
 									{ report.searchConsoleMeta }
-								</span>
+								</FooterPill>
 							</span>
 						) : null }
-					</p>
+					</div>
 				) : null }
 			</section>
 			<div className="arc-chart-grid">
@@ -188,63 +197,101 @@ export function VisitorAnalytics( { report, portalUrl } ) {
 					/>
 				) ) }
 			</div>
-			<section className="arc-landing">
-				<h3>{ __( 'Top landing pages', 'pendulum-arc' ) }</h3>
+			<section className="arc-table-card">
+				<div className="arc-table-card__bar">
+					<h3>{ __( 'Top landing pages', 'pendulum-arc' ) }</h3>
+					{ pages.length > 0 ? (
+						<span
+							className="arc-pill"
+							data-accent="muted"
+							data-size="xs"
+						>
+							<span className="arc-pill__label">
+								{ pages.length }
+							</span>
+						</span>
+					) : null }
+				</div>
 				{ ! ( report && report.loading ) && pages.length === 0 ? (
-					<p className="arc-landing__empty">
+					<p className="arc-table-card__empty">
 						{ __( 'Not enough data', 'pendulum-arc' ) }
 					</p>
 				) : null }
 				{ ! ( report && report.loading ) && pages.length > 0 ? (
-					<table>
-						<thead>
-							<tr>
-								<th>{ __( 'Page', 'pendulum-arc' ) }</th>
-								<th>{ __( 'Sessions', 'pendulum-arc' ) }</th>
-								<th>{ __( 'Engagement', 'pendulum-arc' ) }</th>
-								<th>
-									<span className="screen-reader-text">
-										{ __( 'View', 'pendulum-arc' ) }
-									</span>
-								</th>
-							</tr>
-						</thead>
-						<tbody>
-							{ pages.map( ( page ) => (
-								<tr key={ page.path }>
-									<td>
-										{ page.editUrl ? (
-											<a href={ page.editUrl }>
-												{ page.path }
-											</a>
-										) : (
-											page.path
-										) }
-									</td>
-									<td>
-										{ Number(
-											page.sessions || 0
-										).toLocaleString( 'en-GB' ) }
-									</td>
-									<td>
-										{ formatRate( page.engagementRate ) }
-									</td>
-									<td>
-										{ page.viewUrl ? (
-											<a
-												className="arc-landing__view"
-												href={ page.viewUrl }
-												target="_blank"
-												rel="noreferrer"
-											>
-												{ __( 'View', 'pendulum-arc' ) }
-											</a>
-										) : null }
-									</td>
+					<div className="arc-table-card__scroll">
+						<table className="arc-report-table">
+							<thead>
+								<tr>
+									<th>
+										<span className="arc-report-table__label">
+											<ColumnMark id="path" />
+											{ __( 'Page', 'pendulum-arc' ) }
+										</span>
+									</th>
+									<th data-align="end">
+										<span className="arc-report-table__label">
+											<ColumnMark id="sessions" />
+											{ __( 'Sessions', 'pendulum-arc' ) }
+										</span>
+									</th>
+									<th data-align="end">
+										<span className="arc-report-table__label">
+											<ColumnMark id="engagement" />
+											{ __(
+												'Engagement',
+												'pendulum-arc'
+											) }
+										</span>
+									</th>
+									<th data-align="end">
+										<span className="screen-reader-text">
+											{ __( 'View', 'pendulum-arc' ) }
+										</span>
+									</th>
 								</tr>
-							) ) }
-						</tbody>
-					</table>
+							</thead>
+							<tbody>
+								{ pages.map( ( page ) => (
+									<tr key={ page.path }>
+										<td>
+											{ page.editUrl ? (
+												<a href={ page.editUrl }>
+													{ page.path }
+												</a>
+											) : (
+												page.path
+											) }
+										</td>
+										<td data-align="end">
+											{ Number(
+												page.sessions || 0
+											).toLocaleString( 'en-GB' ) }
+										</td>
+										<td data-align="end">
+											{ formatRate(
+												page.engagementRate
+											) }
+										</td>
+										<td data-align="end">
+											{ page.viewUrl ? (
+												<a
+													className="arc-landing__view"
+													href={ page.viewUrl }
+													target="_blank"
+													rel="noreferrer"
+												>
+													{ __(
+														'View',
+														'pendulum-arc'
+													) }
+												</a>
+											) : null }
+										</td>
+									</tr>
+								) ) }
+							</tbody>
+						</table>
+					</div>
 				) : null }
 			</section>
 			<ReportCta href={ href } />

@@ -1,30 +1,36 @@
 /**
  * WordPress dependencies
  */
-import { useEffect, useState } from '@wordpress/element';
+import { useEffect, useRef, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
-import { errorMessage, fetchAnalytics } from '../api';
+import { errorMessage, fetchAnalytics, fetchReport } from '../api';
 import { ErrorAlert } from '../ui/error-alert';
 import { IssueMenu } from './issue-menu';
 import { scoreServices, ServiceMark } from '../ui/score-card';
-import { ReportCta } from './report-cta';
+import { ReportPreview } from './report-preview';
 import { VisitorAnalytics } from './visitor-analytics';
 
 /**
- * Category pills and the selected report. Analytics is the only summary
- * in this version.
+ * Category pills and the selected report preview.
  *
- * @param {Object}                    props
- * @param {string}                    [props.portalUrl]
- * @param {string}                    [props.connectUrl]
- * @param {string}                    [props.service]
- * @param {(service: string) => void} [props.onService]
+ * @param {Object}                                    props
+ * @param {string}                                    [props.portalUrl]
+ * @param {string}                                    [props.connectUrl]
+ * @param {string}                                    [props.service]
+ * @param {(service: string) => void}                 [props.onService]
+ * @param {(gap: 'needed'|'generating'|null) => void} [props.onGap]
  */
-export function ReportSummary( { portalUrl, connectUrl, service, onService } ) {
+export function ReportSummary( {
+	portalUrl,
+	connectUrl,
+	service,
+	onService,
+	onGap,
+} ) {
 	const [ ownService, setOwnService ] = useState( 'analytics' );
 	const selected = service || ownService;
 	const setService = onService || setOwnService;
@@ -32,6 +38,8 @@ export function ReportSummary( { portalUrl, connectUrl, service, onService } ) {
 		loading: true,
 		error: '',
 	} );
+	const [ reports, setReports ] = useState( {} );
+	const reportCache = useRef( {} );
 
 	useEffect( () => {
 		let cancelled = false;
@@ -60,10 +68,71 @@ export function ReportSummary( { portalUrl, connectUrl, service, onService } ) {
 		};
 	}, [] );
 
-	const issues =
-		selected === 'analytics' && Array.isArray( report.issues )
-			? report.issues
-			: [];
+	useEffect( () => {
+		if ( selected === 'analytics' ) {
+			return undefined;
+		}
+		if ( reportCache.current[ selected ] ) {
+			return undefined;
+		}
+		let cancelled = false;
+		setReports( ( current ) => ( {
+			...current,
+			[ selected ]: { loading: true, error: '' },
+		} ) );
+		fetchReport( selected )
+			.then( ( result ) => {
+				if ( cancelled ) {
+					return;
+				}
+				const next = { ...result, loading: false, error: '' };
+				reportCache.current[ selected ] = next;
+				setReports( ( current ) => ( {
+					...current,
+					[ selected ]: next,
+				} ) );
+			} )
+			.catch( ( error ) => {
+				if ( ! cancelled ) {
+					setReports( ( current ) => ( {
+						...current,
+						[ selected ]: {
+							loading: false,
+							error: errorMessage(
+								error,
+								__(
+									'The report could not be loaded.',
+									'pendulum-arc'
+								)
+							),
+						},
+					} ) );
+				}
+			} );
+		return () => {
+			cancelled = true;
+		};
+	}, [ selected ] );
+
+	const preview =
+		selected === 'analytics'
+			? report
+			: reports[ selected ] || { loading: true };
+	const issues = Array.isArray( preview.issues ) ? preview.issues : [];
+
+	useEffect( () => {
+		if ( ! onGap ) {
+			return;
+		}
+		const current = selected === 'analytics' ? report : reports[ selected ];
+		if ( ! current || current.loading || current.error || current.runId ) {
+			onGap( null );
+			return;
+		}
+		const generating =
+			current.generation === 'queued' || current.generation === 'running';
+		onGap( generating ? 'generating' : 'needed' );
+	}, [ selected, report, reports, onGap ] );
 
 	return (
 		<section className="arc-reports">
@@ -101,21 +170,16 @@ export function ReportSummary( { portalUrl, connectUrl, service, onService } ) {
 				</div>
 				<IssueMenu groups={ issues } />
 			</div>
-			{ selected === 'analytics' && report.error ? (
+			{ preview.error ? (
 				<ErrorAlert
-					message={ report.error }
+					message={ preview.error }
 					connectUrl={ connectUrl }
 				/>
 			) : null }
 			{ selected === 'analytics' ? (
 				<VisitorAnalytics report={ report } portalUrl={ portalUrl } />
 			) : (
-				<ReportCta href={ portalUrl }>
-					{ __(
-						'Report overview coming soon. In the meantime you can view the full report in your Arc account.',
-						'pendulum-arc'
-					) }
-				</ReportCta>
+				<ReportPreview report={ preview } portalUrl={ portalUrl } />
 			) }
 		</section>
 	);

@@ -9,6 +9,10 @@ import { __ } from '@wordpress/i18n';
 import { Icon } from './icon';
 
 const GRANT_ERROR = 'Authorization grant is not valid.';
+const RECONNECT_HINT = __(
+	'Reconnect this site in Arc to allow generating reports.',
+	'pendulum-arc'
+);
 
 /**
  * Error card for a failed Arc request. An invalid grant links to Connect.
@@ -19,7 +23,14 @@ const GRANT_ERROR = 'Authorization grant is not valid.';
  */
 export function ErrorAlert( { message, connectUrl } ) {
 	const reconnect =
-		connectUrl && message.includes( GRANT_ERROR ) ? connectUrl : '';
+		connectUrl &&
+		( message.includes( GRANT_ERROR ) ||
+			message.includes( RECONNECT_HINT ) )
+			? connectUrl
+			: '';
+	const linkLabel = message.includes( RECONNECT_HINT )
+		? __( 'Connect settings', 'pendulum-arc' )
+		: __( 'Reconnect this site.', 'pendulum-arc' );
 	return (
 		<div className="arc-report-alert arc-report-alert--error" role="alert">
 			<p>
@@ -33,9 +44,7 @@ export function ErrorAlert( { message, connectUrl } ) {
 					{ reconnect ? (
 						<>
 							{ ' ' }
-							<a href={ reconnect }>
-								{ __( 'Reconnect this site.', 'pendulum-arc' ) }
-							</a>
+							<a href={ reconnect }>{ linkLabel }</a>
 						</>
 					) : null }
 				</span>

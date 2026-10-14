@@ -49,6 +49,24 @@ export function fetchAnalytics() {
 	return apiFetch( { path: '/pendulum-arc/v1/analytics' } );
 }
 
+export function fetchReport( service ) {
+	return apiFetch( {
+		path: `/pendulum-arc/v1/reports/${ encodeURIComponent( service ) }`,
+	} );
+}
+
+export function fetchRuns() {
+	return apiFetch( { path: '/pendulum-arc/v1/runs' } );
+}
+
+export function enqueueRun( service ) {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/runs',
+		method: 'POST',
+		data: { service },
+	} );
+}
+
 export function errorMessage( error, fallback ) {
 	if ( error && typeof error.message === 'string' && error.message ) {
 		return error.message;

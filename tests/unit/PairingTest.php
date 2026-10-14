@@ -218,4 +218,81 @@ final class PairingTest extends TestCase {
 		);
 		self::assertSame( 'shop', $project['slug'] );
 	}
+
+	public function test_report_keeps_the_header_and_drops_unsafe_images(): void {
+		$view = Pairing::report(
+			array(
+				'service' => 'seo',
+				'runId'   => 'run-1',
+				'hero'    => array(
+					'title' => 'SEO score',
+					'score' => '72',
+					'mood'  => 'ok',
+					'band'  => 'Needs work<script>',
+				),
+				'blocks'  => array(
+					array(
+						'kind'    => 'table',
+						'id'      => 'pages',
+						'heading' => 'Page analysis',
+						'empty'   => 'No pages in this run.',
+						'span'    => 'full',
+						'columns' => array(
+							array(
+								'id'    => 'preview',
+								'label' => 'Preview',
+								'align' => 'start',
+							),
+						),
+						'rows'    => array(
+							array(
+								'id'    => 'page-1',
+								'cells' => array(
+									array(
+										'text'  => 'About',
+										'href'  => 'https://example.com/about',
+										'image' => array(
+											'src' => 'javascript:alert(1)',
+											'alt' => 'Bad',
+										),
+									),
+									array(
+										'text'  => 'Home',
+										'href'  => 'https://user:secret@example.com/',
+										'image' => array(
+											'src' => 'https://cdn.example.com/og.png',
+											'alt' => 'Home',
+										),
+									),
+								),
+							),
+						),
+					),
+					array(
+						'kind'    => 'note',
+						'heading' => 'Ignored',
+					),
+				),
+				'issues'  => array(
+					array(
+						'label' => 'Score',
+						'items' => array(
+							array(
+								'title' => 'Short title',
+							),
+						),
+					),
+				),
+			)
+		);
+		self::assertSame( 'seo', $view['service'] );
+		self::assertSame( '72', $view['hero']['score'] );
+		self::assertSame( 'ok', $view['hero']['mood'] );
+		self::assertSame( 'Needs work', $view['hero']['band'] );
+		self::assertCount( 1, $view['blocks'] );
+		self::assertNull( $view['blocks'][0]['rows'][0]['cells'][0]['image'] );
+		self::assertNull( $view['blocks'][0]['rows'][0]['cells'][1]['href'] );
+		self::assertSame( 'https://cdn.example.com/og.png', $view['blocks'][0]['rows'][0]['cells'][1]['image']['src'] );
+		self::assertSame( 'Short title', $view['issues'][0]['items'][0]['title'] );
+	}
 }

@@ -28,6 +28,12 @@
 
 	--arc-border-subtle: #d8dce6;
 
+	/* Score card column gap. Report columns, rows, and cards use this. */
+	--arc-layout-gap: 0.75rem;
+
+	/* Score header radius. Report cards, tables, and content areas use this. */
+	--arc-content-radius: var(--arc-radius-large);
+
 	--arc-overlay-blur: 12px;
 	--arc-report-glass: rgba(255, 255, 255, 0.62);
 	--arc-shadow-small:
@@ -38,6 +44,13 @@
 	--arc-button-secondary-bg: color-mix(in srgb, var(--arc-accent-cyan) 12%, var(--arc-bg-secondary));
 	--arc-button-secondary-bg-hover: color-mix(in srgb, var(--arc-accent-cyan) 18%, var(--arc-bg-secondary));
 	--arc-button-secondary-bg-active: color-mix(in srgb, var(--arc-accent-cyan) 24%, var(--arc-bg-secondary));
+
+	--arc-button-connect-fg: var(--arc-accent-amber);
+	--arc-button-connect-bg: color-mix(in srgb, rgba(255, 255, 255, 0.78) 88%, transparent);
+	--arc-button-connect-bg-hover: color-mix(in srgb, var(--arc-accent-amber) 10%, #f4f5f7);
+	--arc-button-connect-bg-active: color-mix(in srgb, var(--arc-accent-amber) 16%, #f4f5f7);
+	--arc-button-connect-ring: 0 0 0 1px color-mix(in srgb, var(--arc-accent-amber) 38%, transparent);
+	--arc-button-connect-ring-hover: 0 0 0 1px color-mix(in srgb, var(--arc-accent-amber) 55%, transparent);
 
 	--arc-button-danger-fg: var(--arc-accent-red);
 	--arc-button-danger-bg: color-mix(in srgb, var(--arc-accent-red) 10%, transparent);

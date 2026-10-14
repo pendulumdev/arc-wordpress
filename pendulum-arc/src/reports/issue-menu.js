@@ -23,6 +23,13 @@ const SEVERITY_RANK = {
 	low: 3,
 };
 
+const SEVERITY_ACCENT = {
+	critical: 'red',
+	high: 'coral',
+	medium: 'orange',
+	low: 'amber',
+};
+
 const CHECK_KINDS = [ 'coverage', 'finding', 'annotation' ];
 
 /**
@@ -79,6 +86,24 @@ function KindIcon( { kind, sectionId, size } ) {
 				<circle cx="18" cy="18" r="3" />
 				<circle cx="6" cy="6" r="3" />
 				<path d="M6 21V9a9 9 0 0 0 9 9" />
+			</Icon>
+		);
+	}
+	if ( name === 'system' ) {
+		return (
+			<Icon size={ size } strokeWidth={ 2 }>
+				<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" />
+				<path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12" />
+				<path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17" />
+			</Icon>
+		);
+	}
+	if ( name === 'environment' ) {
+		return (
+			<Icon size={ size } strokeWidth={ 2 }>
+				<circle cx="12" cy="12" r="10" />
+				<path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+				<path d="M2 12h20" />
 			</Icon>
 		);
 	}
@@ -149,10 +174,12 @@ function IssueRow( { item } ) {
 				</span>
 				{ severity ? (
 					<span
-						className="arc-issue-row__pill"
-						data-severity={ severity }
+						className="arc-pill arc-issue-row__pill"
+						data-accent={ SEVERITY_ACCENT[ severity ] }
 					>
-						{ SEVERITY_LABEL[ severity ] }
+						<span className="arc-pill__label">
+							{ SEVERITY_LABEL[ severity ] }
+						</span>
 					</span>
 				) : null }
 			</div>
@@ -169,13 +196,23 @@ function IssueRow( { item } ) {
 			) : null }
 			{ showKey ? (
 				<p className="arc-issue-row__meta">
-					<Icon size={ 11 } strokeWidth={ 2.25 }>
-						<path d="M4 9h16" />
-						<path d="M4 15h16" />
-						<path d="M10 3 8 21" />
-						<path d="M16 3l-2 18" />
-					</Icon>
-					<span>{ item.key }</span>
+					<span
+						className="arc-pill"
+						data-accent="muted"
+						data-size="xs"
+					>
+						<span className="arc-pill__label">
+							<Icon size={ 11 } strokeWidth={ 2.25 }>
+								<path d="M4 9h16" />
+								<path d="M4 15h16" />
+								<path d="M10 3 8 21" />
+								<path d="M16 3l-2 18" />
+							</Icon>
+							<span className="arc-issue-row__key">
+								{ item.key }
+							</span>
+						</span>
+					</span>
 				</p>
 			) : null }
 		</div>
@@ -310,7 +347,16 @@ export function IssueMenu( { groups } ) {
 												} }
 												role="none"
 											>
-												<div role="menuitem">
+												<div
+													role="menuitem"
+													data-severity={
+														SEVERITY_LABEL[
+															item.severity
+														]
+															? item.severity
+															: undefined
+													}
+												>
 													<IssueRow item={ item } />
 												</div>
 											</div>

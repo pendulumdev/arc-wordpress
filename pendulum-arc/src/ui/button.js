@@ -4,7 +4,7 @@
  * @param {Object}                                      props
  * @param {string}                                      [props.href]     Renders an anchor when set.
  * @param {string}                                      [props.type]     Button type. Ignored when href is set.
- * @param {'secondary'|'danger'}                        [props.variant]
+ * @param {'primary'|'secondary'|'connect'|'danger'}    [props.variant]
  * @param {boolean}                                     [props.disabled]
  * @param {boolean}                                     [props.busy]
  * @param {(event: import('react').MouseEvent) => void} [props.onClick]

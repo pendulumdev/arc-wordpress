@@ -141,6 +141,40 @@ final class Rest_Controller {
 				'permission_callback' => array( $this, 'can_manage' ),
 			)
 		);
+
+		register_rest_route(
+			'pendulum-arc/v1',
+			'/reports/(?P<service>seo|a11y|ai|security|brand)',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'report' ),
+				'permission_callback' => array( $this, 'can_manage' ),
+			)
+		);
+
+		register_rest_route(
+			'pendulum-arc/v1',
+			'/runs',
+			array(
+				array(
+					'methods'             => 'GET',
+					'callback'            => array( $this, 'runs' ),
+					'permission_callback' => array( $this, 'can_manage' ),
+				),
+				array(
+					'methods'             => 'POST',
+					'callback'            => array( $this, 'enqueue_run' ),
+					'permission_callback' => array( $this, 'can_manage' ),
+					'args'                => array(
+						'service' => array(
+							'type'     => 'string',
+							'required' => true,
+							'enum'     => array( 'analytics', 'seo', 'a11y', 'ai', 'security', 'brand' ),
+						),
+					),
+				),
+			)
+		);
 	}
 
 	/**
@@ -252,6 +286,39 @@ final class Rest_Controller {
 	 */
 	public function analytics() {
 		return rest_ensure_response( $this->connect->analytics() );
+	}
+
+	/**
+	 * Crawl report preview for the paired site.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function report( \WP_REST_Request $request ) {
+		return rest_ensure_response( $this->connect->report( (string) $request->get_param( 'service' ) ) );
+	}
+
+	/**
+	 * In-flight runs for the paired site.
+	 *
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function runs() {
+		return rest_ensure_response( $this->connect->runs() );
+	}
+
+	/**
+	 * Queues one report.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function enqueue_run( \WP_REST_Request $request ) {
+		return $this->respond(
+			function () use ( $request ) {
+				return $this->connect->enqueue_run( (string) $request->get_param( 'service' ) );
+			}
+		);
 	}
 
 	/**

@@ -1,11 +1,13 @@
 /**
  * WordPress dependencies
  */
+import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
+import { GenerateReports } from './generate-menu';
 import { ArcButton } from '../ui/button';
 import { Icon } from '../ui/icon';
 
@@ -18,6 +20,42 @@ import { Icon } from '../ui/icon';
  * @param {string}                    [props.label]
  * @param {import('react').ReactNode} props.children
  */
+/**
+ * Top-of-dashboard notice when the selected report has no succeeded run.
+ * The action is the portal Generate menu.
+ *
+ * @param {Object}  props
+ * @param {boolean} props.generating
+ * @param {string}  [props.connectUrl] WordPress Connect settings page.
+ */
+export function GenerationNotice( { generating, connectUrl } ) {
+	const [ active, setActive ] = useState( false );
+	const live = generating || active;
+	return (
+		<div className="arc-report-alert arc-report-alert--error" role="alert">
+			<p>
+				<Icon size={ 18 } strokeWidth={ 2 }>
+					<circle cx="12" cy="12" r="10" />
+					<path d="m15 9-6 6" />
+					<path d="m9 9 6 6" />
+				</Icon>
+				<span>
+					{ live
+						? __(
+								'Reports are currently generating.',
+								'pendulum-arc'
+							)
+						: __( 'Reports need generating.', 'pendulum-arc' ) }
+				</span>
+			</p>
+			<GenerateReports
+				onActivity={ setActive }
+				connectUrl={ connectUrl }
+			/>
+		</div>
+	);
+}
+
 export function ReportCta( { href, label, children } ) {
 	return (
 		<div className="arc-report-alert">
@@ -30,13 +68,13 @@ export function ReportCta( { href, label, children } ) {
 				<span>
 					{ children ||
 						__(
-							'Issue management and the rest of this report stay in Arc.',
+							'Issue management and the full report are viewable in Arc. Automate fixes, review issues, and employ agents to help you manage your digital landscape.',
 							'pendulum-arc'
 						) }
 				</span>
 			</p>
 			{ href ? (
-				<ArcButton href={ href }>
+				<ArcButton href={ href } variant="connect">
 					{ label ||
 						__( 'Open the full report in Arc', 'pendulum-arc' ) }
 				</ArcButton>

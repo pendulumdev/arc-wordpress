@@ -1,6 +1,6 @@
 /*
- * Buttons. Secondary is the cyan wash. Danger is the red wash used for
- * cancel on a destructive confirm.
+ * Buttons. Primary is the portal rim glow. Secondary is the cyan wash.
+ * Danger is the red wash used for cancel on a destructive confirm.
  */
 .arc-button {
 	box-sizing: border-box;
@@ -25,6 +25,7 @@
 	vertical-align: middle;
 	transition:
 		background-color 200ms ease,
+		box-shadow 200ms ease,
 		color 200ms ease,
 		opacity 200ms ease;
 }
@@ -43,6 +44,162 @@
 .arc-button--secondary:active {
 	color: var(--arc-button-secondary-fg);
 	background-color: var(--arc-button-secondary-bg-active);
+}
+
+.arc-button--primary {
+	position: relative;
+	overflow: hidden;
+	isolation: isolate;
+	color: var(--arc-fg-primary);
+	font-weight: 700;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	background-color: var(--arc-bg-secondary);
+	box-shadow:
+		inset 0 0 0 1px color-mix(in srgb, var(--arc-fg-primary) 6%, transparent),
+		inset 0 -1px 0 color-mix(in srgb, var(--arc-fg-primary) 8%, transparent);
+}
+
+.arc-button--primary::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	pointer-events: none;
+	background-image:
+		radial-gradient(
+			40% 80% at 0% 50%,
+			color-mix(in srgb, var(--arc-accent-sky) 68%, white),
+			transparent 70%
+		),
+		radial-gradient(
+			50% 70% at 100% 40%,
+			color-mix(in srgb, var(--arc-accent-pink) 62%, white),
+			transparent 70%
+		),
+		radial-gradient(
+			55% 90% at 80% 0%,
+			color-mix(in srgb, var(--arc-accent-fuchsia) 60%, white),
+			transparent 72%
+		),
+		radial-gradient(
+			45% 60% at 50% 100%,
+			color-mix(in srgb, var(--arc-accent-fuchsia) 58%, white),
+			transparent 70%
+		),
+		radial-gradient(
+			50% 70% at 0% 0%,
+			color-mix(in srgb, var(--arc-accent-orange) 64%, white),
+			transparent 70%
+		),
+		radial-gradient(
+			60% 80% at 100% 80%,
+			color-mix(in srgb, var(--arc-accent-emerald) 58%, white),
+			transparent 70%
+		),
+		radial-gradient(
+			55% 75% at 50% 0%,
+			color-mix(in srgb, var(--arc-accent-cyan) 66%, white),
+			transparent 70%
+		);
+	background-size:
+		180% 180%,
+		180% 180%,
+		180% 180%,
+		180% 180%,
+		180% 180%,
+		180% 180%,
+		180% 180%;
+	background-repeat: no-repeat;
+	-webkit-mask-image: radial-gradient(
+		ellipse 92% 68% at 50% 50%,
+		transparent 42%,
+		#000 88%
+	);
+	mask-image: radial-gradient(
+		ellipse 92% 68% at 50% 50%,
+		transparent 42%,
+		#000 88%
+	);
+	opacity: 0.72;
+	transition:
+		opacity 700ms ease,
+		filter 900ms ease;
+	animation:
+		arc-button-primary-hue 14s linear infinite,
+		arc-button-primary-orbit 18s ease-in-out infinite;
+}
+
+.arc-button--primary > * {
+	position: relative;
+	z-index: 1;
+}
+
+.arc-button--primary:hover:not(:disabled)::before,
+.arc-button--primary:focus:not(:disabled)::before {
+	opacity: 0.84;
+}
+
+.arc-button--primary:active:not(:disabled)::before {
+	opacity: 0.52;
+}
+
+@keyframes arc-button-primary-hue {
+	0% {
+		filter: hue-rotate(0deg) saturate(1.08) blur(4px);
+	}
+
+	100% {
+		filter: hue-rotate(-360deg) saturate(1.08) blur(4px);
+	}
+}
+
+@keyframes arc-button-primary-orbit {
+	0%,
+	100% {
+		background-position: 100% 0%, 0% 50%, 100% 50%, 0% 100%, 0% 0%, 50% 0%, 50% 100%;
+	}
+
+	25% {
+		background-position: 100% 100%, 50% 0%, 50% 100%, 0% 0%, 100% 0%, 100% 50%, 0% 50%;
+	}
+
+	50% {
+		background-position: 0% 100%, 100% 50%, 0% 50%, 100% 0%, 100% 100%, 50% 100%, 50% 0%;
+	}
+
+	75% {
+		background-position: 0% 0%, 50% 100%, 50% 0%, 100% 100%, 0% 100%, 0% 50%, 100% 50%;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.arc-button--primary::before {
+		animation: none;
+		filter: saturate(1.05) blur(4px);
+		background-position: 100% 0%, 0% 50%, 100% 50%, 0% 100%, 0% 0%, 50% 0%, 50% 100%;
+	}
+}
+
+.arc-button--connect {
+	color: var(--arc-button-connect-fg);
+	background-color: var(--arc-button-connect-bg);
+	box-shadow: var(--arc-button-connect-ring);
+	-webkit-backdrop-filter: blur(12px);
+	backdrop-filter: blur(12px);
+}
+
+.arc-button--connect:hover,
+.arc-button--connect:focus {
+	color: var(--arc-button-connect-fg);
+	background-color: var(--arc-button-connect-bg-hover);
+	box-shadow: var(--arc-button-connect-ring-hover);
+}
+
+.arc-button--connect:active {
+	color: var(--arc-button-connect-fg);
+	background-color: var(--arc-button-connect-bg-active);
+	box-shadow: var(--arc-button-connect-ring);
 }
 
 .arc-button--danger {
@@ -71,6 +228,24 @@ body.wp-admin a.arc-button.arc-button--secondary:active,
 	box-shadow: none;
 }
 
+body.wp-admin a.arc-button.arc-button--connect,
+body.wp-admin a.arc-button.arc-button--connect:hover,
+body.wp-admin a.arc-button.arc-button--connect:focus,
+body.wp-admin a.arc-button.arc-button--connect:active,
+.wp-core-ui .arc-button.arc-button--connect {
+	color: var(--arc-button-connect-fg);
+	text-decoration: none;
+}
+
+.wp-core-ui .arc-button.arc-button--primary,
+.wp-core-ui .arc-button.arc-button--primary:hover,
+.wp-core-ui .arc-button.arc-button--primary:focus,
+.wp-core-ui .arc-button.arc-button--primary:active {
+	color: var(--arc-fg-primary);
+	background-color: var(--arc-bg-secondary);
+	text-decoration: none;
+}
+
 .wp-core-ui .arc-button.arc-button--danger,
 .wp-core-ui .arc-button.arc-button--danger:hover,
 .wp-core-ui .arc-button.arc-button--danger:focus,
@@ -81,6 +256,10 @@ body.wp-admin a.arc-button.arc-button--secondary:active,
 
 .arc-button:focus {
 	outline: none;
+}
+
+.arc-button--secondary:focus,
+.arc-button--danger:focus {
 	box-shadow: none;
 }
 
@@ -89,13 +268,41 @@ body.wp-admin a.arc-button.arc-button--secondary:active,
 	outline-offset: 2px;
 }
 
+.arc-button--primary:focus-visible {
+	outline: 2px solid var(--arc-fg-primary);
+	outline-offset: 2px;
+}
+
+.arc-button--connect:focus-visible {
+	outline: 2px solid var(--arc-accent-amber);
+	outline-offset: 2px;
+}
+
 .arc-button--danger:focus-visible {
 	outline: 2px solid var(--arc-accent-red);
 	outline-offset: 2px;
+}
+
+/* WordPress sets a:focus { border-radius: 2px }, which squares the
+   corners while a link button is clicked or focused. */
+body.wp-admin a.arc-button:hover,
+body.wp-admin a.arc-button:focus,
+body.wp-admin a.arc-button:focus-visible,
+body.wp-admin a.arc-button:active,
+.wp-core-ui .arc-button:hover,
+.wp-core-ui .arc-button:focus,
+.wp-core-ui .arc-button:focus-visible,
+.wp-core-ui .arc-button:active {
+	border-radius: var(--arc-radius-small);
 }
 
 .arc-button:disabled,
 .arc-button[aria-busy="true"] {
 	opacity: 0.6;
 	cursor: not-allowed;
+}
+
+.arc-button--primary[aria-busy="true"]:not(:disabled) {
+	opacity: 1;
+	cursor: pointer;
 }

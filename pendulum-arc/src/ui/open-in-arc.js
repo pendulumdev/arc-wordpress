@@ -24,7 +24,7 @@ export function OpenInArc( { bootstrap } ) {
 		return null;
 	}
 	return createPortal(
-		<ArcButton href={ portalUrl }>
+		<ArcButton href={ portalUrl } variant="connect">
 			{ __( 'Open in Arc', 'pendulum-arc' ) }
 		</ArcButton>,
 		actions

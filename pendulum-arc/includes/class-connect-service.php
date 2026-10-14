@@ -230,7 +230,7 @@ final class Connect_Service {
 			'response_type'         => 'code',
 			'client_id'             => Arc_Config::client_id(),
 			'redirect_uri'          => $redirect,
-			'scope'                 => 'arc:read',
+			'scope'                 => 'arc:read arc:enqueue',
 			'state'                 => $state,
 			'code_challenge'        => Pkce::challenge( $verifier ),
 			'code_challenge_method' => 'S256',
@@ -374,6 +374,116 @@ final class Connect_Service {
 		$view['landingPages'] = $this->landing_pages( $view['landingPages'] );
 		$view['error']        = null;
 		return $view;
+	}
+
+	/**
+	 * Header and first section for one crawl report.
+	 *
+	 * @param string $service seo, a11y, ai, security, or brand.
+	 * @return array<string, mixed>
+	 */
+	public function report( string $service ): array {
+		$allowed = array( 'seo', 'a11y', 'ai', 'security', 'brand' );
+		if ( ! in_array( $service, $allowed, true ) ) {
+			$service = '';
+		}
+		$empty = Pairing::report( array( 'service' => $service ) );
+		if ( '' === $service ) {
+			$empty['error'] = __( 'That report is not available.', 'pendulum-arc' );
+			return $empty;
+		}
+		$creds = $this->store->credentials();
+		if ( null === $creds ) {
+			$empty['error'] = __( 'Connect this site to Arc first.', 'pendulum-arc' );
+			return $empty;
+		}
+		try {
+			$payload = $this->bearer_call(
+				$creds,
+				function ( string $token ) use ( $creds, $service ) {
+					return $this->client->report( (string) $creds['env'], $token, (string) $creds['siteId'], $service );
+				}
+			);
+		} catch ( Arc_Api_Exception $error ) {
+			$empty['error'] = $error->getMessage();
+			return $empty;
+		}
+		$view            = Pairing::report( $payload );
+		$view['service'] = $service;
+		$view['blocks']  = $this->link_report_blocks( $view['blocks'] );
+		$view['error']   = null;
+		return $view;
+	}
+
+	/**
+	 * In-flight run status for the Generate menu. A failed read still returns
+	 * an empty map so the menu can open.
+	 *
+	 * @return array{busy: object, error: string|null}
+	 */
+	public function runs(): array {
+		$empty = array(
+			'busy'  => (object) array(),
+			'error' => null,
+		);
+		$creds = $this->store->credentials();
+		if ( null === $creds ) {
+			$empty['error'] = __( 'Connect this site to Arc first.', 'pendulum-arc' );
+			return $empty;
+		}
+		try {
+			$payload = $this->bearer_call(
+				$creds,
+				function ( string $token ) use ( $creds ) {
+					return $this->client->runs( (string) $creds['env'], $token, (string) $creds['siteId'] );
+				}
+			);
+		} catch ( Arc_Api_Exception $error ) {
+			$empty['error'] = $error->getMessage();
+			return $empty;
+		}
+		$view          = Pairing::in_flight_runs( $payload );
+		$view['error'] = null;
+		return $view;
+	}
+
+	/**
+	 * Queues one report for the paired site.
+	 *
+	 * @param string $service Service key.
+	 * @return array{runId: string, service: string}
+	 */
+	public function enqueue_run( string $service ): array {
+		if ( ! in_array( $service, Pairing::run_services(), true ) ) {
+			throw new Arc_Api_Exception( __( 'That report is not available.', 'pendulum-arc' ), 400 );
+		}
+		$creds = $this->store->credentials();
+		if ( null === $creds ) {
+			throw new Arc_Api_Exception( __( 'Connect this site to Arc first.', 'pendulum-arc' ), 401 );
+		}
+		try {
+			$payload = $this->bearer_call(
+				$creds,
+				function ( string $token ) use ( $creds, $service ) {
+					return $this->client->enqueue_run(
+						(string) $creds['env'],
+						$token,
+						(string) $creds['siteId'],
+						$service,
+						wp_generate_uuid4()
+					);
+				}
+			);
+		} catch ( Arc_Api_Exception $error ) {
+			if ( 403 === $error->status_code() ) {
+				throw new Arc_Api_Exception(
+					__( 'Reconnect this site in Arc to allow generating reports.', 'pendulum-arc' ),
+					403
+				);
+			}
+			throw $error;
+		}
+		return Pairing::enqueued_run( $payload );
 	}
 
 	/**
@@ -531,6 +641,64 @@ final class Connect_Service {
 	 * @param array<int, mixed> $pages Landing rows.
 	 * @return array<int, array<string, mixed>>
 	 */
+	/**
+	 * Adds an edit link when a table cell URL is a page on this site.
+	 *
+	 * @param array<int, array<string, mixed>> $blocks Report blocks.
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function link_report_blocks( array $blocks ): array {
+		$home      = wp_parse_url( home_url( '/' ) );
+		$home_host = is_array( $home ) ? strtolower( (string) ( $home['host'] ?? '' ) ) : '';
+		foreach ( $blocks as &$block ) {
+			if ( ! is_array( $block ) || 'table' !== ( $block['kind'] ?? '' ) || ! is_array( $block['rows'] ?? null ) ) {
+				continue;
+			}
+			foreach ( $block['rows'] as &$row ) {
+				if ( ! is_array( $row ) || ! is_array( $row['cells'] ?? null ) ) {
+					continue;
+				}
+				foreach ( $row['cells'] as &$cell ) {
+					if ( is_array( $cell ) ) {
+						$cell = $this->link_report_cell( $cell, $home_host );
+					}
+				}
+			}
+		}
+		return $blocks;
+	}
+
+	/**
+	 * @param array<string, mixed> $cell      Table cell.
+	 * @param string               $home_host This site's host.
+	 * @return array<string, mixed>
+	 */
+	private function link_report_cell( array $cell, string $home_host ): array {
+		$href = (string) ( $cell['href'] ?? '' );
+		if ( '' === $href || '' === $home_host ) {
+			return $cell;
+		}
+		$parts = wp_parse_url( $href );
+		$host  = is_array( $parts ) ? strtolower( (string) ( $parts['host'] ?? '' ) ) : '';
+		if ( $host !== $home_host ) {
+			return $cell;
+		}
+		$path = Pairing::landing_path( $href );
+		$view = home_url( $path );
+		$id   = url_to_postid( $view );
+		if ( 0 === $id && '/' === $path ) {
+			$front = (int) get_option( 'page_on_front' );
+			if ( $front > 0 ) {
+				$id = $front;
+			}
+		}
+		$edit = $id > 0 ? get_edit_post_link( $id, 'raw' ) : '';
+		if ( is_string( $edit ) && '' !== $edit ) {
+			$cell['editHref'] = $edit;
+		}
+		return $cell;
+	}
+
 	private function landing_pages( array $pages ): array {
 		$out = array();
 		foreach ( $pages as $page ) {

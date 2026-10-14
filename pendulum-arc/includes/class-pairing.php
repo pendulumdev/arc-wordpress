@@ -319,6 +319,7 @@ final class Pairing {
 		}
 		return array(
 			'runId'             => Site_Origin::field( $json, array( 'runId', 'run_id' ) ),
+			'generation'        => self::generation( $json['generation'] ?? '' ),
 			'rangeLabel'        => Site_Origin::field( $json, array( 'rangeLabel', 'range_label' ) ),
 			'connectionMeta'    => Site_Origin::field( $json, array( 'connectionMeta', 'connection_meta' ) ),
 			'searchConsoleMeta' => Site_Origin::field( $json, array( 'searchConsoleMeta', 'search_console_meta' ) ),
@@ -536,5 +537,426 @@ final class Pairing {
 			$band = substr( $band, 0, 80 );
 		}
 		return '' === $band ? null : $band;
+	}
+
+	/**
+	 * Crawl report preview. Header, first-section tables, and cards.
+	 * Inspector fields are dropped.
+	 *
+	 * @param array<string, mixed> $json Report response.
+	 * @return array<string, mixed>
+	 */
+	public static function report( array $json ): array {
+		$service = Site_Origin::field( $json, array( 'service' ) );
+		if ( ! in_array( $service, array( 'seo', 'a11y', 'ai', 'security', 'brand' ), true ) ) {
+			$service = '';
+		}
+		$hero = $json['hero'] ?? null;
+		return array(
+			'runId'      => Site_Origin::field( $json, array( 'runId', 'run_id' ) ),
+			'generation' => self::generation( $json['generation'] ?? '' ),
+			'service'    => $service,
+			'hero'       => self::report_hero( is_array( $hero ) ? $hero : array() ),
+			'blocks'     => self::report_blocks( $json['blocks'] ?? null ),
+			'issues'     => self::issue_groups( $json['issues'] ?? null ),
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $hero Hero object.
+	 * @return array<string, mixed>
+	 */
+	private static function report_hero( array $hero ): array {
+		$peer    = $hero['peer'] ?? null;
+		$metrics = array();
+		if ( is_array( $hero['metrics'] ?? null ) ) {
+			foreach ( array_slice( $hero['metrics'], 0, 12 ) as $metric ) {
+				if ( ! is_array( $metric ) ) {
+					continue;
+				}
+				$label = self::report_text( $metric['label'] ?? '', 80 );
+				if ( '' === $label ) {
+					continue;
+				}
+				$metrics[] = array(
+					'label' => $label,
+					'value' => self::report_text( $metric['value'] ?? '-', 40 ),
+					'mood'  => self::report_tone( $metric['mood'] ?? '' ),
+					'tone'  => self::report_tone( $metric['tone'] ?? '' ),
+				);
+			}
+		}
+		$inventory = array();
+		if ( is_array( $hero['inventory'] ?? null ) ) {
+			foreach ( array_slice( $hero['inventory'], 0, 12 ) as $row ) {
+				if ( ! is_array( $row ) ) {
+					continue;
+				}
+				$label = self::report_text( $row['label'] ?? '', 80 );
+				$value = self::report_text( $row['value'] ?? '', 240 );
+				if ( '' === $label || '' === $value ) {
+					continue;
+				}
+				$inventory[] = array(
+					'label' => $label,
+					'value' => $value,
+				);
+			}
+		}
+		return array(
+			'title'     => self::report_text( $hero['title'] ?? '', 120 ),
+			'score'     => self::report_text( $hero['score'] ?? '-', 40 ),
+			'band'      => self::report_text( $hero['band'] ?? '', 80 ),
+			'mood'      => self::report_tone( $hero['mood'] ?? '' ),
+			'coverage'  => self::report_text( $hero['coverage'] ?? '', 40 ),
+			'peer'      => is_array( $peer ) ? array(
+				'title' => self::report_text( $peer['title'] ?? '', 80 ),
+				'score' => self::report_text( $peer['score'] ?? '-', 40 ),
+				'band'  => self::report_text( $peer['band'] ?? '', 80 ),
+				'mood'  => self::report_tone( $peer['mood'] ?? '' ),
+			) : null,
+			'metrics'   => $metrics,
+			'summary'   => self::report_text( $hero['summary'] ?? '', 240 ),
+			'inventory' => $inventory,
+			'note'      => self::report_text( $hero['note'] ?? '', 500 ),
+		);
+	}
+
+	/**
+	 * @param mixed $raw Blocks.
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function report_blocks( $raw ): array {
+		if ( ! is_array( $raw ) ) {
+			return array();
+		}
+		$blocks = array();
+		foreach ( array_slice( $raw, 0, 24 ) as $block ) {
+			if ( ! is_array( $block ) ) {
+				continue;
+			}
+			$kind = Site_Origin::field( $block, array( 'kind' ) );
+			if ( 'table' === $kind ) {
+				$blocks[] = self::report_table( $block );
+			} elseif ( 'card' === $kind ) {
+				$blocks[] = self::report_card( $block );
+			}
+		}
+		return $blocks;
+	}
+
+	/**
+	 * @param array<string, mixed> $block Table block.
+	 * @return array<string, mixed>
+	 */
+	private static function report_table( array $block ): array {
+		$columns = array();
+		if ( is_array( $block['columns'] ?? null ) ) {
+			foreach ( array_slice( $block['columns'], 0, 12 ) as $column ) {
+				if ( ! is_array( $column ) ) {
+					continue;
+				}
+				$label = self::report_text( $column['label'] ?? '', 80 );
+				if ( '' === $label ) {
+					continue;
+				}
+				$columns[] = array(
+					'id'    => self::report_text( $column['id'] ?? '', 40 ),
+					'label' => $label,
+					'align' => 'end' === ( $column['align'] ?? '' ) ? 'end' : 'start',
+				);
+			}
+		}
+		$rows = array();
+		if ( is_array( $block['rows'] ?? null ) ) {
+			foreach ( array_slice( $block['rows'], 0, 200 ) as $row ) {
+				if ( ! is_array( $row ) || ! is_array( $row['cells'] ?? null ) ) {
+					continue;
+				}
+				$cells = array();
+				foreach ( array_slice( $row['cells'], 0, 12 ) as $cell ) {
+					if ( is_array( $cell ) ) {
+						$cells[] = self::report_cell( $cell );
+					}
+				}
+				$rows[] = array(
+					'id'    => self::report_text( $row['id'] ?? '', 180 ),
+					'kind'  => self::report_kind( $row['kind'] ?? '' ),
+					'cells' => $cells,
+				);
+			}
+		}
+		return array(
+			'kind'    => 'table',
+			'id'      => self::report_text( $block['id'] ?? '', 40 ),
+			'heading' => self::report_text( $block['heading'] ?? '', 80 ),
+			'empty'   => self::report_text( $block['empty'] ?? '', 180 ),
+			'span'    => 'half' === ( $block['span'] ?? '' ) ? 'half' : 'full',
+			'columns' => $columns,
+			'rows'    => $rows,
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $block Card block.
+	 * @return array<string, mixed>
+	 */
+	private static function report_card( array $block ): array {
+		$fields = array();
+		if ( is_array( $block['fields'] ?? null ) ) {
+			foreach ( array_slice( $block['fields'], 0, 40 ) as $field ) {
+				if ( ! is_array( $field ) ) {
+					continue;
+				}
+				$label = self::report_text( $field['label'] ?? '', 80 );
+				if ( '' === $label ) {
+					continue;
+				}
+				$fields[] = array(
+					'label'    => $label,
+					'value'    => self::report_text( $field['value'] ?? '', 500 ),
+					'tone'     => self::report_tone( $field['tone'] ?? '' ),
+					'href'     => self::http_url( Site_Origin::field( $field, array( 'href' ) ) ),
+					'caption'  => self::report_optional( $field['caption'] ?? '', 240 ),
+					'pill'     => self::report_optional( $field['pill'] ?? '', 40 ),
+					'pillTone' => self::report_accent( $field['pillTone'] ?? '' ),
+					'group'    => self::report_optional( $field['group'] ?? '', 40 ),
+					'wide'     => ! empty( $field['wide'] ),
+				);
+			}
+		}
+		$images = array();
+		if ( is_array( $block['images'] ?? null ) ) {
+			foreach ( array_slice( $block['images'], 0, 24 ) as $image ) {
+				if ( ! is_array( $image ) ) {
+					continue;
+				}
+				$src = self::http_url( Site_Origin::field( $image, array( 'src' ) ) );
+				if ( null === $src ) {
+					continue;
+				}
+				$href     = self::http_url( Site_Origin::field( $image, array( 'href' ) ) );
+				$images[] = array(
+					'src'     => $src,
+					'href'    => $href ?? $src,
+					'alt'     => self::report_text( $image['alt'] ?? '', 180 ),
+					'caption' => self::report_text( $image['caption'] ?? '', 180 ),
+				);
+			}
+		}
+		$links = array();
+		if ( is_array( $block['links'] ?? null ) ) {
+			foreach ( array_slice( $block['links'], 0, 40 ) as $link ) {
+				if ( ! is_array( $link ) ) {
+					continue;
+				}
+				$href  = self::http_url( Site_Origin::field( $link, array( 'href' ) ) );
+				$label = self::report_text( $link['label'] ?? '', 240 );
+				if ( null === $href || '' === $label ) {
+					continue;
+				}
+				$links[] = array(
+					'href'  => $href,
+					'label' => $label,
+				);
+			}
+		}
+		return array(
+			'kind'      => 'card',
+			'id'        => self::report_text( $block['id'] ?? '', 40 ),
+			'heading'   => self::report_text( $block['heading'] ?? '', 80 ),
+			'badge'     => self::report_text( $block['badge'] ?? '', 40 ),
+			'badgeTone' => self::report_tone( $block['badgeTone'] ?? '' ),
+			'note'      => self::report_text( $block['note'] ?? '', 500 ),
+			'href'      => self::http_url( Site_Origin::field( $block, array( 'href' ) ) ),
+			'hrefLabel' => self::report_text( $block['hrefLabel'] ?? '', 40 ),
+			'span'      => 'half' === ( $block['span'] ?? '' ) ? 'half' : 'full',
+			'fields'    => $fields,
+			'images'    => $images,
+			'text'      => self::report_text( $block['text'] ?? '', 4000 ),
+			'links'     => $links,
+		);
+	}
+
+	/**
+	 * @param array<string, mixed> $cell Cell.
+	 * @return array<string, mixed>
+	 */
+	private static function report_cell( array $cell ): array {
+		$image = null;
+		if ( is_array( $cell['image'] ?? null ) ) {
+			$src = self::http_url( Site_Origin::field( $cell['image'], array( 'src' ) ) );
+			if ( null !== $src ) {
+				$image = array(
+					'src' => $src,
+					'alt' => self::report_text( $cell['image']['alt'] ?? '', 180 ),
+				);
+			}
+		}
+		return array(
+			'text'     => self::report_text( $cell['text'] ?? '', 500 ),
+			'href'     => self::http_url( Site_Origin::field( $cell, array( 'href' ) ) ),
+			'image'    => $image,
+			'mood'     => self::report_tone( $cell['mood'] ?? '' ),
+			'caption'  => self::report_optional( $cell['caption'] ?? '', 240 ),
+			'pill'     => self::report_optional( $cell['pill'] ?? '', 40 ),
+			'pillTone' => self::report_accent( $cell['pillTone'] ?? '' ),
+		);
+	}
+
+	/**
+	 * Plain text, or null when empty.
+	 *
+	 * @param mixed $value Raw value.
+	 */
+	private static function report_optional( $value, int $max ): ?string {
+		$text = self::report_text( $value, $max );
+		return '' === $text ? null : $text;
+	}
+
+	/**
+	 * Pill accent, or null.
+	 *
+	 * @param mixed $value Raw accent.
+	 */
+	private static function report_accent( $value ): ?string {
+		$accent  = is_string( $value ) ? $value : '';
+		$allowed = array( 'cyan', 'emerald', 'lime', 'amber', 'orange', 'coral', 'red', 'muted' );
+		return in_array( $accent, $allowed, true ) ? $accent : null;
+	}
+
+	/**
+	 * Plain text, tags removed, length capped.
+	 *
+	 * @param mixed $value Raw value.
+	 */
+	private static function report_text( $value, int $max ): string {
+		if ( is_array( $value ) || null === $value ) {
+			return '';
+		}
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.strip_tags_strip_tags -- This file is unit-tested without WordPress.
+		$text = trim( strip_tags( (string) $value ) );
+		if ( strlen( $text ) > $max ) {
+			$text = substr( $text, 0, $max );
+		}
+		return $text;
+	}
+
+	/**
+	 * In-flight run status, or null.
+	 *
+	 * @param mixed $value Raw generation.
+	 */
+	private static function generation( $value ): ?string {
+		$status = is_string( $value ) ? $value : '';
+		return in_array( $status, array( 'queued', 'running' ), true ) ? $status : null;
+	}
+
+	/**
+	 * Closed colour token, or null.
+	 *
+	 * @param mixed $value Raw tone.
+	 */
+	private static function report_tone( $value ): ?string {
+		$tone    = is_string( $value ) ? $value : '';
+		$allowed = array(
+			'great',
+			'good',
+			'ok',
+			'poor',
+			'bad',
+			'critical',
+			'serious',
+			'moderate',
+			'minor',
+			'warn',
+			'muted',
+		);
+		return in_array( $tone, $allowed, true ) ? $tone : null;
+	}
+
+	/**
+	 * Row filter kind, or null.
+	 *
+	 * @param mixed $value Raw kind.
+	 */
+	private static function report_kind( $value ): ?string {
+		$kind    = is_string( $value ) ? $value : '';
+		$allowed = array( 'profile', 'content', 'allow', 'disallow', 'inherited', 'unknown' );
+		return in_array( $kind, $allowed, true ) ? $kind : null;
+	}
+
+	/**
+	 * Absolute http(s) URL with no credentials, or null.
+	 */
+	private static function http_url( string $value ): ?string {
+		$value = trim( $value );
+		if ( '' === $value || ! preg_match( '#^https?://#i', $value ) ) {
+			return null;
+		}
+		if ( strlen( $value ) > 2048 ) {
+			return null;
+		}
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.parse_url_parse_url -- Unit tests load this file without WordPress.
+		$parts = parse_url( $value );
+		if ( ! is_array( $parts ) || empty( $parts['host'] ) ) {
+			return null;
+		}
+		if ( isset( $parts['user'] ) || isset( $parts['pass'] ) ) {
+			return null;
+		}
+		$scheme = strtolower( (string) ( $parts['scheme'] ?? '' ) );
+		if ( 'http' !== $scheme && 'https' !== $scheme ) {
+			return null;
+		}
+		return $value;
+	}
+
+	/**
+	 * Newest in-flight status per service from a runs page.
+	 *
+	 * @param array<string, mixed> $json Response body.
+	 * @return array{busy: object}
+	 */
+	public static function in_flight_runs( array $json ): array {
+		$busy = array();
+		$seen = array();
+		foreach ( self::rows( $json, array( 'runs' ) ) as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			$service = Site_Origin::field( $row, array( 'service' ) );
+			if ( ! in_array( $service, self::run_services(), true ) || isset( $seen[ $service ] ) ) {
+				continue;
+			}
+			$seen[ $service ] = true;
+			$status           = Site_Origin::field( $row, array( 'status' ) );
+			if ( 'queued' === $status || 'running' === $status ) {
+				$busy[ $service ] = $status;
+			}
+		}
+		return array( 'busy' => (object) $busy );
+	}
+
+	/**
+	 * Enqueue acknowledgement.
+	 *
+	 * @param array<string, mixed> $json Response body.
+	 * @return array{runId: string, service: string}
+	 */
+	public static function enqueued_run( array $json ): array {
+		return array(
+			'runId'   => Site_Origin::field( $json, array( 'runId', 'run_id' ) ),
+			'service' => Site_Origin::field( $json, array( 'service' ) ),
+		);
+	}
+
+	/**
+	 * Services the Generate menu can queue.
+	 *
+	 * @return array<int, string>
+	 */
+	public static function run_services(): array {
+		return array( 'analytics', 'seo', 'a11y', 'ai', 'security', 'brand' );
 	}
 }

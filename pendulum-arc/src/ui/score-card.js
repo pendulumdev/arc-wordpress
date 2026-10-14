@@ -125,10 +125,10 @@ export function ServiceMark( { service, size = 13 } ) {
 	);
 }
 
-function MoodMark( { mood } ) {
+export function MoodMark( { mood, size = 80 } ) {
 	if ( mood === 'great' ) {
 		return (
-			<Icon size={ 80 } strokeWidth={ 1.5 }>
+			<Icon size={ size } strokeWidth={ 1.5 }>
 				<circle cx="12" cy="12" r="10" />
 				<path d="M18 13a6 6 0 0 1-6 5 6 6 0 0 1-6-5h12Z" />
 				<line x1="9" x2="9.01" y1="9" y2="9" />
@@ -138,7 +138,7 @@ function MoodMark( { mood } ) {
 	}
 	if ( mood === 'good' ) {
 		return (
-			<Icon size={ 80 } strokeWidth={ 1.5 }>
+			<Icon size={ size } strokeWidth={ 1.5 }>
 				<circle cx="12" cy="12" r="10" />
 				<path d="M8 14s1.5 2 4 2 4-2 4-2" />
 				<line x1="9" x2="9.01" y1="9" y2="9" />
@@ -148,7 +148,7 @@ function MoodMark( { mood } ) {
 	}
 	if ( mood === 'ok' ) {
 		return (
-			<Icon size={ 80 } strokeWidth={ 1.5 }>
+			<Icon size={ size } strokeWidth={ 1.5 }>
 				<circle cx="12" cy="12" r="10" />
 				<line x1="8" x2="16" y1="15" y2="15" />
 				<line x1="9" x2="9.01" y1="9" y2="9" />
@@ -158,7 +158,7 @@ function MoodMark( { mood } ) {
 	}
 	if ( mood === 'poor' ) {
 		return (
-			<Icon size={ 80 } strokeWidth={ 1.5 }>
+			<Icon size={ size } strokeWidth={ 1.5 }>
 				<circle cx="12" cy="12" r="10" />
 				<path d="M16 16s-1.5-2-4-2-4 2-4 2" />
 				<line x1="9" x2="9.01" y1="9" y2="9" />
@@ -167,7 +167,7 @@ function MoodMark( { mood } ) {
 		);
 	}
 	return (
-		<Icon size={ 80 } strokeWidth={ 1.5 }>
+		<Icon size={ size } strokeWidth={ 1.5 }>
 			<circle cx="12" cy="12" r="10" />
 			<path d="M16 16s-1.5-2-4-2-4 2-4 2" />
 			<path d="M7.5 8 10 9" />

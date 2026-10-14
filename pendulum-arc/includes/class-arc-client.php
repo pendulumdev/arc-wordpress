@@ -130,6 +130,66 @@ final class Arc_Client {
 	}
 
 	/**
+	 * Header and first section for one crawl report.
+	 *
+	 * @param string $env     production or preview.
+	 * @param string $token   Bearer.
+	 * @param string $site_id Site id.
+	 * @param string $service seo, a11y, ai, security, or brand.
+	 * @return array<string, mixed>
+	 */
+	public function report( string $env, string $token, string $site_id, string $service ): array {
+		$this->assert_id( $site_id );
+		if ( ! in_array( $service, array( 'seo', 'a11y', 'ai', 'security', 'brand' ), true ) ) {
+			throw new Arc_Api_Exception( __( 'That report is not available.', 'pendulum-arc' ), 400 );
+		}
+		$url = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/reports/' . rawurlencode( $service );
+		return $this->json( 'GET', $url, $token );
+	}
+
+	/**
+	 * Newest runs for the site, used to label queued and running services.
+	 *
+	 * @param string $env     production or preview.
+	 * @param string $token   Bearer.
+	 * @param string $site_id Site id.
+	 * @return array<string, mixed>
+	 */
+	public function runs( string $env, string $token, string $site_id ): array {
+		$this->assert_id( $site_id );
+		$url = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/runs';
+		return $this->json( 'GET', $url, $token );
+	}
+
+	/**
+	 * Queues one service. The idempotency key is required by the public API.
+	 *
+	 * @param string $env     production or preview.
+	 * @param string $token   Bearer.
+	 * @param string $site_id Site id.
+	 * @param string $service Service key.
+	 * @param string $key     Idempotency-Key.
+	 * @return array<string, mixed>
+	 */
+	public function enqueue_run( string $env, string $token, string $site_id, string $service, string $key ): array {
+		$this->assert_id( $site_id );
+		if ( ! in_array( $service, Pairing::run_services(), true ) ) {
+			throw new Arc_Api_Exception( __( 'That report is not available.', 'pendulum-arc' ), 400 );
+		}
+		if ( 1 !== preg_match( '/^[A-Za-z0-9_-]{8,200}$/', $key ) ) {
+			throw new Arc_Api_Exception( __( 'Arc refused the request. Try again in a moment.', 'pendulum-arc' ), 400 );
+		}
+		$url = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/runs';
+		return $this->json(
+			'POST',
+			$url,
+			$token,
+			array( 'service' => $service ),
+			array( 'Idempotency-Key' => $key )
+		);
+	}
+
+	/**
 	 * Exchanges an authorization code.
 	 *
 	 * @param string $env          production or preview.
