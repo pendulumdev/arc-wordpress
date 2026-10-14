@@ -33,8 +33,9 @@ do not, so a pin cannot land on a build that misreports its version.
 
 ## Body template
 
-Copy this into `docs/releases/vX.Y.Z.md`. Keep the heading names. Drop
-**Changes since** only on a first tag that has no previous release.
+Copy this into `docs/releases/vX.Y.Z.md`. Keep the heading names. The first
+tag uses **Changes:** and lists what that release includes. Later tags use
+**Changes since vA.B.C:**.
 
 ```markdown
 WordPress plugin that connects a site to Pendulum Arc. <one line on what this tag is> for vX.Y.Z.

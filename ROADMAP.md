@@ -1,7 +1,8 @@
 # Roadmap
 
 Status: **alpha**. The connect flow and the score summary are the plugin.
-It is not on WordPress.org yet. This repository is the review copy.
+It is not on WordPress.org yet. Install from the GitHub Release until the
+directory listing exists.
 
 ## Known gaps
 
