@@ -50,6 +50,30 @@ function formatRate( value ) {
 	return `${ ( number * 100 ).toFixed( 1 ) }%`;
 }
 
+const METRIC_SHELLS = [
+	{ key: 'sessions', label: __( 'Sessions', 'pendulum-arc' ) },
+	{ key: 'users', label: __( 'Users', 'pendulum-arc' ) },
+	{ key: 'engaged', label: __( 'Engaged sessions', 'pendulum-arc' ) },
+	{ key: 'engagementRate', label: __( 'Engagement rate', 'pendulum-arc' ) },
+];
+
+function heroMetrics( report ) {
+	const found = new Map(
+		( ( report && report.metrics ) || [] ).map( ( metric ) => [
+			metric.key,
+			metric,
+		] )
+	);
+	return METRIC_SHELLS.map(
+		( shell ) =>
+			found.get( shell.key ) || {
+				...shell,
+				value: null,
+				previousValue: null,
+			}
+	);
+}
+
 /**
  * @param {Object} props
  * @param {Object} props.report
@@ -57,7 +81,7 @@ function formatRate( value ) {
  */
 export function VisitorAnalytics( { report, portalUrl } ) {
 	const charts = mergeCharts( report && report.charts );
-	const metrics = ( report && report.metrics ) || [];
+	const metrics = heroMetrics( report );
 	const pages = ( report && report.landingPages ) || [];
 	const runId = report && report.runId ? report.runId : '';
 	const href =
@@ -99,31 +123,37 @@ export function VisitorAnalytics( { report, portalUrl } ) {
 								) }
 						</p>
 					</div>
-					{ metrics.length > 0 ? (
-						<dl className="arc-report-hero__metrics">
-							{ metrics.map( ( metric ) => {
-								const delta = metricDelta( metric );
-								return (
-									<div key={ metric.key }>
-										<dt>{ metric.label }</dt>
-										<dd>
-											<span className="arc-report-hero__figure">
-												{ formatMetric( metric ) }
+					<dl className="arc-report-hero__metrics">
+						{ metrics.map( ( metric ) => {
+							const delta = metricDelta( metric );
+							const empty = ! Number.isFinite(
+								Number( metric.value )
+							);
+							return (
+								<div key={ metric.key }>
+									<dt>{ metric.label }</dt>
+									<dd>
+										<span
+											className="arc-report-hero__figure"
+											data-empty={
+												empty ? 'true' : undefined
+											}
+										>
+											{ formatMetric( metric ) }
+										</span>
+										{ delta ? (
+											<span
+												className="arc-report-hero__delta"
+												data-tone={ delta.tone }
+											>
+												{ delta.text }
 											</span>
-											{ delta ? (
-												<span
-													className="arc-report-hero__delta"
-													data-tone={ delta.tone }
-												>
-													{ delta.text }
-												</span>
-											) : null }
-										</dd>
-									</div>
-								);
-							} ) }
-						</dl>
-					) : null }
+										) : null }
+									</dd>
+								</div>
+							);
+						} ) }
+					</dl>
 				</div>
 				{ report &&
 				( report.connectionMeta || report.searchConsoleMeta ) ? (

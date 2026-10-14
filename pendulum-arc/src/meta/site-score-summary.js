@@ -6,12 +6,14 @@ import { __ } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
+import { ErrorAlert } from '../ui/error-alert';
 import { ScoreCard, scoreMood, scoreServices } from '../ui/score-card';
 
 export function SiteScoreSummary( {
 	scores,
 	error,
 	loading,
+	connectUrl,
 	selected,
 	onSelect,
 } ) {
@@ -21,7 +23,9 @@ export function SiteScoreSummary( {
 			className="arc-scores"
 			aria-label={ __( 'Site scores', 'pendulum-arc' ) }
 		>
-			{ error ? <p className="arc-scores__error">{ error }</p> : null }
+			{ error ? (
+				<ErrorAlert message={ error } connectUrl={ connectUrl } />
+			) : null }
 			<div className="arc-scores__row">
 				{ services.map( ( service ) => {
 					const found = ( scores || [] ).find(

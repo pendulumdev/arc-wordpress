@@ -328,7 +328,58 @@ final class Pairing {
 			'metrics'           => $metrics,
 			'charts'            => $charts,
 			'landingPages'      => $pages,
+			'issues'            => self::issue_groups( $json['issues'] ?? null ),
 		);
+	}
+
+	/**
+	 * Report Issues menu groups. Unknown rows are dropped.
+	 *
+	 * @param mixed $raw Response issues.
+	 * @return array<int, array<string, mixed>>
+	 */
+	private static function issue_groups( $raw ): array {
+		if ( ! is_array( $raw ) ) {
+			return array();
+		}
+		$groups = array();
+		foreach ( $raw as $group ) {
+			if ( ! is_array( $group ) ) {
+				continue;
+			}
+			$label = Site_Origin::field( $group, array( 'label' ) );
+			if ( '' === $label ) {
+				continue;
+			}
+			$items = array();
+			$rows  = $group['items'] ?? null;
+			if ( is_array( $rows ) ) {
+				foreach ( $rows as $row ) {
+					if ( ! is_array( $row ) ) {
+						continue;
+					}
+					$title = Site_Origin::field( $row, array( 'title' ) );
+					if ( '' === $title ) {
+						continue;
+					}
+					$items[] = array(
+						'kind'            => Site_Origin::field( $row, array( 'kind' ) ),
+						'key'             => Site_Origin::field( $row, array( 'key' ) ),
+						'title'           => $title,
+						'summary'         => Site_Origin::field( $row, array( 'summary' ) ),
+						'fix'             => Site_Origin::field( $row, array( 'fix' ) ),
+						'severity'        => Site_Origin::field( $row, array( 'severity' ) ),
+						'occurrenceCount' => self::count_value( $row, 'occurrenceCount' ),
+					);
+				}
+			}
+			$groups[] = array(
+				'sectionId' => Site_Origin::field( $group, array( 'sectionId', 'section_id' ) ),
+				'label'     => $label,
+				'items'     => $items,
+			);
+		}
+		return $groups;
 	}
 
 	/**

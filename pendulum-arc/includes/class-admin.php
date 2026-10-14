@@ -176,9 +176,11 @@ final class Admin {
 	 * Dashboard box body. The script mounts the score cards here.
 	 */
 	public function render_dashboard_widget(): void {
-		$url = admin_url( 'admin.php?page=pendulum-arc' );
+		$url     = admin_url( 'admin.php?page=pendulum-arc' );
+		$connect = admin_url( 'admin.php?page=pendulum-arc-connect' );
 		echo '<div id="pendulum-arc-dashboard-widget" class="pendulum-arc-dashboard-widget"';
 		echo ' data-dashboard-url="' . esc_url( $url ) . '"';
+		echo ' data-connect-url="' . esc_url( $connect ) . '"';
 		echo ' data-connected="' . ( $this->store->is_connected() ? '1' : '0' ) . '"';
 		echo '></div>';
 	}

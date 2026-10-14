@@ -4,6 +4,17 @@
 import { useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
+/**
+ * Internal dependencies
+ */
+import {
+	CHART_HEIGHT,
+	CHART_PAD,
+	CHART_WIDTH,
+	chartAxisTicks,
+	chartLineX,
+} from './chart-axis';
+
 const ACCENTS = {
 	emerald: 'var(--arc-accent-emerald)',
 	orange: 'var(--arc-accent-orange)',
@@ -22,7 +33,7 @@ const PALETTE = [
 	'var(--arc-accent-emerald)',
 ];
 
-const PAD = { top: 16, right: 12, bottom: 28, left: 36 };
+const PAD = CHART_PAD;
 
 function accentColor( name, index ) {
 	if ( name && ACCENTS[ name ] ) {
@@ -76,8 +87,8 @@ function formatValue( value, format ) {
  */
 export function AnalyticsChart( { chart, pending } ) {
 	const [ tip, setTip ] = useState( null );
-	const width = 640;
-	const height = 220;
+	const width = CHART_WIDTH;
+	const height = CHART_HEIGHT;
 	const innerW = width - PAD.left - PAD.right;
 	const innerH = height - PAD.top - PAD.bottom;
 	const series = chart.empty ? [] : chart.series || [];
@@ -91,12 +102,7 @@ export function AnalyticsChart( { chart, pending } ) {
 	}, 0 );
 	const yMax = niceMax( peak );
 	const y = ( value ) => PAD.top + innerH - ( value / yMax ) * innerH;
-	const x = ( index ) => {
-		if ( labels.length <= 1 ) {
-			return PAD.left + innerW / 2;
-		}
-		return PAD.left + ( index / ( labels.length - 1 ) ) * innerW;
-	};
+	const x = ( index ) => chartLineX( index, labels.length );
 	const ticks = [ 0, yMax / 2, yMax ];
 	const band =
 		labels.length <= 1 ? innerW : innerW / Math.max( labels.length - 1, 1 );
@@ -133,19 +139,7 @@ export function AnalyticsChart( { chart, pending } ) {
 			} ) ),
 		} );
 	};
-	const xLabels =
-		labels.length === 0
-			? []
-			: [ 0, Math.floor( ( labels.length - 1 ) / 2 ), labels.length - 1 ]
-					.filter(
-						( value, index, all ) => all.indexOf( value ) === index
-					)
-					.map( ( index ) => ( {
-						index,
-						label:
-							String( labels[ index ] ).slice( 5 ) ||
-							String( labels[ index ] ),
-					} ) );
+	const xLabels = chartAxisTicks( labels, chart.kind );
 
 	return (
 		<section className="arc-chart">
@@ -193,11 +187,14 @@ export function AnalyticsChart( { chart, pending } ) {
 					{ xLabels.map( ( item ) => (
 						<text
 							key={ item.index }
-							x={ x( item.index ) }
+							x={ item.x }
 							y={ height - 8 }
 							className="arc-chart__tick"
 							textAnchor="middle"
 						>
+							{ item.full !== item.label ? (
+								<title>{ item.full }</title>
+							) : null }
 							{ item.label }
 						</text>
 					) ) }

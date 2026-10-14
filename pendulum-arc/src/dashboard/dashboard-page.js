@@ -23,11 +23,13 @@ export function DashboardPage( { bootstrap } ) {
 				scores={ scores.scores }
 				error={ scores.error }
 				loading={ scores.loading }
+				connectUrl={ bootstrap.urls.connect }
 				selected={ service }
 				onSelect={ setService }
 			/>
 			<ReportSummary
 				portalUrl={ portalUrl }
+				connectUrl={ bootstrap.urls.connect }
 				service={ service }
 				onService={ setService }
 			/>

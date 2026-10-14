@@ -401,16 +401,8 @@ final class Connect_Service {
 				throw $error;
 			}
 		}
-		$parsed = Pairing::token( $this->client->refresh( (string) $creds['env'], (string) $creds['refreshToken'] ) );
-		if ( '' === $parsed['accessToken'] ) {
-			throw new Arc_Api_Exception( __( 'Arc did not accept those credentials.', 'pendulum-arc' ), 401 );
-		}
-		$this->store->update_tokens(
-			$parsed['accessToken'],
-			$parsed['refreshToken'],
-			$this->expires_at( $parsed['expiresIn'] )
-		);
-		return $this->client->project( (string) $creds['env'], $parsed['accessToken'], $project_id );
+		$fresh = $this->refreshed_credentials( $creds );
+		return $this->client->project( (string) $fresh['env'], (string) $fresh['accessToken'], $project_id );
 	}
 
 	/**
@@ -439,20 +431,98 @@ final class Connect_Service {
 		try {
 			return $call( (string) $creds['accessToken'] );
 		} catch ( Arc_Api_Exception $error ) {
-			if ( 401 !== $error->status_code() || 'oauth' !== $creds['method'] || '' === $creds['refreshToken'] ) {
+			if ( 401 !== $error->status_code() || 'oauth' !== $creds['method'] || '' === (string) $creds['refreshToken'] ) {
 				throw $error;
 			}
 		}
-		$parsed = Pairing::token( $this->client->refresh( (string) $creds['env'], (string) $creds['refreshToken'] ) );
-		if ( '' === $parsed['accessToken'] ) {
+		$fresh = $this->refreshed_credentials( $creds );
+		return $call( (string) $fresh['accessToken'] );
+	}
+
+	/**
+	 * Rotates the OAuth refresh token once. A second caller waits for that
+	 * rotation. Presenting the same refresh token twice revokes the grant.
+	 *
+	 * @param array<string, mixed> $creds Opened credential.
+	 * @return array<string, mixed>
+	 */
+	private function refreshed_credentials( array $creds ): array {
+		$claimed = $this->claim_refresh_lock();
+		if ( ! $claimed ) {
+			$waited = $this->wait_for_new_access_token( $creds );
+			if ( null !== $waited ) {
+				return array_merge( $creds, $waited );
+			}
+			$claimed = $this->claim_refresh_lock();
+		}
+		if ( ! $claimed ) {
 			throw new Arc_Api_Exception( __( 'Arc did not accept those credentials.', 'pendulum-arc' ), 401 );
 		}
-		$this->store->update_tokens(
-			$parsed['accessToken'],
-			$parsed['refreshToken'],
-			$this->expires_at( $parsed['expiresIn'] )
-		);
-		return $call( $parsed['accessToken'] );
+		try {
+			$current = $this->store->credentials();
+			if ( is_array( $current ) && $this->access_token_changed( $creds, $current ) ) {
+				return array_merge( $creds, $current );
+			}
+			$refresh = is_array( $current ) && '' !== (string) $current['refreshToken']
+				? (string) $current['refreshToken']
+				: (string) $creds['refreshToken'];
+			$parsed  = Pairing::token( $this->client->refresh( (string) $creds['env'], $refresh ) );
+			if ( '' === $parsed['accessToken'] ) {
+				throw new Arc_Api_Exception( __( 'Arc did not accept those credentials.', 'pendulum-arc' ), 401 );
+			}
+			$this->store->update_tokens(
+				$parsed['accessToken'],
+				$parsed['refreshToken'],
+				$this->expires_at( $parsed['expiresIn'] )
+			);
+			$creds['accessToken'] = $parsed['accessToken'];
+			if ( '' !== $parsed['refreshToken'] ) {
+				$creds['refreshToken'] = $parsed['refreshToken'];
+			}
+			return $creds;
+		} finally {
+			delete_option( 'arc_wordpress_oauth_refresh' );
+		}
+	}
+
+	/**
+	 * @param array<string, mixed> $creds   Credential that received the 401.
+	 * @param array<string, mixed> $current Credential read after another refresh.
+	 */
+	private function access_token_changed( array $creds, array $current ): bool {
+		return '' !== (string) $current['accessToken']
+			&& (string) $current['accessToken'] !== (string) $creds['accessToken'];
+	}
+
+	private function claim_refresh_lock(): bool {
+		$key = 'arc_wordpress_oauth_refresh';
+		if ( add_option( $key, (string) time(), '', false ) ) {
+			return true;
+		}
+		$held = get_option( $key );
+		if ( is_string( $held ) && ( time() - (int) $held ) > 15 ) {
+			delete_option( $key );
+			return add_option( $key, (string) time(), '', false );
+		}
+		return false;
+	}
+
+	/**
+	 * @param array<string, mixed> $creds Credential that received the 401.
+	 * @return array<string, mixed>|null
+	 */
+	private function wait_for_new_access_token( array $creds ): ?array {
+		for ( $attempt = 0; $attempt < 15; $attempt++ ) {
+			usleep( 200000 );
+			$current = $this->store->credentials();
+			if ( is_array( $current ) && $this->access_token_changed( $creds, $current ) ) {
+				return $current;
+			}
+			if ( ! get_option( 'arc_wordpress_oauth_refresh' ) ) {
+				return null;
+			}
+		}
+		return null;
 	}
 
 	/**

@@ -9,7 +9,7 @@ import { __ } from '@wordpress/i18n';
 import { SiteScoreSummary, useSiteScores } from '../meta';
 import { ArcButton } from '../ui/button';
 
-export function DashboardWidget( { dashboardUrl, connected } ) {
+export function DashboardWidget( { dashboardUrl, connectUrl, connected } ) {
 	const scores = useSiteScores( connected );
 
 	return (
@@ -19,6 +19,7 @@ export function DashboardWidget( { dashboardUrl, connected } ) {
 					scores={ scores.scores }
 					error={ scores.error }
 					loading={ scores.loading }
+					connectUrl={ connectUrl }
 				/>
 			) : (
 				<p className="pendulum-arc-dashboard-widget__note">

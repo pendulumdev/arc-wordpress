@@ -32,6 +32,7 @@ if ( widgetElement ) {
 	createRoot( widgetElement ).render(
 		<DashboardWidget
 			dashboardUrl={ widgetElement.dataset.dashboardUrl || '' }
+			connectUrl={ widgetElement.dataset.connectUrl || '' }
 			connected={ widgetElement.dataset.connected === '1' }
 		/>
 	);
