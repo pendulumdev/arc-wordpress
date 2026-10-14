@@ -29,6 +29,8 @@ This plugin sends the site address and an API key or OAuth token to Pendulum Arc
 
 Tokens are stored encrypted in WordPress and are not shown again. Disconnecting here stops this install from calling Arc. An Arc admin revokes the key or the connected app in Arc.
 
+The plugin also asks GitHub if a newer release exists, at `https://api.github.com/repos/pendulumdev/arc-wordpress/releases/latest`. That request sends no site address and no Arc credential. Update now downloads the release zip from GitHub.
+
 == Installation ==
 
 1. Upload the plugin and activate it.
@@ -45,7 +47,12 @@ Sign-in creates or pairs the site on Arc before you return. An API key asks you 
 
 Add a project in Arc, then connect again with the API key. Sign-in can add a project by name on the Arc page.
 
+= How do updates work? =
+
+When the GitHub repository is public and a release is newer than this install, WordPress shows the update on the Plugins screen. Update now installs it. The Arc screens show the same update.
+
 == Changelog ==
 
 = 0.1.0 =
 * Connect with an API key or Arc sign-in, and show a site score summary.
+* A newer public GitHub release shows on the Plugins screen. Update now installs it.

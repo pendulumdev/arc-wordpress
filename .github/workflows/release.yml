@@ -72,7 +72,7 @@ jobs:
       - name: Pack the plugin
         run: |
           rm -f pendulum-arc.zip
-          ( cd pendulum-arc && zip -r "../pendulum-arc.zip" . -x "*.DS_Store" )
+          zip -r pendulum-arc.zip pendulum-arc -x "*.DS_Store"
 
       # Body comes from docs/releases/vX.Y.Z.md so every tag uses the same
       # headed format. --generate-notes is not a fallback.

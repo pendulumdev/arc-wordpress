@@ -20,7 +20,9 @@ has to add one in Arc first.
 ## Distribution
 
 A release is an annotated tag `vX.Y.Z` and the `pendulum-arc.zip` attached to
-the GitHub Release. Pin the tag. Do not track `main` on a production site.
+the GitHub Release. The zip has `pendulum-arc/` at the top so WordPress can
+install it from the Plugins screen. Pin the tag. Do not track `main` on a
+production site.
 
 Publishing to npm is not the product. `package.json` is the build toolchain
 and is marked private.

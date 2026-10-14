@@ -16,6 +16,15 @@ OAuth code flow with PKCE. The browser goes to the portal, then returns to
 this site's Connect screen. The plugin stores the token that comes back. It
 does not store the Arc password.
 
+## Version check
+
+WordPress asks GitHub whether a newer release exists. The request goes to
+`https://api.github.com/repos/pendulumdev/arc-wordpress/releases/latest` and
+sends the plugin version in the user agent. It does not send the site
+address, the API key, or the connection token. An update downloads
+`pendulum-arc.zip` from that repository's release. A private repository, or
+a failed request, offers no update.
+
 ## Stored on this site
 
 The connection is one option, `arc_wordpress_connection`. The token is sealed

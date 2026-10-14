@@ -43,13 +43,15 @@ final class Plugin {
 	}
 
 	/**
-	 * Registers hooks once sodium is available.
+	 * Registers the updater, then the admin and REST hooks when sodium is available.
 	 */
 	public function register(): void {
 		if ( $this->registered ) {
 			return;
 		}
 		$this->registered = true;
+
+		( new Plugin_Updater() )->register();
 
 		if ( ! function_exists( 'sodium_crypto_secretbox' ) ) {
 			add_action( 'admin_notices', array( $this, 'sodium_notice' ) );

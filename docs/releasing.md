@@ -4,8 +4,9 @@ A release is an annotated git tag `vX.Y.Z` on `main`. The tag must match
 `package.json`, the `Version` header in `pendulum-arc/pendulum-arc.php`,
 `ARC_WORDPRESS_VERSION`, and `Stable tag` in `pendulum-arc/readme.txt`.
 Pushing the tag runs [`.github/workflows/release.yml`](../.github/workflows/release.yml),
-which re-runs the gate, packs `pendulum-arc.zip`, and publishes a GitHub
-Release. The release body is **not** auto-generated. Write it first.
+which re-runs the gate, packs `pendulum-arc.zip` with `pendulum-arc/` as the
+top folder, and publishes a GitHub Release. WordPress installs that zip over
+the plugin directory. The release body is **not** auto-generated. Write it first.
 
 The body format follows the
 [pend-audit-analytics](https://github.com/pendulumdev/pend-audit-analytics)

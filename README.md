@@ -64,6 +64,11 @@ npm run build
 Copy `pendulum-arc/` into `wp-content/plugins/` and activate it. Open Arc,
 then Connect.
 
+After a public release, WordPress lists a newer version on the Plugins
+screen. Update now installs `pendulum-arc.zip` from that release. The Arc
+screens link to the same update. A private repository does not offer one,
+because GitHub does not publish the release without a token.
+
 The issued OAuth client id is `arc_app_wordpress`. Arc must store that id
 before sign-in works. Override it with `ARC_WORDPRESS_OAUTH_CLIENT_ID` in
 `wp-config.php`.
