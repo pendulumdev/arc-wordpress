@@ -133,6 +133,71 @@ final class PairingTest extends TestCase {
 		self::assertNull( $brand['keyphraseScore'] );
 	}
 
+	public function test_analytics_visitors_fill_the_score_card(): void {
+		$scores = Pairing::scores(
+			array(
+				'scores' => array(
+					array(
+						'service'  => 'analytics',
+						'score'    => null,
+						'visitors' => array(
+							'newUsers'       => 334,
+							'returningUsers' => 4,
+							'series'         => array( 20, 30 ),
+						),
+					),
+				),
+			)
+		);
+		$analytics = null;
+		foreach ( $scores as $row ) {
+			if ( 'analytics' === $row['service'] ) {
+				$analytics = $row;
+			}
+		}
+		self::assertNull( $analytics['score'] );
+		self::assertSame( 334, $analytics['visitors']['newUsers'] );
+		self::assertSame( 4, $analytics['visitors']['returningUsers'] );
+		self::assertSame( array( 20, 30 ), $analytics['visitors']['series'] );
+		self::assertNull( $analytics['visitors']['previousNewUsers'] );
+	}
+
+	public function test_landing_path_keeps_the_path_and_drops_traversal(): void {
+		self::assertSame( '/pricing/', Pairing::landing_path( 'https://shop.example/pricing/?utm=1' ) );
+		self::assertSame( '/pricing/', Pairing::landing_path( '/pricing/' ) );
+		self::assertSame( '/', Pairing::landing_path( '' ) );
+		self::assertSame( '/', Pairing::landing_path( '/../wp-admin' ) );
+	}
+
+	public function test_analytics_keeps_charts_and_landing_paths(): void {
+		$view = Pairing::analytics(
+			array(
+				'runId'        => 'run-1',
+				'overline'     => 'Whos Visiting?',
+				'charts'       => array(
+					array(
+						'id'     => 'organic-sessions',
+						'labels' => array( '2026-09-01' ),
+						'series' => array(),
+					),
+				),
+				'landingPages' => array(
+					array(
+						'path'           => 'https://shop.example/pricing/',
+						'sessions'       => 6,
+						'engagementRate' => 0.5,
+					),
+				),
+			)
+		);
+		self::assertSame( 'run-1', $view['runId'] );
+		self::assertSame( 'Whos Visiting?', $view['overline'] );
+		self::assertCount( 1, $view['charts'] );
+		self::assertSame( '/pricing/', $view['landingPages'][0]['path'] );
+		self::assertSame( 6, $view['landingPages'][0]['sessions'] );
+		self::assertSame( 0.5, $view['landingPages'][0]['engagementRate'] );
+	}
+
 	public function test_site_portal_url_uses_the_project_slug_and_site_id(): void {
 		self::assertSame(
 			'http://localhost:3001/app/projects/shop/sites/site_abc',

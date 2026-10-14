@@ -131,6 +131,16 @@ final class Rest_Controller {
 				'permission_callback' => array( $this, 'can_manage' ),
 			)
 		);
+
+		register_rest_route(
+			'pendulum-arc/v1',
+			'/analytics',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'analytics' ),
+				'permission_callback' => array( $this, 'can_manage' ),
+			)
+		);
 	}
 
 	/**
@@ -233,6 +243,15 @@ final class Rest_Controller {
 	 */
 	public function scores() {
 		return rest_ensure_response( $this->connect->scores() );
+	}
+
+	/**
+	 * Visitor Analytics summary for the paired site.
+	 *
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function analytics() {
+		return rest_ensure_response( $this->connect->analytics() );
 	}
 
 	/**

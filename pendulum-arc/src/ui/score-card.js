@@ -64,10 +64,10 @@ function formatScore( score ) {
 	return Number.isInteger( tenths ) ? String( tenths ) : tenths.toFixed( 1 );
 }
 
-function ServiceMark( { service } ) {
+export function ServiceMark( { service, size = 13 } ) {
 	if ( service === 'analytics' ) {
 		return (
-			<Icon>
+			<Icon size={ size }>
 				<path d="M3 3v16a2 2 0 0 0 2 2h16" />
 				<path d="M18 17V9" />
 				<path d="M13 17V5" />
@@ -77,7 +77,7 @@ function ServiceMark( { service } ) {
 	}
 	if ( service === 'seo' ) {
 		return (
-			<Icon>
+			<Icon size={ size }>
 				<path d="m8 11 2 2 4-4" />
 				<circle cx="11" cy="11" r="8" />
 				<path d="m21 21-4.3-4.3" />
@@ -86,7 +86,7 @@ function ServiceMark( { service } ) {
 	}
 	if ( service === 'a11y' ) {
 		return (
-			<Icon>
+			<Icon size={ size }>
 				<circle cx="16" cy="4" r="1" />
 				<path d="m18 19 1-7-6 1" />
 				<path d="m5 8 3-3 5.5 3-2.36 3.5" />
@@ -97,7 +97,7 @@ function ServiceMark( { service } ) {
 	}
 	if ( service === 'ai' ) {
 		return (
-			<Icon>
+			<Icon size={ size }>
 				<path d="M12 8V4H8" />
 				<rect width="16" height="12" x="4" y="8" rx="2" />
 				<path d="M2 14h2" />
@@ -109,13 +109,13 @@ function ServiceMark( { service } ) {
 	}
 	if ( service === 'security' ) {
 		return (
-			<Icon>
+			<Icon size={ size }>
 				<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
 			</Icon>
 		);
 	}
 	return (
-		<Icon>
+		<Icon size={ size }>
 			<circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
 			<circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
 			<circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
@@ -182,6 +182,76 @@ function formatCount( count ) {
 	return count > 99 ? '99+' : String( count );
 }
 
+function formatVisitorCount( count ) {
+	const number = Number( count );
+	if ( ! Number.isFinite( number ) ) {
+		return '-';
+	}
+	if ( Math.abs( number ) >= 1000000 ) {
+		return `${ ( number / 1000000 ).toFixed( 1 ).replace( /\.0$/, '' ) }M`;
+	}
+	if ( Math.abs( number ) >= 1000 ) {
+		return `${ ( number / 1000 ).toFixed( 1 ).replace( /\.0$/, '' ) }k`;
+	}
+	return Math.round( number ).toLocaleString( 'en-GB' );
+}
+
+function visitorDelta( current, previous ) {
+	if (
+		previous === null ||
+		previous === undefined ||
+		! Number.isFinite( Number( previous ) )
+	) {
+		return null;
+	}
+	const prior = Number( previous );
+	let pct = null;
+	if ( prior === 0 ) {
+		pct = current > 0 ? 100 : null;
+	} else {
+		pct = ( ( current - prior ) / Math.abs( prior ) ) * 100;
+	}
+	if ( pct === null || ! Number.isFinite( pct ) ) {
+		return null;
+	}
+	if ( Math.abs( pct ) < 0.5 ) {
+		return { label: 'flat', tone: 'flat' };
+	}
+	const sign = pct > 0 ? '+' : '';
+	return {
+		label: `${ sign }${ pct.toFixed( 0 ) }%`,
+		tone: pct > 0 ? 'up' : 'down',
+	};
+}
+
+function Sparkline( { values } ) {
+	if ( ! values || values.length < 2 ) {
+		return null;
+	}
+	const width = 160;
+	const height = 56;
+	const max = Math.max( ...values, 1 );
+	const min = Math.min( ...values, 0 );
+	const span = Math.max( max - min, 1 );
+	const points = values
+		.map( ( value, index ) => {
+			const x = ( index / ( values.length - 1 ) ) * width;
+			const y = height - ( ( value - min ) / span ) * ( height - 6 ) - 3;
+			return `${ x.toFixed( 1 ) },${ y.toFixed( 1 ) }`;
+		} )
+		.join( ' ' );
+	return (
+		<svg
+			className="arc-score-card__spark"
+			viewBox={ `0 0 ${ width } ${ height }` }
+			preserveAspectRatio="none"
+			aria-hidden="true"
+		>
+			<polyline points={ points } />
+		</svg>
+	);
+}
+
 function KeyMark() {
 	return (
 		<Icon size={ 15 } strokeWidth={ 2.25 }>
@@ -234,18 +304,22 @@ function IssuePill( { issueCount, manualCount, severity } ) {
 
 /**
  * One service card. `empty` is no report. `score` shows the number, band,
- * issue pill, and the SEO keyphrase when Arc sent one.
+ * issue pill, and the SEO keyphrase when Arc sent one. The keyphrase row is
+ * reserved on every card so the faces stay one height.
  *
  * @param {Object}                                                                   props
  * @param {string}                                                                   props.service
  * @param {string}                                                                   props.accent
  * @param {string}                                                                   props.label
- * @param {'empty'|'loading'|'score'}                                                props.state
+ * @param {'empty'|'loading'|'score'|'visitors'}                                     props.state
  * @param {number|null}                                                              [props.score]
  * @param {string|null}                                                              [props.band]
  * @param {string|null}                                                              [props.mood]
+ * @param {Object|null}                                                              [props.visitors]
  * @param {{issueCount?: number, manualCount?: number, severity?: string|null}|null} [props.issues]
  * @param {{score?: number|null, band?: string|null}|null}                           [props.keyphrase]
+ * @param {boolean}                                                                  [props.selected]
+ * @param {(service: string) => void}                                                [props.onSelect]
  */
 export function ScoreCard( {
 	service,
@@ -255,8 +329,11 @@ export function ScoreCard( {
 	score,
 	band,
 	mood,
+	visitors = null,
 	issues = null,
 	keyphrase = null,
+	selected = false,
+	onSelect,
 } ) {
 	const moodLabel = {
 		great: __( 'Excellent', 'pendulum-arc' ),
@@ -270,6 +347,8 @@ export function ScoreCard( {
 		hint = __( 'Loading scores…', 'pendulum-arc' );
 	} else if ( state === 'score' ) {
 		hint = band || moodLabel || '';
+	} else if ( state === 'visitors' ) {
+		hint = '';
 	}
 	const keyphraseScore =
 		keyphrase && keyphrase.score !== null && keyphrase.score !== undefined
@@ -277,13 +356,21 @@ export function ScoreCard( {
 			: null;
 	const keyphraseMood =
 		keyphraseScore === null ? null : scoreMood( keyphraseScore );
+	const Tag = onSelect ? 'button' : 'article';
+
 	return (
-		<article
+		<Tag
 			className="arc-score-card"
+			type={ onSelect ? 'button' : undefined }
 			data-service={ service }
 			data-accent={ accent }
-			data-state={ state === 'score' ? 'score' : 'empty' }
+			data-state={
+				state === 'score' || state === 'visitors' ? state : 'empty'
+			}
 			data-mood={ mood || undefined }
+			data-selected={ selected ? 'true' : undefined }
+			aria-pressed={ onSelect ? selected : undefined }
+			onClick={ onSelect ? () => onSelect( service ) : undefined }
 		>
 			<div className="arc-score-card__face">
 				<div className="arc-score-card__title">
@@ -298,6 +385,58 @@ export function ScoreCard( {
 						</span>
 					) : null }
 					<div className="arc-score-card__content">
+						{ state === 'visitors' && visitors ? (
+							<>
+								<Sparkline values={ visitors.series } />
+								<div className="arc-score-card__visitors">
+									{ [
+										{
+											key: 'new',
+											value: visitors.newUsers,
+											label: __( 'New', 'pendulum-arc' ),
+											previous: visitors.previousNewUsers,
+										},
+										{
+											key: 'returning',
+											value: visitors.returningUsers,
+											label: __(
+												'Returning',
+												'pendulum-arc'
+											),
+											previous:
+												visitors.previousReturningUsers,
+										},
+									].map( ( item ) => {
+										const delta = visitorDelta(
+											item.value,
+											item.previous
+										);
+										return (
+											<div key={ item.key }>
+												<p className="arc-score-card__value">
+													{ formatVisitorCount(
+														item.value
+													) }
+												</p>
+												<p className="arc-score-card__hint">
+													<span>{ item.label }</span>
+													{ delta ? (
+														<span
+															className="arc-score-card__delta"
+															data-tone={
+																delta.tone
+															}
+														>
+															{ delta.label }
+														</span>
+													) : null }
+												</p>
+											</div>
+										);
+									} ) }
+								</div>
+							</>
+						) : null }
 						{ state === 'score' &&
 						score !== null &&
 						score !== undefined ? (
@@ -305,25 +444,34 @@ export function ScoreCard( {
 								{ formatScore( score ) }
 							</p>
 						) : null }
-						<p className="arc-score-card__hint">{ hint }</p>
-						{ state === 'score' && keyphraseScore !== null ? (
+						{ state === 'visitors' ? null : (
+							<p className="arc-score-card__hint">{ hint }</p>
+						) }
+						{ state === 'visitors' ? null : (
 							<div
 								className="arc-score-card__keyphrase"
 								data-mood={ keyphraseMood || undefined }
+								aria-hidden={
+									keyphraseScore === null ? true : undefined
+								}
 							>
-								<p className="arc-score-card__keyphrase-value">
-									{ formatScore( keyphraseScore ) }
-									<KeyMark />
-								</p>
-								{ keyphrase.band ? (
-									<p className="arc-score-card__keyphrase-band">
-										{ keyphrase.band }
-									</p>
+								{ keyphraseScore !== null ? (
+									<>
+										<p className="arc-score-card__keyphrase-value">
+											{ formatScore( keyphraseScore ) }
+											<KeyMark />
+										</p>
+										{ keyphrase.band ? (
+											<p className="arc-score-card__keyphrase-band">
+												{ keyphrase.band }
+											</p>
+										) : null }
+									</>
 								) : null }
 							</div>
-						) : null }
+						) }
 					</div>
-					{ state === 'score' ? (
+					{ state === 'score' || state === 'visitors' ? (
 						<span className="arc-score-card__issues">
 							<IssuePill
 								issueCount={ issues ? issues.issueCount : 0 }
@@ -334,7 +482,7 @@ export function ScoreCard( {
 					) : null }
 				</div>
 			</div>
-		</article>
+		</Tag>
 	);
 }
 

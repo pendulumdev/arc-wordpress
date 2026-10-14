@@ -3,6 +3,7 @@
 @use "./styles/score-card";
 @use "./styles/meta";
 @use "./styles/field";
+@use "./styles/report";
 
 .pendulum-arc-connection {
 	max-width: 36rem;
@@ -39,14 +40,26 @@
 	align-items: center;
 }
 
-.pendulum-arc-screen__note {
-	color: var(--arc-fg-secondary);
+.arc-page-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 9px 0 4px;
 }
 
 .wrap h1.arc-page-title {
 	display: flex;
 	align-items: center;
 	gap: 0.65rem;
+	margin: 0;
+	padding: 0;
+}
+
+.arc-page-head__actions {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
 }
 
 .arc-page-title__mark {

@@ -1,31 +1,36 @@
 /**
  * WordPress dependencies
  */
-import { __ } from '@wordpress/i18n';
+import { useState } from '@wordpress/element';
 
 /**
  * Internal dependencies
  */
 import { SiteScoreSummary, useSiteScores } from '../meta';
+import { ReportSummary } from '../reports/report-summary';
+import { OpenInArc } from '../ui/open-in-arc';
 
 export function DashboardPage( { bootstrap } ) {
 	const scores = useSiteScores();
 	const connection = bootstrap.connection || {};
+	const portalUrl = connection.portalUrl || bootstrap.urls.portal;
+	const [ service, setService ] = useState( 'analytics' );
 
 	return (
 		<div className="pendulum-arc-screen">
+			<OpenInArc bootstrap={ bootstrap } />
 			<SiteScoreSummary
 				scores={ scores.scores }
 				error={ scores.error }
 				loading={ scores.loading }
-				portalUrl={ connection.portalUrl || bootstrap.urls.portal }
+				selected={ service }
+				onSelect={ setService }
 			/>
-			<p className="pendulum-arc-screen__note">
-				{ __(
-					'Scores are the latest succeeded report Arc has for this site.',
-					'pendulum-arc'
-				) }
-			</p>
+			<ReportSummary
+				portalUrl={ portalUrl }
+				service={ service }
+				onService={ setService }
+			/>
 		</div>
 	);
 }

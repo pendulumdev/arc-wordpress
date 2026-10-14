@@ -116,6 +116,20 @@ final class Arc_Client {
 	}
 
 	/**
+	 * Visitor Analytics summary for the latest succeeded analytics run.
+	 *
+	 * @param string $env     production or preview.
+	 * @param string $token   Bearer.
+	 * @param string $site_id Site id.
+	 * @return array<string, mixed>
+	 */
+	public function analytics( string $env, string $token, string $site_id ): array {
+		$this->assert_id( $site_id );
+		$url = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/analytics';
+		return $this->json( 'GET', $url, $token );
+	}
+
+	/**
 	 * Exchanges an authorization code.
 	 *
 	 * @param string $env          production or preview.

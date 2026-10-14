@@ -243,9 +243,92 @@ final class Pairing {
 				'issueSeverity'  => self::severity_value( $row ),
 				'keyphraseScore' => self::decimal_score( $row, 'keyphraseScore' ),
 				'keyphraseBand'  => self::label_value( $row, array( 'keyphraseBand', 'keyphrase_band' ) ),
+				'visitors'       => self::visitors( $service, $row ),
 			);
 		}
 		return $out;
+	}
+
+	/**
+	 * Path of a GA4 landing label. Absolute URLs keep only the path.
+	 *
+	 * @param string $label Page path or URL from the report.
+	 */
+	public static function landing_path( string $label ): string {
+		$label = trim( $label );
+		if ( '' === $label ) {
+			return '/';
+		}
+		if ( 1 === preg_match( '#^https?://#i', $label ) ) {
+			$parts = wp_parse_url( $label );
+			$path  = is_array( $parts ) ? (string) ( $parts['path'] ?? '/' ) : '/';
+		} else {
+			$path = $label;
+		}
+		$path = '/' . ltrim( $path, '/' );
+		if ( str_contains( $path, '..' ) || str_contains( $path, '\\' ) ) {
+			return '/';
+		}
+		return $path;
+	}
+
+	/**
+	 * Visitor Analytics summary. Charts are always the four GA4 graphs.
+	 *
+	 * @param array<string, mixed> $json Analytics response.
+	 * @return array<string, mixed>
+	 */
+	public static function analytics( array $json ): array {
+		$charts = array();
+		$raw    = $json['charts'] ?? null;
+		if ( is_array( $raw ) ) {
+			foreach ( $raw as $chart ) {
+				if ( ! is_array( $chart ) ) {
+					continue;
+				}
+				$id = Site_Origin::field( $chart, array( 'id' ) );
+				if ( '' === $id ) {
+					continue;
+				}
+				$charts[] = $chart;
+			}
+		}
+		$pages = array();
+		$raw   = $json['landingPages'] ?? null;
+		if ( is_array( $raw ) ) {
+			foreach ( $raw as $row ) {
+				if ( ! is_array( $row ) ) {
+					continue;
+				}
+				$path    = self::landing_path( Site_Origin::field( $row, array( 'path', 'label' ) ) );
+				$pages[] = array(
+					'path'           => $path,
+					'sessions'       => self::count_value( $row, 'sessions' ),
+					'engagementRate' => self::rate_value( $row, 'engagementRate' ),
+				);
+			}
+		}
+		$metrics = array();
+		$raw     = $json['metrics'] ?? null;
+		if ( is_array( $raw ) ) {
+			foreach ( $raw as $metric ) {
+				if ( is_array( $metric ) ) {
+					$metrics[] = $metric;
+				}
+			}
+		}
+		return array(
+			'runId'             => Site_Origin::field( $json, array( 'runId', 'run_id' ) ),
+			'rangeLabel'        => Site_Origin::field( $json, array( 'rangeLabel', 'range_label' ) ),
+			'connectionMeta'    => Site_Origin::field( $json, array( 'connectionMeta', 'connection_meta' ) ),
+			'searchConsoleMeta' => Site_Origin::field( $json, array( 'searchConsoleMeta', 'search_console_meta' ) ),
+			'overline'          => Site_Origin::field( $json, array( 'overline' ) ),
+			'title'             => Site_Origin::field( $json, array( 'title' ) ),
+			'detail'            => Site_Origin::field( $json, array( 'detail' ) ),
+			'metrics'           => $metrics,
+			'charts'            => $charts,
+			'landingPages'      => $pages,
+		);
 	}
 
 	/**
@@ -274,6 +357,38 @@ final class Pairing {
 	}
 
 	/**
+	 * Visitor counts for the Analytics card, or null.
+	 *
+	 * @param string               $service Service key.
+	 * @param array<string, mixed> $row     Score row.
+	 * @return array{newUsers: int, returningUsers: int, previousNewUsers: int|null, previousReturningUsers: int|null, series: array<int, int>}|null
+	 */
+	private static function visitors( string $service, array $row ): ?array {
+		if ( 'analytics' !== $service ) {
+			return null;
+		}
+		$raw = $row['visitors'] ?? null;
+		if ( ! is_array( $raw ) || ! is_numeric( $raw['newUsers'] ?? null ) || ! is_numeric( $raw['returningUsers'] ?? null ) ) {
+			return null;
+		}
+		$series = array();
+		if ( is_array( $raw['series'] ?? null ) ) {
+			foreach ( $raw['series'] as $point ) {
+				if ( is_numeric( $point ) ) {
+					$series[] = (int) $point;
+				}
+			}
+		}
+		return array(
+			'newUsers'               => max( 0, (int) $raw['newUsers'] ),
+			'returningUsers'         => max( 0, (int) $raw['returningUsers'] ),
+			'previousNewUsers'       => is_numeric( $raw['previousNewUsers'] ?? null ) ? (int) $raw['previousNewUsers'] : null,
+			'previousReturningUsers' => is_numeric( $raw['previousReturningUsers'] ?? null ) ? (int) $raw['previousReturningUsers'] : null,
+			'series'                 => $series,
+		);
+	}
+
+	/**
 	 * Whole-number score from 0 to 100, or null.
 	 *
 	 * @param array<string, mixed> $row Score row.
@@ -281,6 +396,23 @@ final class Pairing {
 	private static function score_value( array $row ): ?int {
 		$number = self::decimal_score( $row, 'score' );
 		return null === $number ? null : (int) round( $number );
+	}
+
+	/**
+	 * Engagement rate stored from 0 to 1.
+	 *
+	 * @param array<string, mixed> $row Landing row.
+	 */
+	private static function rate_value( array $row, string $key ): ?float {
+		$raw = $row[ $key ] ?? null;
+		if ( ! is_numeric( $raw ) ) {
+			return null;
+		}
+		$number = (float) $raw;
+		if ( $number < 0 || $number > 1 ) {
+			return null;
+		}
+		return $number;
 	}
 
 	/**

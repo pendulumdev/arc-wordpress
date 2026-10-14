@@ -348,6 +348,35 @@ final class Connect_Service {
 	}
 
 	/**
+	 * Visitor Analytics for the dashboard. A failed read still returns the four charts.
+	 *
+	 * @return array<string, mixed>
+	 */
+	public function analytics(): array {
+		$empty = Pairing::analytics( array() );
+		$creds = $this->store->credentials();
+		if ( null === $creds ) {
+			$empty['error'] = __( 'Connect this site to Arc first.', 'pendulum-arc' );
+			return $empty;
+		}
+		try {
+			$payload = $this->bearer_call(
+				$creds,
+				function ( string $token ) use ( $creds ) {
+					return $this->client->analytics( (string) $creds['env'], $token, (string) $creds['siteId'] );
+				}
+			);
+		} catch ( Arc_Api_Exception $error ) {
+			$empty['error'] = $error->getMessage();
+			return $empty;
+		}
+		$view                 = Pairing::analytics( $payload );
+		$view['landingPages'] = $this->landing_pages( $view['landingPages'] );
+		$view['error']        = null;
+		return $view;
+	}
+
+	/**
 	 * Forgets the local connection. The site and its reports stay in Arc.
 	 *
 	 * @param int $user_id Admin user id.
@@ -391,8 +420,24 @@ final class Connect_Service {
 	 * @return array<string, mixed>
 	 */
 	private function authorized( array $creds ): array {
+		return $this->bearer_call(
+			$creds,
+			function ( string $token ) use ( $creds ) {
+				return $this->client->scores( (string) $creds['env'], $token, (string) $creds['siteId'] );
+			}
+		);
+	}
+
+	/**
+	 * Calls Arc, refreshing an OAuth token once after a 401.
+	 *
+	 * @param array<string, mixed>    $creds Opened credential.
+	 * @param callable(string): array $call  Request using the bearer.
+	 * @return array<string, mixed>
+	 */
+	private function bearer_call( array $creds, callable $call ): array {
 		try {
-			return $this->client->scores( (string) $creds['env'], (string) $creds['accessToken'], (string) $creds['siteId'] );
+			return $call( (string) $creds['accessToken'] );
 		} catch ( Arc_Api_Exception $error ) {
 			if ( 401 !== $error->status_code() || 'oauth' !== $creds['method'] || '' === $creds['refreshToken'] ) {
 				throw $error;
@@ -407,7 +452,36 @@ final class Connect_Service {
 			$parsed['refreshToken'],
 			$this->expires_at( $parsed['expiresIn'] )
 		);
-		return $this->client->scores( (string) $creds['env'], $parsed['accessToken'], (string) $creds['siteId'] );
+		return $call( $parsed['accessToken'] );
+	}
+
+	/**
+	 * Adds the WordPress edit and view URLs for each landing path.
+	 *
+	 * @param array<int, mixed> $pages Landing rows.
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function landing_pages( array $pages ): array {
+		$out = array();
+		foreach ( $pages as $page ) {
+			if ( ! is_array( $page ) ) {
+				continue;
+			}
+			$path = (string) ( $page['path'] ?? '/' );
+			$view = home_url( $path );
+			$id   = url_to_postid( $view );
+			if ( 0 === $id && '/' === $path ) {
+				$front = (int) get_option( 'page_on_front' );
+				if ( $front > 0 ) {
+					$id = $front;
+				}
+			}
+			$edit            = $id > 0 ? get_edit_post_link( $id, 'raw' ) : '';
+			$page['viewUrl'] = $view;
+			$page['editUrl'] = is_string( $edit ) && '' !== $edit ? $edit : null;
+			$out[]           = $page;
+		}
+		return $out;
 	}
 
 	/**

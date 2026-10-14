@@ -45,6 +45,10 @@ export function fetchScores() {
 	return apiFetch( { path: '/pendulum-arc/v1/scores' } );
 }
 
+export function fetchAnalytics() {
+	return apiFetch( { path: '/pendulum-arc/v1/analytics' } );
+}
+
 export function errorMessage( error, fallback ) {
 	if ( error && typeof error.message === 'string' && error.message ) {
 		return error.message;

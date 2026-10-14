@@ -167,7 +167,7 @@ final class Admin {
 		}
 		wp_add_dashboard_widget(
 			'pendulum_arc_scores',
-			__( 'Arc', 'pendulum-arc' ),
+			__( 'Arc Website Scores', 'pendulum-arc' ),
 			array( $this, 'render_dashboard_widget' )
 		);
 	}
@@ -270,10 +270,13 @@ final class Admin {
 		$json      = wp_json_encode( $bootstrap );
 		$mark      = plugins_url( 'assets/arc-mark-color.svg', ARC_WORDPRESS_FILE );
 		echo '<div class="wrap">';
+		echo '<div class="arc-page-head">';
 		echo '<h1 class="arc-page-title">';
 		echo '<img class="arc-page-title__mark" src="' . esc_url( $mark ) . '" alt="" width="28" height="28" />';
 		echo esc_html( get_admin_page_title() );
 		echo '</h1>';
+		echo '<div id="pendulum-arc-title-actions" class="arc-page-head__actions"></div>';
+		echo '</div>';
 		echo '<div id="pendulum-arc-root" data-bootstrap="' . esc_attr( (string) $json ) . '"></div>';
 		echo '</div>';
 	}
