@@ -1,6 +1,6 @@
 # Roadmap
 
-Status: **alpha**. The connect flow and the score summary are the plugin.
+Status: **alpha**. The connect flow, site scores, and visitor analytics summary are the plugin.
 It is not on WordPress.org yet. Install from the GitHub Release until the
 directory listing exists.
 
