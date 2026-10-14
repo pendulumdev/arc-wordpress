@@ -4,7 +4,7 @@ Tags: seo, analytics
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.3.0
+Stable tag: 0.3.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,9 @@ Add a project in Arc, then connect again with the API key. Sign-in can add a pro
 When the GitHub repository is public and a release is newer than this install, WordPress shows the update on the Plugins screen. Update now installs it. The Arc screens show the same update.
 
 == Changelog ==
+
+= 0.3.1 =
+* The Connect screen introduces Arc reports, with a link to Arc, above the other cards.
 
 = 0.3.0 =
 * Preview each report on the Arc screen, including SEO, accessibility, AI, security, and brand.
