@@ -1,0 +1,83 @@
+@use "./styles/tokens";
+@use "./styles/button";
+@use "./styles/score-card";
+@use "./styles/meta";
+@use "./styles/field";
+
+.pendulum-arc-connection {
+	max-width: 36rem;
+	margin-top: 16px;
+}
+
+.pendulum-arc-meta-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16px;
+	align-items: start;
+	margin-top: 16px;
+}
+
+.pendulum-arc-modal__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 16px;
+}
+
+.pendulum-arc-matches {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 8px;
+}
+
+.pendulum-arc-matches li {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.pendulum-arc-screen__note {
+	color: var(--arc-fg-secondary);
+}
+
+.wrap h1.arc-page-title {
+	display: flex;
+	align-items: center;
+	gap: 0.65rem;
+}
+
+.arc-page-title__mark {
+	display: block;
+	width: 28px;
+	height: 28px;
+	flex: 0 0 auto;
+}
+
+.pendulum-arc-dashboard-widget__body {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.pendulum-arc-dashboard-widget .arc-scores,
+.pendulum-arc-dashboard-widget__note,
+.pendulum-arc-dashboard-widget__actions {
+	margin: 0;
+}
+
+.pendulum-arc-dashboard-widget__actions {
+	display: flex;
+}
+
+@media (max-width: 782px) {
+	.pendulum-arc-meta-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.arc-meta__facts div {
+		grid-template-columns: 1fr;
+	}
+}

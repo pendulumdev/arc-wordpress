@@ -1,0 +1,50 @@
+name: Bug report
+description: Connect failed, a score is wrong, or the admin screens misbehaved
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For security issues, do not open an issue - see
+        [SECURITY.md](../blob/main/SECURITY.md).
+        Do not paste an API key or an OAuth token.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: dropdown
+    id: method
+    attributes:
+      label: How the site connects
+      options:
+        - API key
+        - Arc sign-in
+        - Not connected
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Versions
+      description: Plugin version, WordPress version, and PHP version.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps
+      description: What you clicked. Leave out keys, tokens, and private site addresses.

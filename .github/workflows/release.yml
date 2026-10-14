@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+          coverage: none
+          tools: composer
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+
+      # The tag is the release. package.json, the plugin header, and the
+      # WordPress.org stable tag must all say the same version.
+      - name: Check the tag matches the version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          header="$(awk '/^ \* Version:/ { print $3; exit }' pendulum-arc/pendulum-arc.php)"
+          stable="$(awk '/^Stable tag:/ { print $3; exit }' pendulum-arc/readme.txt)"
+          constant="$(sed -n "s/.*ARC_WORDPRESS_VERSION', '\\([^']*\\)'.*/\\1/p" pendulum-arc/pendulum-arc.php)"
+          fail=0
+          for name in pkg header stable constant; do
+            eval "value=\$$name"
+            if [ "$tag" != "$value" ]; then
+              echo "::error::$name is $value, tag is v$tag"
+              fail=1
+            fi
+          done
+          if [ "$fail" -ne 0 ]; then
+            exit 1
+          fi
+          echo "tag v$tag matches package.json, the plugin header, and Stable tag"
+
+      - name: PHP dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: PHP tests
+        run: composer test
+
+      - name: PHPCS
+        run: composer lint
+
+      - name: JavaScript dependencies
+        run: npm ci
+
+      - name: Lint JavaScript
+        run: npm run lint:js
+
+      - name: JavaScript tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Pack the plugin
+        run: |
+          rm -f pendulum-arc.zip
+          ( cd pendulum-arc && zip -r "../pendulum-arc.zip" . -x "*.DS_Store" )
+
+      # Body comes from docs/releases/vX.Y.Z.md so every tag uses the same
+      # headed format. --generate-notes is not a fallback.
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="docs/releases/${GITHUB_REF_NAME}.md"
+          if [ ! -f "$notes" ]; then
+            echo "::error::missing $notes - write it from docs/releasing.md"
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" pendulum-arc.zip \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file "$notes" \
+            --verify-tag

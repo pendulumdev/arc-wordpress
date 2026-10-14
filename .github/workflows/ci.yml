@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+          coverage: none
+          tools: composer
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: PHP dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: PHP tests
+        run: composer test
+
+      - name: PHPCS
+        run: composer lint
+
+      - name: JavaScript dependencies
+        run: npm ci
+
+      - name: Lint JavaScript
+        run: npm run lint:js
+
+      - name: JavaScript tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  plugin-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - run: npm run env:start
+
+      - run: npm run plugin-check
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # The gitleaks CLI is MIT; the GitHub Action of the same name needs a paid
+      # licence for organisations. Pinned so a new upstream rule cannot turn a
+      # green build red without us choosing it.
+      - name: Scan full history for secrets
+        env:
+          GITLEAKS_VERSION: 8.30.1
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          ./gitleaks git --log-opts="--all" --redact --no-banner
+
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Reject Unicode dashes
+        run: |
+          if grep -rlP '[\x{2013}\x{2014}]' \
+            --exclude-dir=node_modules --exclude-dir=vendor --exclude-dir=.git \
+            --include='*.php' --include='*.js' --include='*.scss' --include='*.css' \
+            --include='*.md' --include='*.yaml' --include='*.yml' --include='*.json' \
+            --include='*.txt' \
+            . ; then
+            echo "::error::Unicode en/em dash found. Use ASCII hyphens."
+            exit 1
+          fi

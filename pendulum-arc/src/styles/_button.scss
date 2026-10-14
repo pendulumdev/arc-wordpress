@@ -1,0 +1,101 @@
+/*
+ * Buttons. Secondary is the cyan wash. Danger is the red wash used for
+ * cancel on a destructive confirm.
+ */
+.arc-button {
+	box-sizing: border-box;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 2.5rem;
+	margin: 0;
+	padding: 0 1.25rem;
+	border: 0;
+	border-radius: var(--arc-radius-small);
+	background: transparent;
+	box-shadow: none;
+	color: var(--arc-button-secondary-fg);
+	font-family: inherit;
+	font-size: 0.875rem;
+	font-weight: 600;
+	line-height: 1;
+	text-decoration: none;
+	white-space: nowrap;
+	cursor: pointer;
+	vertical-align: middle;
+	transition:
+		background-color 200ms ease,
+		color 200ms ease,
+		opacity 200ms ease;
+}
+
+.arc-button--secondary {
+	color: var(--arc-button-secondary-fg);
+	background-color: var(--arc-button-secondary-bg);
+}
+
+.arc-button--secondary:hover,
+.arc-button--secondary:focus {
+	color: var(--arc-button-secondary-fg);
+	background-color: var(--arc-button-secondary-bg-hover);
+}
+
+.arc-button--secondary:active {
+	color: var(--arc-button-secondary-fg);
+	background-color: var(--arc-button-secondary-bg-active);
+}
+
+.arc-button--danger {
+	color: var(--arc-button-danger-fg);
+	background-color: var(--arc-button-danger-bg);
+}
+
+.arc-button--danger:hover,
+.arc-button--danger:focus {
+	color: var(--arc-button-danger-fg);
+	background-color: var(--arc-button-danger-bg-hover);
+}
+
+.arc-button--danger:active {
+	color: var(--arc-button-danger-fg);
+	background-color: var(--arc-button-danger-bg-active);
+}
+
+body.wp-admin a.arc-button.arc-button--secondary,
+body.wp-admin a.arc-button.arc-button--secondary:hover,
+body.wp-admin a.arc-button.arc-button--secondary:focus,
+body.wp-admin a.arc-button.arc-button--secondary:active,
+.wp-core-ui .arc-button.arc-button--secondary {
+	color: var(--arc-button-secondary-fg);
+	text-decoration: none;
+	box-shadow: none;
+}
+
+.wp-core-ui .arc-button.arc-button--danger,
+.wp-core-ui .arc-button.arc-button--danger:hover,
+.wp-core-ui .arc-button.arc-button--danger:focus,
+.wp-core-ui .arc-button.arc-button--danger:active {
+	color: var(--arc-button-danger-fg);
+	box-shadow: none;
+}
+
+.arc-button:focus {
+	outline: none;
+	box-shadow: none;
+}
+
+.arc-button--secondary:focus-visible {
+	outline: 2px solid var(--arc-accent-cyan);
+	outline-offset: 2px;
+}
+
+.arc-button--danger:focus-visible {
+	outline: 2px solid var(--arc-accent-red);
+	outline-offset: 2px;
+}
+
+.arc-button:disabled,
+.arc-button[aria-busy="true"] {
+	opacity: 0.6;
+	cursor: not-allowed;
+}

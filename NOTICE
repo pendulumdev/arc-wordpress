@@ -1,0 +1,12 @@
+Pendulum Arc for WordPress (pendulum-arc)
+Copyright 2026 Pendulum Development Ltd
+
+This plugin is licensed under the GNU General Public License version 2 or
+later. See LICENSE.
+
+The compiled admin script in `pendulum-arc/build/` includes unmodified
+@wordpress/* packages, which are GPL-2.0-or-later.
+
+PHP and Node development tools (PHPUnit, PHPCS, WPCS, @wordpress/scripts,
+wp-env) are not part of the plugin zip. They are installed by Composer and
+npm for people working on this repository, and they keep their own licenses.

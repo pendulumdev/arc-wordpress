@@ -1,0 +1,38 @@
+{
+  "name": "arc-wordpress",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Connect a WordPress site to a Pendulum Arc account.",
+  "author": "Pendulum Development Ltd",
+  "license": "GPL-2.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pendulumdev/arc-wordpress.git"
+  },
+  "homepage": "https://github.com/pendulumdev/arc-wordpress#readme",
+  "bugs": {
+    "url": "https://github.com/pendulumdev/arc-wordpress/issues"
+  },
+  "scripts": {
+    "build": "wp-scripts build",
+    "start": "wp-scripts start",
+    "lint:js": "wp-scripts lint-js",
+    "test": "wp-scripts test-unit-js",
+    "env:start": "wp-env start",
+    "env:stop": "wp-env stop",
+    "plugin-check": "wp-env run cli -- wp plugin check pendulum-arc --format=strict-json --ignore-codes=PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound --require=./wp-content/plugins/plugin-check/cli.php",
+    "hooks": "git config core.hooksPath .githooks"
+  },
+  "dependencies": {
+    "@wordpress/api-fetch": "^7.57.0",
+    "@wordpress/components": "^42.0.0",
+    "@wordpress/element": "^9.0.0",
+    "@wordpress/i18n": "^6.30.0"
+  },
+  "devDependencies": {
+    "@wordpress/env": "^11.17.0",
+    "@wordpress/scripts": "^36.1.0",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
+  }
+}

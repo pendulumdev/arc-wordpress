@@ -1,0 +1,25 @@
+/*
+ * Menu mark. Dashicons take their color from the admin scheme
+ * (`#adminmenu div.wp-menu-image:before`). This mask uses that same
+ * color, so the mark stays near-white on dark menus, gray on the Light
+ * scheme, and white when the item is current.
+ */
+#adminmenu #toplevel_page_pendulum-arc div.wp-menu-image:before {
+	content: "";
+	display: inline-block;
+	width: 20px;
+	height: 20px;
+	padding: 7px 0;
+	vertical-align: top;
+	background-color: currentColor;
+	-webkit-mask-image: url("arc-mark.svg");
+	mask-image: url("arc-mark.svg");
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center;
+	mask-position: center;
+	-webkit-mask-size: 20px 20px;
+	mask-size: 20px 20px;
+	-webkit-mask-mode: alpha;
+	mask-mode: alpha;
+}

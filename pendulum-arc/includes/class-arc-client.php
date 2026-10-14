@@ -1,0 +1,313 @@
+<?php
+/**
+ * HTTP calls to the Arc API and the portal token endpoint.
+ *
+ * @package ArcWordpress
+ */
+
+declare(strict_types=1);
+
+// Exception text is JSON for the admin UI, which renders it as text.
+// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped
+
+namespace ArcWordpress;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * Bearer calls and the OAuth token exchange.
+ */
+final class Arc_Client {
+
+	/**
+	 * Proves a bearer and returns GET /v1/me.
+	 *
+	 * @param string $env   production or preview.
+	 * @param string $token API key or access token.
+	 * @return array<string, mixed>
+	 */
+	public function me( string $env, string $token ): array {
+		return $this->json( 'GET', Arc_Config::api( $env ) . '/v1/me', $token );
+	}
+
+	/**
+	 * Every project page on the allow-list.
+	 *
+	 * @param string $env   production or preview.
+	 * @param string $token Bearer.
+	 * @return array<int, array{id: string, name: string, slug: string}>
+	 */
+	public function projects( string $env, string $token ): array {
+		$projects = array();
+		foreach ( $this->pages( Arc_Config::api( $env ) . '/v1/projects', $token ) as $page ) {
+			$projects = array_merge( $projects, Pairing::projects( $page ) );
+		}
+		return $projects;
+	}
+
+	/**
+	 * One project, including its slug.
+	 *
+	 * @param string $env        production or preview.
+	 * @param string $token      Bearer.
+	 * @param string $project_id Project id.
+	 * @return array{id: string, name: string, slug: string}
+	 */
+	public function project( string $env, string $token, string $project_id ): array {
+		$this->assert_id( $project_id );
+		$url = Arc_Config::api( $env ) . '/v1/projects/' . rawurlencode( $project_id );
+		return Pairing::project( $this->json( 'GET', $url, $token ) );
+	}
+
+	/**
+	 * Sites for one project.
+	 *
+	 * @param string $env        production or preview.
+	 * @param string $token      Bearer.
+	 * @param string $project_id Project id.
+	 * @return array<int, array{id: string, projectId: string, name: string, baseUrl: string}>
+	 */
+	public function sites( string $env, string $token, string $project_id ): array {
+		$this->assert_id( $project_id );
+		$url   = Arc_Config::api( $env ) . '/v1/projects/' . rawurlencode( $project_id ) . '/sites';
+		$sites = array();
+		foreach ( $this->pages( $url, $token ) as $page ) {
+			$sites = array_merge( $sites, Pairing::sites( $page, $project_id ) );
+		}
+		return $sites;
+	}
+
+	/**
+	 * Creates a site. The same normalized URL returns the existing row.
+	 *
+	 * @param string               $env        production or preview.
+	 * @param string               $token      Bearer.
+	 * @param string               $project_id Project id.
+	 * @param array<string, string> $body      name and baseUrl.
+	 * @param string               $idempotency_key Replay key.
+	 * @return array<string, mixed>
+	 */
+	public function create_site( string $env, string $token, string $project_id, array $body, string $idempotency_key ): array {
+		$this->assert_id( $project_id );
+		$url = Arc_Config::api( $env ) . '/v1/projects/' . rawurlencode( $project_id ) . '/sites';
+		return $this->json(
+			'POST',
+			$url,
+			$token,
+			$body,
+			array( 'Idempotency-Key' => $idempotency_key )
+		);
+	}
+
+	/**
+	 * Latest scores for a paired site.
+	 *
+	 * @param string $env     production or preview.
+	 * @param string $token   Bearer.
+	 * @param string $site_id Site id.
+	 * @return array<string, mixed>
+	 */
+	public function scores( string $env, string $token, string $site_id ): array {
+		$this->assert_id( $site_id );
+		$url = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/scores';
+		return $this->json( 'GET', $url, $token );
+	}
+
+	/**
+	 * Exchanges an authorization code.
+	 *
+	 * @param string $env          production or preview.
+	 * @param string $code         Authorization code.
+	 * @param string $verifier     PKCE verifier.
+	 * @param string $redirect_uri Redirect used at authorize time.
+	 * @return array<string, mixed>
+	 */
+	public function exchange_code( string $env, string $code, string $verifier, string $redirect_uri ): array {
+		$body = array(
+			'grant_type'    => 'authorization_code',
+			'code'          => $code,
+			'redirect_uri'  => $redirect_uri,
+			'client_id'     => Arc_Config::client_id(),
+			'code_verifier' => $verifier,
+			'resource'      => Arc_Config::resource( $env ),
+		);
+		return $this->form( Arc_Config::portal( $env ) . '/oauth/token', $body );
+	}
+
+	/**
+	 * Rotates a refresh token.
+	 *
+	 * @param string $env     production or preview.
+	 * @param string $refresh Refresh token.
+	 * @return array<string, mixed>
+	 */
+	public function refresh( string $env, string $refresh ): array {
+		$body = array(
+			'grant_type'    => 'refresh_token',
+			'refresh_token' => $refresh,
+			'client_id'     => Arc_Config::client_id(),
+			'resource'      => Arc_Config::resource( $env ),
+		);
+		return $this->form( Arc_Config::portal( $env ) . '/oauth/token', $body );
+	}
+
+	/**
+	 * Follows cursor pages, capped so a connect cannot loop.
+	 *
+	 * @param string $url   First page URL.
+	 * @param string $token Bearer.
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function pages( string $url, string $token ): array {
+		$pages  = array();
+		$cursor = '';
+		for ( $i = 0; $i < 20; $i++ ) {
+			$next = $url;
+			if ( '' !== $cursor ) {
+				$next .= ( str_contains( $url, '?' ) ? '&' : '?' ) . 'cursor=' . rawurlencode( $cursor );
+			}
+			$page    = $this->json( 'GET', $next, $token );
+			$pages[] = $page;
+			$cursor  = Pairing::next_cursor( $page );
+			if ( '' === $cursor ) {
+				break;
+			}
+		}
+		return $pages;
+	}
+
+	/**
+	 * JSON request with a bearer.
+	 *
+	 * @param string                    $method Extra headers method.
+	 * @param string                    $url    Absolute URL.
+	 * @param string                    $token  Bearer.
+	 * @param array<string, string>|null $body  JSON body.
+	 * @param array<string, string>     $extra  Extra headers.
+	 * @return array<string, mixed>
+	 */
+	private function json( string $method, string $url, string $token, ?array $body = null, array $extra = array() ): array {
+		$headers = array_merge(
+			array(
+				'Accept'        => 'application/json',
+				'Authorization' => 'Bearer ' . $token,
+				'User-Agent'    => $this->user_agent(),
+			),
+			$extra
+		);
+		$payload = null;
+		if ( null !== $body ) {
+			$headers['Content-Type'] = 'application/json';
+			$payload                 = wp_json_encode( $body );
+		}
+		return $this->request( $method, $url, $headers, $payload );
+	}
+
+	/**
+	 * Form token request. The bearer is not used.
+	 *
+	 * @param string               $url  Token URL.
+	 * @param array<string, string> $body Form fields.
+	 * @return array<string, mixed>
+	 */
+	private function form( string $url, array $body ): array {
+		$headers = array(
+			'Accept'       => 'application/json',
+			'Content-Type' => 'application/x-www-form-urlencoded',
+			'User-Agent'   => $this->user_agent(),
+		);
+		$payload = http_build_query( $body, '', '&', PHP_QUERY_RFC3986 );
+		return $this->request( 'POST', $url, $headers, $payload );
+	}
+
+	/**
+	 * Performs the request and decodes a JSON object.
+	 *
+	 * @param string                $method  HTTP method.
+	 * @param string                $url     Absolute URL.
+	 * @param array<string, string> $headers Headers.
+	 * @param string|null           $body    Raw body.
+	 * @return array<string, mixed>
+	 */
+	private function request( string $method, string $url, array $headers, ?string $body ): array {
+		$args = array(
+			'method'      => $method,
+			'timeout'     => 20,
+			'redirection' => 0,
+			'headers'     => $headers,
+		);
+		if ( null !== $body ) {
+			$args['body'] = $body;
+		}
+		/**
+		 * Last chance to adjust an Arc request. Do not log the bearer.
+		 *
+		 * @param array<string, mixed> $args Request args.
+		 * @param string               $url  URL.
+		 */
+		$args     = apply_filters( 'arc_wordpress_http_args', $args, $url );
+		$response = wp_remote_request( $url, $args );
+		if ( is_wp_error( $response ) ) {
+			throw new Arc_Api_Exception(
+				__( 'Arc could not be reached. Try again in a moment.', 'pendulum-arc' ),
+				0
+			);
+		}
+
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		$raw    = (string) wp_remote_retrieve_body( $response );
+		$json   = json_decode( $raw, true );
+		if ( $status < 200 || $status >= 300 ) {
+			throw new Arc_Api_Exception( self::safe_message( $json, $status ), $status );
+		}
+		return is_array( $json ) ? $json : array();
+	}
+
+	/**
+	 * Admin-facing sentence that does not echo a credential.
+	 *
+	 * @param mixed $json   Decoded body.
+	 * @param int   $status HTTP status.
+	 */
+	private static function safe_message( $json, int $status ): string {
+		if ( 401 === $status ) {
+			return __( 'Arc did not accept those credentials.', 'pendulum-arc' );
+		}
+		if ( 403 === $status ) {
+			return __( 'This Arc account cannot do that.', 'pendulum-arc' );
+		}
+		if ( is_array( $json ) && isset( $json['error'] ) && is_array( $json['error'] ) ) {
+			$message = $json['error']['message'] ?? '';
+			if ( is_string( $message ) ) {
+				$message = trim( wp_strip_all_tags( $message ) );
+				if ( '' !== $message && strlen( $message ) <= 180 && ! preg_match( '/bearer|token|api[_ ]?key/i', $message ) ) {
+					return $message;
+				}
+			}
+		}
+		return __( 'Arc refused the request. Try again in a moment.', 'pendulum-arc' );
+	}
+
+	/**
+	 * Rejects an id that must not be placed in a path.
+	 *
+	 * @param string $id Arc id.
+	 */
+	private function assert_id( string $id ): void {
+		if ( 1 !== preg_match( '/^[A-Za-z0-9_-]{1,128}$/', $id ) ) {
+			throw new Arc_Api_Exception(
+				__( 'That Arc id is not valid.', 'pendulum-arc' ),
+				400
+			);
+		}
+	}
+
+	/**
+	 * Identifies this plugin on Arc requests.
+	 */
+	private function user_agent(): string {
+		return 'PendulumArc/' . ARC_WORDPRESS_VERSION . '; ' . home_url();
+	}
+}

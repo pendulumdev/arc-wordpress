@@ -1,0 +1,45 @@
+/*
+ * Arc visual tokens for the WordPress admin.
+ * Noon is the light set the portal uses on a light page. Names are --arc-*
+ * so they do not collide with WordPress. Components read these only.
+ */
+:root {
+	--arc-bg-secondary: #ffffff;
+	--arc-bg-tertiary: #e8eaef;
+	--arc-fg-primary: #12141a;
+	--arc-fg-secondary: #4a5160;
+	--arc-fg-tertiary: #6b7280;
+
+	--arc-accent-cyan: #1a9bb8;
+	--arc-accent-orange: #e07d28;
+	--arc-accent-pink: #e02470;
+	--arc-accent-emerald: #059669;
+	--arc-accent-amber: #c9921a;
+	--arc-accent-sky: #3b82f6;
+	--arc-accent-lime: #65a30d;
+	--arc-accent-red: #dc2626;
+	--arc-accent-coral: #ea580c;
+
+	--arc-radius-tiny: 0.375rem;
+	--arc-radius-small: 0.75rem;
+	--arc-radius-medium: 1rem;
+	--arc-radius-large: 1.5rem;
+
+	--arc-border-subtle: #d8dce6;
+
+	--arc-overlay-blur: 12px;
+	--arc-report-glass: rgba(255, 255, 255, 0.62);
+	--arc-shadow-small:
+		0 0 12px 2px color-mix(in srgb, var(--arc-fg-primary) 12%, transparent),
+		0 0 4px 0 color-mix(in srgb, var(--arc-fg-primary) 8%, transparent);
+
+	--arc-button-secondary-fg: var(--arc-accent-cyan);
+	--arc-button-secondary-bg: color-mix(in srgb, var(--arc-accent-cyan) 12%, var(--arc-bg-secondary));
+	--arc-button-secondary-bg-hover: color-mix(in srgb, var(--arc-accent-cyan) 18%, var(--arc-bg-secondary));
+	--arc-button-secondary-bg-active: color-mix(in srgb, var(--arc-accent-cyan) 24%, var(--arc-bg-secondary));
+
+	--arc-button-danger-fg: var(--arc-accent-red);
+	--arc-button-danger-bg: color-mix(in srgb, var(--arc-accent-red) 10%, transparent);
+	--arc-button-danger-bg-hover: color-mix(in srgb, var(--arc-accent-red) 15%, transparent);
+	--arc-button-danger-bg-active: color-mix(in srgb, var(--arc-accent-red) 20%, transparent);
+}

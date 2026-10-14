@@ -1,0 +1,60 @@
+/**
+ * External dependencies
+ */
+import apiFetch from '@wordpress/api-fetch';
+
+export function connectWithApiKey( apiKey ) {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/connect/api-key',
+		method: 'POST',
+		data: { apiKey },
+	} );
+}
+
+export function startOAuth() {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/connect/oauth/start',
+		method: 'POST',
+	} );
+}
+
+export function pairSite( siteId ) {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/connect/pair',
+		method: 'POST',
+		data: { siteId },
+	} );
+}
+
+export function createSite( draft ) {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/connect/site',
+		method: 'POST',
+		data: draft,
+	} );
+}
+
+export function disconnect() {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/connection',
+		method: 'DELETE',
+	} );
+}
+
+export function fetchScores() {
+	return apiFetch( { path: '/pendulum-arc/v1/scores' } );
+}
+
+export function errorMessage( error, fallback ) {
+	if ( error && typeof error.message === 'string' && error.message ) {
+		return error.message;
+	}
+	return fallback;
+}
+
+export function fieldErrors( error ) {
+	if ( error && error.data && error.data.fields ) {
+		return error.data.fields;
+	}
+	return {};
+}

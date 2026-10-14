@@ -1,0 +1,92 @@
+/*
+ * Panel. Same large radius and hairline as an Arc surface, with a
+ * header rule. Header and body share one inset on every side.
+ */
+.arc-meta {
+	overflow: hidden;
+	margin: 0;
+	border: 1px solid var(--arc-border-subtle);
+	border-radius: var(--arc-radius-large);
+	background-color: var(--arc-bg-secondary);
+	box-shadow: none;
+}
+
+.arc-meta__header {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin: 0;
+	padding: 1.25rem;
+	border-bottom: 1px solid var(--arc-border-subtle);
+}
+
+.arc-meta__icon {
+	display: flex;
+	flex-shrink: 0;
+	color: var(--arc-accent-cyan);
+}
+
+.arc-meta__icon svg {
+	display: block;
+}
+
+h2.arc-meta__title,
+.pendulum-arc-screen h2.arc-meta__title {
+	margin: 0;
+	padding: 0;
+	color: var(--arc-fg-primary);
+	font-size: 1rem;
+	font-weight: 600;
+	line-height: 1.25;
+}
+
+.arc-meta__body {
+	padding: 1.25rem;
+}
+
+.arc-meta__body > :last-child {
+	margin-bottom: 0;
+}
+
+.arc-meta__description {
+	margin: 0 0 1rem;
+}
+
+.arc-meta__facts {
+	display: grid;
+	gap: 0.75rem;
+	margin: 0;
+}
+
+.arc-meta__facts div {
+	display: grid;
+	grid-template-columns: 8rem minmax(0, 1fr);
+	gap: 0.75rem;
+}
+
+.arc-meta__facts dt {
+	font-weight: 600;
+}
+
+.arc-meta__facts dd {
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
+.arc-meta__footer {
+	margin-top: 1.25rem;
+}
+
+.arc-meta__confirm p {
+	margin: 0 0 0.75rem;
+}
+
+.arc-meta__confirm .pendulum-arc-modal__actions {
+	margin-top: 0;
+	justify-content: flex-start;
+}
+
+.arc-meta__error {
+	margin: 0.75rem 0 0;
+	color: var(--arc-accent-red);
+}

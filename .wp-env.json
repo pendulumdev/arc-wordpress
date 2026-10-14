@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/wp-env.json",
+  "core": "WordPress/WordPress#7.1.3",
+  "phpVersion": "8.3",
+  "plugins": [
+    "./pendulum-arc",
+    "https://downloads.wordpress.org/plugin/plugin-check.zip"
+  ],
+  "testsEnvironment": false,
+  "mappings": {
+    "wp-content/mu-plugins/local-arc.php": "./dev/local-arc.php"
+  },
+  "config": {
+    "WP_DEBUG": true,
+    "SCRIPT_DEBUG": true
+  }
+}
