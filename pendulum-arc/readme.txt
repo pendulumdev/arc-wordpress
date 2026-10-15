@@ -4,7 +4,7 @@ Tags: seo, analytics
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.3.4
+Stable tag: 0.3.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -53,7 +53,7 @@ When the GitHub repository is public and a release is newer than this install, W
 
 == Changelog ==
 
-= 0.3.4 =
+= 0.3.5 =
 * When every report already exists, the dashboard notice says to view the latest data below.
 * A missing visitor metric shows a dash. It is not shown as zero.
 

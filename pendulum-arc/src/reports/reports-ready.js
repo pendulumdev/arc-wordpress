@@ -26,7 +26,8 @@ export function reportsAreComplete( scores ) {
 		if ( service === 'analytics' ) {
 			const visitors = row.visitors;
 			return (
-				visitors != null &&
+				visitors !== null &&
+				visitors !== undefined &&
 				visitors.newUsers !== null &&
 				visitors.newUsers !== undefined &&
 				visitors.returningUsers !== null &&

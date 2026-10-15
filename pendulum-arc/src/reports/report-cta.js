@@ -19,7 +19,11 @@ import { Icon } from '../ui/icon';
  * @param {boolean}    [props.complete]   Every service already has a report.
  * @param {() => void} [props.onSettled]  Called when a service leaves in-flight.
  */
-export function GenerationNotice( { connectUrl, complete = false, onSettled } ) {
+export function GenerationNotice( {
+	connectUrl,
+	complete = false,
+	onSettled,
+} ) {
 	const [ active, setActive ] = useState( false );
 	let message = __( 'Reports need generating.', 'pendulum-arc' );
 	if ( active ) {
