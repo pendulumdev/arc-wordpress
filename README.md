@@ -1,4 +1,4 @@
-# Pendulum Arc for WordPress
+# Arc Analytics for WordPress
 
 [![Status][Status-shield]][Status-url]
 [![Docs][Docs-shield]][Docs-url]

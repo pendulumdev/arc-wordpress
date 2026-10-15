@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name:       Pendulum Arc
+ * Plugin Name:       Arc Analytics
  * Plugin URI:        https://github.com/pendulumdev/arc-wordpress
  * Description:       Connect this site to a Pendulum Arc account.
- * Version:           0.3.1
+ * Version:           0.3.2
  * Requires at least: 6.7
  * Requires PHP:      8.1
  * Author:            Pendulum
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'ARC_WORDPRESS_VERSION', '0.3.1' );
+define( 'ARC_WORDPRESS_VERSION', '0.3.2' );
 define( 'ARC_WORDPRESS_FILE', __FILE__ );
 define( 'ARC_WORDPRESS_DIR', plugin_dir_path( __FILE__ ) );
 

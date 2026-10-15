@@ -77,7 +77,19 @@ final class Site_Origin {
 	}
 
 	/**
-	 * Sites whose baseUrl is the same normalized URL.
+	 * Host, port, and path used to pair a site. http and https are one site.
+	 *
+	 * @param string $normalized Output of normalize().
+	 */
+	public static function pairing_key( string $normalized ): string {
+		return (string) preg_replace( '#^https?://#i', '', $normalized );
+	}
+
+	/**
+	 * Sites whose baseUrl is the same host, port, and path.
+	 *
+	 * The scheme is ignored, so a WordPress home stored as http matches an
+	 * Arc site stored as https. www and a subdirectory stay different sites.
 	 *
 	 * @param array<int, array<string, mixed>> $sites  Arc site rows.
 	 * @param string                            $origin WordPress home URL.
@@ -88,6 +100,7 @@ final class Site_Origin {
 		if ( null === $want ) {
 			return array();
 		}
+		$want_key = self::pairing_key( $want );
 
 		$out = array();
 		foreach ( $sites as $site ) {
@@ -99,7 +112,7 @@ final class Site_Origin {
 				continue;
 			}
 			$base = self::normalize( $row['baseUrl'] );
-			if ( null !== $base && $base === $want ) {
+			if ( null !== $base && self::pairing_key( $base ) === $want_key ) {
 				$out[] = $row;
 			}
 		}

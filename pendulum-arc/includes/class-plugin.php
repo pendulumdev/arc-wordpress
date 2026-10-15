@@ -72,7 +72,7 @@ final class Plugin {
 			return;
 		}
 		echo '<div class="notice notice-error"><p>';
-		echo esc_html__( 'Pendulum Arc needs the PHP sodium extension before it can store a connection.', 'pendulum-arc' );
+		echo esc_html__( 'Arc Analytics needs the PHP sodium extension before it can store a connection.', 'pendulum-arc' );
 		echo '</p></div>';
 	}
 }

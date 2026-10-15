@@ -53,8 +53,8 @@ final class Admin {
 	 */
 	public function menu(): void {
 		add_menu_page(
-			__( 'Pendulum Arc • Dashboard', 'pendulum-arc' ),
-			__( 'Arc', 'pendulum-arc' ),
+			__( 'Arc Analytics • Dashboard', 'pendulum-arc' ),
+			__( 'Arc Analytics', 'pendulum-arc' ),
 			'manage_options',
 			'pendulum-arc',
 			array( $this, 'render_dashboard' ),
@@ -63,7 +63,7 @@ final class Admin {
 		);
 		add_submenu_page(
 			'pendulum-arc',
-			__( 'Pendulum Arc • Dashboard', 'pendulum-arc' ),
+			__( 'Arc Analytics • Dashboard', 'pendulum-arc' ),
 			__( 'Dashboard', 'pendulum-arc' ),
 			'manage_options',
 			'pendulum-arc',
@@ -71,7 +71,7 @@ final class Admin {
 		);
 		add_submenu_page(
 			'pendulum-arc',
-			__( 'Pendulum Arc • Connect', 'pendulum-arc' ),
+			__( 'Arc Analytics • Connect', 'pendulum-arc' ),
 			__( 'Connect', 'pendulum-arc' ),
 			'manage_options',
 			'pendulum-arc-connect',
@@ -167,7 +167,7 @@ final class Admin {
 		}
 		wp_add_dashboard_widget(
 			'pendulum_arc_scores',
-			__( 'Pendulum Arc', 'pendulum-arc' ),
+			__( 'Arc Analytics', 'pendulum-arc' ),
 			array( $this, 'render_dashboard_widget' )
 		);
 	}
@@ -245,7 +245,7 @@ final class Admin {
 	 */
 	public function missing_build_notice(): void {
 		echo '<div class="notice notice-error"><p>';
-		echo esc_html__( 'Pendulum Arc assets are missing. From the repository root, run npm install and npm run build.', 'pendulum-arc' );
+		echo esc_html__( 'Arc Analytics assets are missing. From the repository root, run npm install and npm run build.', 'pendulum-arc' );
 		echo '</p></div>';
 	}
 

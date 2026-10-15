@@ -1,10 +1,10 @@
-=== Pendulum Arc ===
+=== Arc Analytics ===
 Contributors: devhalls
 Tags: seo, analytics
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.3.1
+Stable tag: 0.3.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,7 +12,7 @@ Connect this WordPress site to a Pendulum Arc account.
 
 == Description ==
 
-Pendulum Arc connects this site to an Arc studio so the dashboard can show the latest site scores and a preview of each report.
+Arc Analytics connects this site to an Arc studio so the dashboard can show the latest site scores and a preview of each report.
 
 Connect with an API key, or sign in through Arc. Signing in opens Arc, where you pair an existing site or add this site to a project. You return to WordPress already connected.
 
@@ -52,6 +52,10 @@ Add a project in Arc, then connect again with the API key. Sign-in can add a pro
 When the GitHub repository is public and a release is newer than this install, WordPress shows the update on the Plugins screen. Update now installs it. The Arc screens show the same update.
 
 == Changelog ==
+
+= 0.3.2 =
+* The plugin name is Arc Analytics. The admin menu, page titles, and dashboard widget use that name.
+* An http WordPress address pairs an Arc site stored as https when the host, port, and path are the same. www and a subdirectory stay different sites.
 
 = 0.3.1 =
 * The Connect screen introduces Arc reports, with a link to Arc, above the other cards.

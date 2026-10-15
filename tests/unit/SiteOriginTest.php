@@ -22,6 +22,20 @@ final class SiteOriginTest extends TestCase {
 		self::assertSame( 'https://example.com/blog/', Site_Origin::normalize( 'https://example.com/blog' ) );
 	}
 
+	public function test_http_home_matches_the_https_site(): void {
+		$sites = array(
+			array(
+				'id'        => 'site_https',
+				'projectId' => 'client_a',
+				'name'      => 'Harbour',
+				'baseUrl'   => 'https://www.folkestoneseafront.com/',
+			),
+		);
+		$matched = Site_Origin::matching( $sites, 'http://www.folkestoneseafront.com' );
+		self::assertCount( 1, $matched );
+		self::assertSame( 'site_https', $matched[0]['id'] );
+	}
+
 	public function test_www_and_apex_are_different_sites(): void {
 		$sites = array(
 			array(

@@ -88,7 +88,7 @@ final class Plugin_Updater {
 		}
 
 		return (object) array(
-			'name'          => 'Pendulum Arc',
+			'name'          => 'Arc Analytics',
 			'slug'          => $this->slug(),
 			'version'       => $release->version(),
 			'author'        => '<a href="https://pendulumdev.co.uk">Pendulum</a>',
@@ -166,7 +166,7 @@ final class Plugin_Updater {
 		echo esc_html(
 			sprintf(
 				/* translators: %s: version number */
-				__( 'Pendulum Arc %s is available.', 'pendulum-arc' ),
+				__( 'Arc Analytics %s is available.', 'pendulum-arc' ),
 				$version
 			)
 		);
