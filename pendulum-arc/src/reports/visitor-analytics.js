@@ -11,9 +11,17 @@ import { AnalyticsChart } from './analytics-chart';
 import { mergeCharts } from './chart-shells';
 import { ReportCta } from './report-cta';
 
+function metricNumber( value ) {
+	if ( value === null || value === undefined || value === '' ) {
+		return null;
+	}
+	const number = Number( value );
+	return Number.isFinite( number ) ? number : null;
+}
+
 function formatMetric( metric ) {
-	const value = Number( metric.value );
-	if ( ! Number.isFinite( value ) ) {
+	const value = metricNumber( metric.value );
+	if ( value === null ) {
 		return '-';
 	}
 	if ( metric.key === 'engagementRate' || metric.key === 'ctr' ) {
@@ -23,9 +31,9 @@ function formatMetric( metric ) {
 }
 
 function metricDelta( metric ) {
-	const current = Number( metric.value );
-	const previous = Number( metric.previousValue );
-	if ( ! Number.isFinite( current ) || ! Number.isFinite( previous ) ) {
+	const current = metricNumber( metric.value );
+	const previous = metricNumber( metric.previousValue );
+	if ( current === null || previous === null ) {
 		return null;
 	}
 	const diff = current - previous;
@@ -44,8 +52,8 @@ function metricDelta( metric ) {
 }
 
 function formatRate( value ) {
-	const number = Number( value );
-	if ( ! Number.isFinite( number ) ) {
+	const number = metricNumber( value );
+	if ( number === null ) {
 		return '-';
 	}
 	return `${ ( number * 100 ).toFixed( 1 ) }%`;
@@ -135,9 +143,7 @@ export function VisitorAnalytics( { report, portalUrl } ) {
 					<dl className="arc-report-hero__metrics">
 						{ metrics.map( ( metric ) => {
 							const delta = metricDelta( metric );
-							const empty = ! Number.isFinite(
-								Number( metric.value )
-							);
+							const empty = metricNumber( metric.value ) === null;
 							return (
 								<div key={ metric.key }>
 									<dt>{ metric.label }</dt>

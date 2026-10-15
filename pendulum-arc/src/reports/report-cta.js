@@ -16,10 +16,17 @@ import { Icon } from '../ui/icon';
  *
  * @param {Object}     props
  * @param {string}     [props.connectUrl] WordPress Connect settings page.
+ * @param {boolean}    [props.complete]   Every service already has a report.
  * @param {() => void} [props.onSettled]  Called when a service leaves in-flight.
  */
-export function GenerationNotice( { connectUrl, onSettled } ) {
+export function GenerationNotice( { connectUrl, complete = false, onSettled } ) {
 	const [ active, setActive ] = useState( false );
+	let message = __( 'Reports need generating.', 'pendulum-arc' );
+	if ( active ) {
+		message = __( 'Reports are currently generating.', 'pendulum-arc' );
+	} else if ( complete ) {
+		message = __( 'View your latest data below.', 'pendulum-arc' );
+	}
 	return (
 		<div className="arc-report-alert arc-report-alert--info" role="status">
 			<p>
@@ -28,14 +35,7 @@ export function GenerationNotice( { connectUrl, onSettled } ) {
 					<path d="M12 16v-4" />
 					<path d="M12 8h.01" />
 				</Icon>
-				<span>
-					{ active
-						? __(
-								'Reports are currently generating.',
-								'pendulum-arc'
-							)
-						: __( 'Reports need generating.', 'pendulum-arc' ) }
-				</span>
+				<span>{ message }</span>
 			</p>
 			<GenerateReports
 				onActivity={ setActive }

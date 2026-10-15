@@ -4,7 +4,7 @@ Tags: seo, analytics
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.3.3
+Stable tag: 0.3.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,10 @@ Add a project in Arc, then connect again with the API key. Sign-in can add a pro
 When the GitHub repository is public and a release is newer than this install, WordPress shows the update on the Plugins screen. Update now installs it. The Arc screens show the same update.
 
 == Changelog ==
+
+= 0.3.4 =
+* When every report already exists, the dashboard notice says to view the latest data below.
+* A missing visitor metric shows a dash. It is not shown as zero.
 
 = 0.3.3 =
 * The dashboard notice that says reports need generating uses the info blue. Warning cards stay yellow.

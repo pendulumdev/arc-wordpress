@@ -8,6 +8,7 @@ import { useCallback, useState } from '@wordpress/element';
  */
 import { SiteScoreSummary, useSiteScores } from '../meta';
 import { GenerationNotice } from '../reports/report-cta';
+import { reportsAreComplete } from '../reports/reports-ready';
 import { ReportSummary } from '../reports/report-summary';
 import { isSiteMissingError } from '../ui/error-alert';
 import { OpenInArc } from '../ui/open-in-arc';
@@ -29,6 +30,7 @@ export function DashboardPage( { bootstrap } ) {
 			{ isSiteMissingError( error ) ? null : (
 				<GenerationNotice
 					connectUrl={ bootstrap.urls.connect }
+					complete={ ! loading && reportsAreComplete( scoreRows ) }
 					onSettled={ onSettled }
 				/>
 			) }
