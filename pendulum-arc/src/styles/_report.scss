@@ -468,6 +468,15 @@
 	color: var(--arc-accent-amber);
 }
 
+.arc-report-alert--info {
+	border-color: color-mix(in srgb, var(--arc-accent-sky) 42%, transparent);
+	background: color-mix(in srgb, var(--arc-accent-sky) 14%, var(--arc-bg-secondary));
+}
+
+.arc-report-alert--info > p svg {
+	color: var(--arc-accent-sky);
+}
+
 .arc-report-alert .arc-generate svg {
 	margin-top: 0;
 	color: inherit;

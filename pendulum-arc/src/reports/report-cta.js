@@ -21,7 +21,7 @@ import { Icon } from '../ui/icon';
 export function GenerationNotice( { connectUrl, onSettled } ) {
 	const [ active, setActive ] = useState( false );
 	return (
-		<div className="arc-report-alert" role="status">
+		<div className="arc-report-alert arc-report-alert--info" role="status">
 			<p>
 				<Icon size={ 18 } strokeWidth={ 2 }>
 					<circle cx="12" cy="12" r="10" />
