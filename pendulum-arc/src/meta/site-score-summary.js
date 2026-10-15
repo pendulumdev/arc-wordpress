@@ -46,7 +46,8 @@ export function SiteScoreSummary( {
 					const setup =
 						found &&
 						( found.setup === 'connect_google' ||
-							found.setup === 'assign_site' )
+							found.setup === 'assign_site' ||
+							found.setup === 'not_enabled' )
 							? found.setup
 							: null;
 					const hasScore =

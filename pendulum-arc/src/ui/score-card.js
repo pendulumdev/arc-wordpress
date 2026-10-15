@@ -318,7 +318,7 @@ function IssuePill( { issueCount, manualCount, severity } ) {
  * @param {Object|null}                                                              [props.visitors]
  * @param {{issueCount?: number, manualCount?: number, severity?: string|null}|null} [props.issues]
  * @param {{score?: number|null, band?: string|null}|null}                           [props.keyphrase]
- * @param {'connect_google'|'assign_site'|null}                                      [props.setup]
+ * @param {'connect_google'|'assign_site'|'not_enabled'|null}                        [props.setup]
  * @param {string}                                                                   [props.actionHref]
  * @param {boolean}                                                                  [props.selected]
  * @param {(service: string) => void}                                                [props.onSelect]
@@ -353,6 +353,9 @@ export function ScoreCard( {
 	} else if ( state === 'setup' && setup === 'connect_google' ) {
 		hint = __( 'No Google connection', 'pendulum-arc' );
 		actionLabel = __( 'Connect Google', 'pendulum-arc' );
+	} else if ( state === 'setup' && setup === 'not_enabled' ) {
+		hint = __( 'Not enabled for this site', 'pendulum-arc' );
+		actionLabel = __( 'Connect in Arc', 'pendulum-arc' );
 	} else if ( state === 'setup' ) {
 		hint = __( 'Assign a Google property', 'pendulum-arc' );
 		actionLabel = __( 'Assign in Arc', 'pendulum-arc' );

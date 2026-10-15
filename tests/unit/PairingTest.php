@@ -108,6 +108,22 @@ final class PairingTest extends TestCase {
 		self::assertNull( $scores[1]['setup'] );
 	}
 
+	public function test_scores_keep_analytics_when_it_is_not_enabled(): void {
+		$scores = Pairing::scores(
+			array(
+				'analyticsSetup' => 'not_enabled',
+				'scores'         => array(),
+			)
+		);
+		$analytics = null;
+		foreach ( $scores as $row ) {
+			if ( 'analytics' === $row['service'] ) {
+				$analytics = $row;
+			}
+		}
+		self::assertSame( 'not_enabled', $analytics['setup'] );
+	}
+
 	public function test_scores_keep_issue_counts_and_the_seo_keyphrase(): void {
 		$scores = Pairing::scores(
 			array(

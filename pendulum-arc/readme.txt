@@ -56,6 +56,7 @@ When the GitHub repository is public and a release is newer than this install, W
 = 0.3.2 =
 * The plugin name is Arc Analytics. The admin menu, page titles, and dashboard widget use that name.
 * An http WordPress address pairs an Arc site stored as https when the host, port, and path are the same. www and a subdirectory stay different sites.
+* When Analytics is not enabled for the site, the card links to that site in Arc.
 
 = 0.3.1 =
 * The Connect screen introduces Arc reports, with a link to Arc, above the other cards.

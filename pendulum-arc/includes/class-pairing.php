@@ -448,7 +448,7 @@ final class Pairing {
 	 * @param mixed $value Raw analyticsSetup.
 	 */
 	private static function analytics_setup( $value ): ?string {
-		if ( 'connect_google' === $value || 'assign_site' === $value ) {
+		if ( 'connect_google' === $value || 'assign_site' === $value || 'not_enabled' === $value ) {
 			return $value;
 		}
 		return null;
