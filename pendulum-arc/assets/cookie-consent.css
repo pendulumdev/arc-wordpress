@@ -6,7 +6,7 @@
 
 .arc-cookie-root {
 	font-family: inherit;
-	font-size: 0.875rem;
+	font-size: 16px;
 	line-height: 1.5;
 	color: #12141a;
 }
@@ -154,7 +154,7 @@ body.admin-bar .arc-cookie__reopen.arc-cookie--pos-top-right {
 .arc-cookie__title {
 	margin: 0 0 0.5rem;
 	color: #12141a;
-	font-size: 1rem;
+	font-size: 18px;
 	font-weight: 650;
 	line-height: 1.3;
 }
@@ -274,7 +274,7 @@ body.admin-bar .arc-cookie__reopen.arc-cookie--pos-top-right {
 	width: 100%;
 	margin-top: 1rem;
 	border-collapse: collapse;
-	font-size: 0.8125rem;
+	font-size: 14px;
 }
 
 .arc-cookie__table th,
@@ -287,7 +287,7 @@ body.admin-bar .arc-cookie__reopen.arc-cookie--pos-top-right {
 
 .arc-cookie__table th {
 	color: #6b7280;
-	font-size: 0.75rem;
+	font-size: 13px;
 	font-weight: 650;
 }
 
@@ -302,7 +302,7 @@ body.admin-bar .arc-cookie__reopen.arc-cookie--pos-top-right {
 	margin-top: 0.15rem;
 	color: #6b7280;
 	font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-	font-size: 0.75rem;
+	font-size: 13px;
 }
 
 .arc-cookie__choice {

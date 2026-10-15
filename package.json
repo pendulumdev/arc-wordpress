@@ -1,6 +1,6 @@
 {
   "name": "arc-wordpress",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "Connect a WordPress site to a Pendulum Arc account.",
   "author": "Pendulum Development Ltd",
