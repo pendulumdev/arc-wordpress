@@ -11,6 +11,13 @@ export function connectWithApiKey( apiKey ) {
 	} );
 }
 
+export function reconnect() {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/connect/reconnect',
+		method: 'POST',
+	} );
+}
+
 export function startOAuth() {
 	return apiFetch( {
 		path: '/pendulum-arc/v1/connect/oauth/start',

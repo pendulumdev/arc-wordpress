@@ -10,12 +10,15 @@ declare(strict_types=1);
 namespace ArcWordpress\Tests;
 
 use ArcWordpress\Admin_Access;
+use ArcWordpress\Arc_Api_Exception;
+use ArcWordpress\Connect_Service;
 use ArcWordpress\Pkce;
 use ArcWordpress\Secret_Box;
 use ArcWordpress\Site_Draft;
 use PHPUnit\Framework\TestCase;
 
 /**
+ * @covers \ArcWordpress\Connect_Service
  * @covers \ArcWordpress\Pkce
  * @covers \ArcWordpress\Admin_Access
  * @covers \ArcWordpress\Secret_Box
@@ -32,6 +35,19 @@ final class ConnectRulesTest extends TestCase {
 		self::assertStringNotContainsString( '/', $challenge );
 		$again = rtrim( strtr( base64_encode( hash( 'sha256', $verifier, true ) ), '+/', '-_' ), '=' );
 		self::assertSame( $again, $challenge );
+	}
+
+	public function test_a_missing_site_asks_the_admin_to_reconnect(): void {
+		$missing = new Arc_Api_Exception( 'Not found.', 404 );
+		self::assertStringContainsString(
+			'Reconnect to attach the site',
+			Connect_Service::admin_message( $missing )
+		);
+		$other = new Arc_Api_Exception( 'Arc did not accept those credentials.', 401 );
+		self::assertSame(
+			'Arc did not accept those credentials.',
+			Connect_Service::admin_message( $other )
+		);
 	}
 
 	public function test_only_the_connect_screen_is_open_without_a_connection(): void {

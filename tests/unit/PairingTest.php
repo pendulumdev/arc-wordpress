@@ -88,6 +88,24 @@ final class PairingTest extends TestCase {
 		}
 		self::assertNull( $brand['score'] );
 		self::assertSame( 0, $brand['issueCount'] );
+		self::assertNull( $brand['setup'] );
+	}
+
+	public function test_scores_keep_an_analytics_google_gap(): void {
+		$scores = Pairing::scores(
+			array(
+				'analyticsSetup' => 'connect_google',
+				'scores'         => array(),
+			)
+		);
+		$analytics = null;
+		foreach ( $scores as $row ) {
+			if ( 'analytics' === $row['service'] ) {
+				$analytics = $row;
+			}
+		}
+		self::assertSame( 'connect_google', $analytics['setup'] );
+		self::assertNull( $scores[1]['setup'] );
 	}
 
 	public function test_scores_keep_issue_counts_and_the_seo_keyphrase(): void {

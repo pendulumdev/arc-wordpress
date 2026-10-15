@@ -164,7 +164,10 @@ final class Connection_Store {
 	 * @param array<string, mixed> $pending Plain tokens and choices.
 	 */
 	public function put_pending( int $user_id, array $pending ): void {
-		$pending['accessToken'] = Secret_Box::seal( (string) $pending['accessToken'], $this->key() );
+		$key                     = $this->key();
+		$pending['accessToken']  = Secret_Box::seal( (string) $pending['accessToken'], $key );
+		$refresh                 = (string) ( $pending['refreshToken'] ?? '' );
+		$pending['refreshToken'] = '' === $refresh ? '' : Secret_Box::seal( $refresh, $key );
 		set_transient( $this->pending_key( $user_id ), $pending, 30 * MINUTE_IN_SECONDS );
 	}
 
@@ -185,6 +188,14 @@ final class Connection_Store {
 			unset( $error );
 			return null;
 		}
+		if ( ! empty( $stored['refreshToken'] ) ) {
+			try {
+				$stored['refreshToken'] = Secret_Box::open( (string) $stored['refreshToken'], $this->key() );
+			} catch ( \RuntimeException $error ) {
+				unset( $error );
+				$stored['refreshToken'] = '';
+			}
+		}
 		return $stored;
 	}
 
@@ -201,6 +212,7 @@ final class Connection_Store {
 		}
 		return array(
 			'status'    => (string) ( $pending['status'] ?? '' ),
+			'hasApiKey' => 'api_key' === (string) ( $pending['method'] ?? 'api_key' ),
 			'projects'  => $pending['projects'] ?? array(),
 			'matches'   => $pending['matches'] ?? array(),
 			'draft'     => $pending['draft'] ?? null,

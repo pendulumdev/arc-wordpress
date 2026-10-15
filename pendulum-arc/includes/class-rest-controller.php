@@ -60,6 +60,16 @@ final class Rest_Controller {
 
 		register_rest_route(
 			'pendulum-arc/v1',
+			'/connect/reconnect',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'reconnect' ),
+				'permission_callback' => array( $this, 'can_manage' ),
+			)
+		);
+
+		register_rest_route(
+			'pendulum-arc/v1',
 			'/connect/oauth/start',
 			array(
 				'methods'             => 'POST',
@@ -210,6 +220,19 @@ final class Rest_Controller {
 		return $this->respond(
 			function () {
 				return $this->connect->oauth_start( get_current_user_id() );
+			}
+		);
+	}
+
+	/**
+	 * Attaches this address again with the saved API key or Arc account.
+	 *
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function reconnect() {
+		return $this->respond(
+			function () {
+				return $this->connect->reconnect( get_current_user_id() );
 			}
 		);
 	}

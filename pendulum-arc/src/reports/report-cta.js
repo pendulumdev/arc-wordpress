@@ -12,35 +12,24 @@ import { ArcButton } from '../ui/button';
 import { Icon } from '../ui/icon';
 
 /**
- * Warning card used at the close of a report, and when a summary is not
- * available yet. The button opens Arc.
+ * Permanent dashboard notice. Idle until a run is queued or running.
  *
- * @param {Object}                    props
- * @param {string}                    [props.href]
- * @param {string}                    [props.label]
- * @param {import('react').ReactNode} props.children
+ * @param {Object}     props
+ * @param {string}     [props.connectUrl] WordPress Connect settings page.
+ * @param {() => void} [props.onSettled]  Called when a service leaves in-flight.
  */
-/**
- * Top-of-dashboard notice when the selected report has no succeeded run.
- * The action is the portal Generate menu.
- *
- * @param {Object}  props
- * @param {boolean} props.generating
- * @param {string}  [props.connectUrl] WordPress Connect settings page.
- */
-export function GenerationNotice( { generating, connectUrl } ) {
+export function GenerationNotice( { connectUrl, onSettled } ) {
 	const [ active, setActive ] = useState( false );
-	const live = generating || active;
 	return (
-		<div className="arc-report-alert arc-report-alert--error" role="alert">
+		<div className="arc-report-alert" role="status">
 			<p>
 				<Icon size={ 18 } strokeWidth={ 2 }>
 					<circle cx="12" cy="12" r="10" />
-					<path d="m15 9-6 6" />
-					<path d="m9 9 6 6" />
+					<path d="M12 16v-4" />
+					<path d="M12 8h.01" />
 				</Icon>
 				<span>
-					{ live
+					{ active
 						? __(
 								'Reports are currently generating.',
 								'pendulum-arc'
@@ -50,12 +39,22 @@ export function GenerationNotice( { generating, connectUrl } ) {
 			</p>
 			<GenerateReports
 				onActivity={ setActive }
+				onSettled={ onSettled }
 				connectUrl={ connectUrl }
 			/>
 		</div>
 	);
 }
 
+/**
+ * Warning card used at the close of a report, and when a summary is not
+ * available yet. The button opens Arc.
+ *
+ * @param {Object}                    props
+ * @param {string}                    [props.href]
+ * @param {string}                    [props.label]
+ * @param {import('react').ReactNode} props.children
+ */
 export function ReportCta( { href, label, children } ) {
 	return (
 		<div className="arc-report-alert">

@@ -8,11 +8,13 @@ import { __ } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { ArcButton } from '../ui/button';
+import { ErrorAlert } from '../ui/error-alert';
 
 export function CreateSiteModal( {
 	draft,
 	projects,
 	fieldErrors,
+	error,
 	busy,
 	onChange,
 	onCancel,
@@ -29,6 +31,7 @@ export function CreateSiteModal( {
 			onRequestClose={ busy ? () => {} : onCancel }
 			className="pendulum-arc-modal"
 		>
+			{ error ? <ErrorAlert message={ error } /> : null }
 			<p>
 				{ __(
 					'No Arc site uses this address yet. Confirm the details and Arc will add it to the project you choose.',
@@ -39,6 +42,9 @@ export function CreateSiteModal( {
 				<TextControl
 					label={ __( 'Site name', 'pendulum-arc' ) }
 					value={ draft.name }
+					className={
+						fieldErrors.name ? 'arc-field--error' : undefined
+					}
 					onChange={ ( name ) => onChange( { name } ) }
 					help={
 						fieldErrors.name ||
@@ -54,33 +60,47 @@ export function CreateSiteModal( {
 					label={ __( 'Site URL', 'pendulum-arc' ) }
 					value={ draft.baseUrl }
 					type="url"
+					className={
+						fieldErrors.baseUrl ? 'arc-field--error' : undefined
+					}
 					onChange={ ( baseUrl ) => onChange( { baseUrl } ) }
 					help={ fieldErrors.baseUrl || '' }
 					__nextHasNoMarginBottom
 					__next40pxDefaultSize
 				/>
-				{ projectOptions.length > 1 && (
+				{ projectOptions.length > 0 && (
 					<SelectControl
 						label={ __( 'Project', 'pendulum-arc' ) }
-						value={ draft.projectId }
-						options={ [
-							{
-								label: __( 'Choose a project', 'pendulum-arc' ),
-								value: '',
-							},
-							...projectOptions,
-						] }
+						value={
+							draft.projectId ||
+							( projectOptions.length === 1
+								? projectOptions[ 0 ].value
+								: '' )
+						}
+						options={
+							projectOptions.length === 1
+								? projectOptions
+								: [
+										{
+											label: __(
+												'Choose a project',
+												'pendulum-arc'
+											),
+											value: '',
+										},
+										...projectOptions,
+									]
+						}
+						className={
+							fieldErrors.projectId
+								? 'arc-field--error'
+								: undefined
+						}
 						onChange={ ( projectId ) => onChange( { projectId } ) }
 						help={ fieldErrors.projectId || '' }
 						__nextHasNoMarginBottom
 						__next40pxDefaultSize
 					/>
-				) }
-				{ projectOptions.length === 1 && (
-					<p>
-						{ __( 'Project:', 'pendulum-arc' ) }{ ' ' }
-						{ projectOptions[ 0 ].label }
-					</p>
 				) }
 			</div>
 			<div className="pendulum-arc-modal__actions">

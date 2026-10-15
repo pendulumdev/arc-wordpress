@@ -43,12 +43,17 @@
 	font-style: normal;
 }
 
+.pendulum-arc-screen .arc-fields .arc-field--error .components-base-control__help,
+.pendulum-arc-screen .arc-fields .components-base-control.arc-field--error .components-base-control__help,
+.pendulum-arc-modal .arc-fields .arc-field--error .components-base-control__help,
+.pendulum-arc-modal .arc-fields .components-base-control.arc-field--error .components-base-control__help {
+	color: var(--arc-accent-red);
+}
+
 .pendulum-arc-screen .arc-fields input.components-text-control__input,
 .pendulum-arc-screen .arc-fields input.components-input-control__input,
-.pendulum-arc-screen .arc-fields select.components-select-control__input,
 .pendulum-arc-modal .arc-fields input.components-text-control__input,
-.pendulum-arc-modal .arc-fields input.components-input-control__input,
-.pendulum-arc-modal .arc-fields select.components-select-control__input {
+.pendulum-arc-modal .arc-fields input.components-input-control__input {
 	box-sizing: border-box;
 	width: 100%;
 	height: 2.5rem;
@@ -80,11 +85,126 @@
 
 .pendulum-arc-screen .arc-fields input.components-text-control__input:focus,
 .pendulum-arc-screen .arc-fields input.components-input-control__input:focus,
-.pendulum-arc-screen .arc-fields select.components-select-control__input:focus,
 .pendulum-arc-modal .arc-fields input.components-text-control__input:focus,
-.pendulum-arc-modal .arc-fields input.components-input-control__input:focus,
-.pendulum-arc-modal .arc-fields select.components-select-control__input:focus {
+.pendulum-arc-modal .arc-fields input.components-input-control__input:focus {
 	border: 0;
 	outline: none;
 	box-shadow: 0 0 0 1px var(--arc-accent-cyan);
+}
+
+/*
+ * SelectControl draws a native select, a suffix chevron, and a backdrop
+ * that paints over both. Keep one arrow, and match the text fields.
+ */
+.pendulum-arc-screen .arc-fields .components-select-control .components-input-control__label,
+.pendulum-arc-modal .arc-fields .components-select-control .components-input-control__label {
+	margin: 0 0 0.375rem;
+	color: var(--arc-fg-primary);
+	font-size: 0.875rem;
+	font-weight: 500;
+	line-height: 1.25;
+	text-transform: none;
+	letter-spacing: normal;
+}
+
+.pendulum-arc-screen .arc-fields .components-select-control .components-input-control__container,
+.pendulum-arc-modal .arc-fields .components-select-control .components-input-control__container {
+	box-sizing: border-box;
+	width: 100%;
+	height: 2.5rem;
+	min-height: 2.5rem;
+	border: 0;
+	border-radius: var(--arc-radius-small);
+	background: var(--arc-bg-tertiary);
+	box-shadow: none;
+	color: var(--arc-fg-primary);
+}
+
+.pendulum-arc-screen .arc-fields .components-select-control .components-input-control__backdrop,
+.pendulum-arc-modal .arc-fields .components-select-control .components-input-control__backdrop,
+.pendulum-arc-screen .arc-fields .components-select-control .components-input-control__container:focus-within .components-input-control__backdrop,
+.pendulum-arc-modal .arc-fields .components-select-control .components-input-control__container:focus-within .components-input-control__backdrop {
+	border: 0;
+	border-radius: var(--arc-radius-small);
+	background: transparent;
+	outline: none;
+	box-shadow: none;
+}
+
+.pendulum-arc-screen .arc-fields .components-select-control .components-input-control__container:focus-within,
+.pendulum-arc-modal .arc-fields .components-select-control .components-input-control__container:focus-within {
+	box-shadow: 0 0 0 1px var(--arc-accent-cyan);
+}
+
+.pendulum-arc-screen .arc-fields .components-select-control select.components-select-control__input,
+.pendulum-arc-modal .arc-fields .components-select-control select.components-select-control__input {
+	position: relative;
+	z-index: 1;
+	box-sizing: border-box;
+	flex: 1 1 auto;
+	width: auto;
+	max-width: none;
+	height: 100%;
+	min-height: 0;
+	margin: 0;
+	padding: 0 2.25rem 0 0.75rem;
+	border: 0;
+	border-radius: var(--arc-radius-small);
+	background: transparent;
+	background-image: none;
+	box-shadow: none;
+	outline: none;
+	appearance: none;
+	-webkit-appearance: none;
+	color: var(--arc-fg-primary);
+	font-size: 0.875rem;
+	line-height: 1.25;
+	cursor: pointer;
+}
+
+.pendulum-arc-screen .arc-fields .components-select-control .components-input-control__suffix,
+.pendulum-arc-modal .arc-fields .components-select-control .components-input-control__suffix {
+	position: absolute;
+	z-index: 1;
+	inset-inline-end: 0.75rem;
+	top: 50%;
+	display: flex;
+	align-items: center;
+	margin: 0;
+	padding: 0;
+	color: var(--arc-fg-secondary);
+	line-height: 0;
+	pointer-events: none;
+	transform: translateY(-50%);
+}
+
+.pendulum-arc-screen .arc-fields .components-select-control .components-input-control__suffix > *,
+.pendulum-arc-modal .arc-fields .components-select-control .components-input-control__suffix > * {
+	position: static;
+	margin: 0;
+	padding: 0;
+}
+
+.arc-fields > .arc-key-field {
+	position: relative;
+	align-self: stretch;
+	width: 100%;
+}
+
+.arc-key-field__tick {
+	position: absolute;
+	right: 0.75rem;
+	bottom: 0.75rem;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	height: 1rem;
+	color: var(--arc-accent-emerald);
+	line-height: 0;
+	pointer-events: none;
+}
+
+.pendulum-arc-screen .arc-fields .arc-key-field--saved input.components-text-control__input {
+	padding-right: 2.25rem;
+	letter-spacing: 0.14em;
 }

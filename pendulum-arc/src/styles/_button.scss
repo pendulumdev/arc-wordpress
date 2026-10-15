@@ -189,6 +189,30 @@
 	backdrop-filter: blur(12px);
 }
 
+.arc-button--marked {
+	padding-right: 1rem;
+	padding-left: 0;
+	gap: 0.7rem;
+}
+
+.arc-button__mark {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	align-self: center;
+	width: 2.5rem;
+	height: calc(100% - 0.75rem);
+	border-right: 1px solid color-mix(in srgb, var(--arc-accent-amber) 45%, transparent);
+}
+
+.arc-button__mark img {
+	display: block;
+	width: 1.125rem;
+	height: 1.125rem;
+	border: 0;
+	box-shadow: none;
+}
+
 .arc-button--connect:hover,
 .arc-button--connect:focus {
 	color: var(--arc-button-connect-fg);

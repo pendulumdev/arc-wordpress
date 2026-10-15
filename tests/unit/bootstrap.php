@@ -22,6 +22,17 @@ if ( ! function_exists( 'wp_parse_url' ) ) {
 	}
 }
 
+if ( ! function_exists( '__' ) ) {
+	/**
+	 * Stand-in for the WordPress translation helper.
+	 *
+	 * @param string $text Text.
+	 */
+	function __( string $text ): string {
+		return $text;
+	}
+}
+
 $root = dirname( __DIR__, 2 ) . '/pendulum-arc';
 require $root . '/includes/class-site-origin.php';
 require $root . '/includes/class-pairing.php';
@@ -30,3 +41,5 @@ require $root . '/includes/class-pkce.php';
 require $root . '/includes/class-secret-box.php';
 require $root . '/includes/class-admin-access.php';
 require $root . '/includes/class-github-release.php';
+require $root . '/includes/class-arc-api-exception.php';
+require $root . '/includes/class-connect-service.php';

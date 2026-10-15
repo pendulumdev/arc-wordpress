@@ -1,6 +1,7 @@
 /**
  * WordPress dependencies
  */
+import { createInterpolateElement } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -14,8 +15,10 @@ import { ArcButton } from '../ui/button';
  *
  * @param {Object} props
  * @param {string} [props.portalUrl]
+ * @param {string} [props.arcMark]
+ * @param {string} [props.pendulumMark]
  */
-export function ArcIntro( { portalUrl } ) {
+export function ArcIntro( { portalUrl, arcMark, pendulumMark } ) {
 	return (
 		<div className="pendulum-arc-intro">
 			<MetaBox
@@ -23,22 +26,34 @@ export function ArcIntro( { portalUrl } ) {
 				title={ __( 'Arc reports', 'pendulum-arc' ) }
 			>
 				<p className="arc-meta__description">
-					{ __(
-						'Connect your WordPress website with Arc for reports, issues, and recommendations across Analytics, Accessibility, SEO, AI readability, Security, and Brand cohesion.',
-						'pendulum-arc'
+					{ createInterpolateElement(
+						__(
+							"Connect your WordPress website with Arc for reports, issues, and recommendations across <strong>Analytics</strong>, <strong>Accessibility</strong>, <strong>SEO</strong>, <strong>AI readability</strong>, <strong>Security</strong>, and <strong>Brand cohesion</strong>. Each report scores the live site, lists what needs attention, and points to the next change. View report summaries directly in WordPress, and open Arc when you need to create automations, improve your website's scores or manage multiple sites.",
+							'pendulum-arc'
+						),
+						{
+							strong: <strong />,
+						}
 					) }
 				</p>
-				<p className="arc-meta__description">
-					{ __(
-						'Each report scores the live site, lists what needs attention, and points to the next change. Keep the summary here in WordPress, and open Arc when you want the full report.',
-						'pendulum-arc'
-					) }
-				</p>
-				{ portalUrl ? (
-					<ArcButton href={ portalUrl } variant="primary">
-						{ __( 'Visit Arc', 'pendulum-arc' ) }
+				<div className="pendulum-arc-intro__actions">
+					{ portalUrl ? (
+						<ArcButton
+							href={ portalUrl }
+							variant="connect"
+							mark={ arcMark }
+						>
+							{ __( 'Visit Arc', 'pendulum-arc' ) }
+						</ArcButton>
+					) : null }
+					<ArcButton
+						href="https://pendulumdev.co.uk"
+						variant="connect"
+						mark={ pendulumMark }
+					>
+						{ __( 'Visit Pendulum', 'pendulum-arc' ) }
 					</ArcButton>
-				) : null }
+				</div>
 			</MetaBox>
 		</div>
 	);

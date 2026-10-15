@@ -287,6 +287,24 @@ button.arc-score-card {
 	white-space: nowrap;
 }
 
+.arc-score-card[data-state="setup"] .arc-score-card__hint {
+	white-space: normal;
+}
+
+.arc-score-card__action {
+	display: inline-block;
+	margin-top: 0.35rem;
+	color: var(--arc-accent-cyan);
+	font-size: 0.75rem;
+	font-weight: 600;
+	line-height: 1.375;
+	text-decoration: underline;
+}
+
+.wp-core-ui .arc-score-card__action:focus {
+	border-radius: var(--arc-radius-tiny);
+}
+
 .arc-score-card[data-state="score"] .arc-score-card__hint {
 	margin-top: 0.25rem;
 }

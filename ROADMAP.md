@@ -4,6 +4,12 @@ Status: **alpha**. The connect flow, site scores, and report previews are the pl
 It is not on WordPress.org yet. Install from the GitHub Release until the
 directory listing exists.
 
+## Place in Arc platform reach
+
+This plugin is Wave 0 of the Arc platform reach sequence. The WordPress.org
+listing on this page is the reach work for this repository. Later platforms
+are sequenced in the Arc repo at `docs/research/system/platform-reach.md`.
+
 ## Known gaps
 
 ### WordPress.org listing

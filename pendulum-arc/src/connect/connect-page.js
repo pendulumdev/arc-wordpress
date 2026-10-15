@@ -2,7 +2,11 @@
  * WordPress dependencies
  */
 import { Notice, Spinner, TextControl } from '@wordpress/components';
-import { useReducer, useState } from '@wordpress/element';
+import {
+	createInterpolateElement,
+	useReducer,
+	useState,
+} from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
@@ -15,15 +19,28 @@ import {
 	errorMessage,
 	fieldErrors,
 	pairSite,
+	reconnect,
 	startOAuth,
 } from '../api';
 import { ConnectionSummary, MetaBox } from '../meta';
 import { ArcButton } from '../ui/button';
+import { ErrorAlert } from '../ui/error-alert';
+import { Icon } from '../ui/icon';
 import { OpenInArc } from '../ui/open-in-arc';
 import { ArcIntro } from './arc-intro';
 import { ChooseSiteModal } from './choose-site-modal';
 import { CreateSiteModal } from './create-site-modal';
 import { connectReducer, initialConnectState } from './reducer';
+
+const SAVED_API_KEY = '************';
+
+function hasStoredApiKey( bootstrap ) {
+	const connection = bootstrap.connection || {};
+	if ( connection.connected && connection.method === 'api_key' ) {
+		return true;
+	}
+	return Boolean( bootstrap.pending && bootstrap.pending.hasApiKey );
+}
 
 export function ConnectPage( { bootstrap } ) {
 	const [ state, dispatch ] = useReducer(
@@ -32,13 +49,63 @@ export function ConnectPage( { bootstrap } ) {
 		initialConnectState
 	);
 	const [ apiKey, setApiKey ] = useState( '' );
+	const [ keyHeld, setKeyHeld ] = useState( () =>
+		hasStoredApiKey( bootstrap )
+	);
+	const showSavedKey = keyHeld && apiKey === '';
 	const connected = bootstrap.connection && bootstrap.connection.connected;
+
+	function replaceSavedKey() {
+		if ( ! showSavedKey ) {
+			return;
+		}
+		setKeyHeld( false );
+		window.setTimeout( () => {
+			const field = document.getElementById( 'pendulum-arc-api-key' );
+			if ( field ) {
+				field.focus();
+			}
+		}, 0 );
+	}
+	const reconnecting =
+		new URLSearchParams( window.location.search ).get( 'arc_reconnect' ) ===
+		'1';
 
 	async function onApiKey( event ) {
 		event.preventDefault();
+		if ( showSavedKey ) {
+			return;
+		}
 		dispatch( { type: 'verify-start' } );
 		try {
 			const result = await connectWithApiKey( apiKey );
+			if ( result.status === 'connected' ) {
+				window.location.assign( bootstrap.urls.dashboard );
+				return;
+			}
+			if (
+				result.status === 'needs_site' ||
+				result.status === 'choose_site'
+			) {
+				setApiKey( '' );
+				setKeyHeld( true );
+			}
+			dispatch( { type: 'verify-result', result } );
+		} catch ( error ) {
+			dispatch( {
+				type: 'verify-error',
+				message: errorMessage(
+					error,
+					__( 'Arc could not check that API key.', 'pendulum-arc' )
+				),
+			} );
+		}
+	}
+
+	async function onReconnect() {
+		dispatch( { type: 'verify-start' } );
+		try {
+			const result = await reconnect();
 			if ( result.status === 'connected' ) {
 				window.location.assign( bootstrap.urls.dashboard );
 				return;
@@ -49,7 +116,7 @@ export function ConnectPage( { bootstrap } ) {
 				type: 'verify-error',
 				message: errorMessage(
 					error,
-					__( 'Arc could not check that API key.', 'pendulum-arc' )
+					__( 'Arc could not reconnect this site.', 'pendulum-arc' )
 				),
 			} );
 		}
@@ -105,6 +172,10 @@ export function ConnectPage( { bootstrap } ) {
 	}
 
 	const busy = state.phase === 'verifying';
+	const siteFormOpen =
+		( ! connected || reconnecting ) &&
+		( state.phase === 'needs_site' || state.phase === 'creating' ) &&
+		Boolean( state.draft );
 
 	return (
 		<div className="pendulum-arc-screen">
@@ -117,30 +188,57 @@ export function ConnectPage( { bootstrap } ) {
 					{ bootstrap.notice.message }
 				</Notice>
 			) }
-			{ state.error && (
+			{ state.error && ! siteFormOpen && (
 				<Notice status="error" isDismissible={ false }>
 					{ state.error }
 				</Notice>
 			) }
-			{ ! connected && state.phase === 'needs_project' && (
-				<Notice status="warning" isDismissible={ false }>
-					{ __(
-						'This Arc account has no project yet. Add one in Arc, then connect again.',
-						'pendulum-arc'
-					) }{ ' ' }
-					<a href={ state.portalUrl || bootstrap.urls.portal }>
-						{ __( 'Open Arc', 'pendulum-arc' ) }
-					</a>
-				</Notice>
-			) }
+			{ ( ! connected || reconnecting ) &&
+				state.phase === 'needs_project' && (
+					<Notice status="warning" isDismissible={ false }>
+						{ __(
+							'This Arc account has no project yet. Add one in Arc, then connect again.',
+							'pendulum-arc'
+						) }{ ' ' }
+						<a href={ state.portalUrl || bootstrap.urls.portal }>
+							{ __( 'Open Arc', 'pendulum-arc' ) }
+						</a>
+					</Notice>
+				) }
 			<ArcIntro
 				portalUrl={
 					( bootstrap.connection &&
 						bootstrap.connection.portalUrl ) ||
 					bootstrap.urls.portal
 				}
+				arcMark={ bootstrap.urls.arcMark }
+				pendulumMark={ bootstrap.urls.pendulumMark }
 			/>
-			{ connected ? (
+			{ connected && reconnecting && (
+				<>
+					<ErrorAlert
+						message={ __(
+							'Arc cannot find the site stored for this address.',
+							'pendulum-arc'
+						) }
+					/>
+					<div className="pendulum-arc-meta-grid">
+						<MetaBox
+							icon="refresh"
+							title={ __( 'Reconnect', 'pendulum-arc' ) }
+							description={ __(
+								'Use the Arc account or API key already saved on this site.',
+								'pendulum-arc'
+							) }
+						>
+							<ArcButton busy={ busy } onClick={ onReconnect }>
+								{ __( 'Reconnect', 'pendulum-arc' ) }
+							</ArcButton>
+						</MetaBox>
+					</div>
+				</>
+			) }
+			{ connected && ! reconnecting && (
 				<div className="pendulum-arc-connection">
 					<ConnectionSummary
 						connection={ bootstrap.connection }
@@ -150,37 +248,23 @@ export function ConnectPage( { bootstrap } ) {
 						} }
 					/>
 				</div>
-			) : (
+			) }
+			{ ! connected && (
 				<div className="pendulum-arc-meta-grid">
 					<MetaBox
-						icon="key"
-						title={ __( 'API key', 'pendulum-arc' ) }
-						description={ __(
-							'Paste a key from Arc. If this address is already a site, it is paired. If not, you confirm the site here.',
+						icon="user"
+						title={ __(
+							'Connect your Arc account',
 							'pendulum-arc'
 						) }
-					>
-						<form className="arc-fields" onSubmit={ onApiKey }>
-							<TextControl
-								label={ __( 'API key', 'pendulum-arc' ) }
-								type="password"
-								value={ apiKey }
-								onChange={ setApiKey }
-								autoComplete="off"
-								__nextHasNoMarginBottom
-								__next40pxDefaultSize
-							/>
-							<ArcButton type="submit" busy={ busy }>
-								{ __( 'Connect with API key', 'pendulum-arc' ) }
-							</ArcButton>
-						</form>
-					</MetaBox>
-					<MetaBox
-						icon="user"
-						title={ __( 'Arc account', 'pendulum-arc' ) }
-						description={ __(
-							'Sign in on Arc. Arc pairs this address to a site, or lets you add the site and its project, then sends you back here.',
-							'pendulum-arc'
+						description={ createInterpolateElement(
+							__(
+								'<strong>Getting started!</strong> Click connect to sign in, or create an Arc account. Arc pairs this website address to your account and automatically starts generating reports.',
+								'pendulum-arc'
+							),
+							{
+								strong: <strong />,
+							}
 						) }
 					>
 						<ArcButton busy={ busy } onClick={ onOAuth }>
@@ -188,15 +272,78 @@ export function ConnectPage( { bootstrap } ) {
 						</ArcButton>
 						{ busy && <Spinner /> }
 					</MetaBox>
+					<MetaBox
+						icon="key"
+						title={ __( 'API key', 'pendulum-arc' ) }
+						description={ __(
+							'If you struggle to connect, create an API key in your Arc account and paste it here. If this web address is already a site, it is paired. If not, you confirm the site here.',
+							'pendulum-arc'
+						) }
+					>
+						<form className="arc-fields" onSubmit={ onApiKey }>
+							<div
+								className={
+									showSavedKey
+										? 'arc-key-field arc-key-field--saved'
+										: 'arc-key-field'
+								}
+							>
+								<TextControl
+									id="pendulum-arc-api-key"
+									label={ __( 'API key', 'pendulum-arc' ) }
+									type={ showSavedKey ? 'text' : 'password' }
+									value={
+										showSavedKey ? SAVED_API_KEY : apiKey
+									}
+									readOnly={ showSavedKey }
+									title={
+										showSavedKey
+											? __(
+													'API key saved. Focus the field to replace it.',
+													'pendulum-arc'
+												)
+											: undefined
+									}
+									onClick={ replaceSavedKey }
+									onFocus={ replaceSavedKey }
+									onChange={ setApiKey }
+									autoComplete="off"
+									__nextHasNoMarginBottom
+									__next40pxDefaultSize
+								/>
+								{ showSavedKey ? (
+									<span className="arc-key-field__tick">
+										<Icon size={ 16 } strokeWidth={ 2.5 }>
+											<polyline points="20 6 9 17 4 12" />
+										</Icon>
+										<span className="screen-reader-text">
+											{ __(
+												'API key saved',
+												'pendulum-arc'
+											) }
+										</span>
+									</span>
+								) : null }
+							</div>
+							<ArcButton
+								type="submit"
+								busy={ busy }
+								disabled={ showSavedKey }
+							>
+								{ __( 'Connect with API key', 'pendulum-arc' ) }
+							</ArcButton>
+						</form>
+					</MetaBox>
 				</div>
 			) }
-			{ ! connected &&
+			{ ( ! connected || reconnecting ) &&
 			( state.phase === 'needs_site' || state.phase === 'creating' )
 				? state.draft && (
 						<CreateSiteModal
 							draft={ state.draft }
 							projects={ state.projects }
 							fieldErrors={ state.fieldErrors }
+							error={ state.error }
 							busy={ state.phase === 'creating' }
 							onChange={ ( patch ) =>
 								dispatch( { type: 'draft', patch } )
@@ -206,7 +353,7 @@ export function ConnectPage( { bootstrap } ) {
 						/>
 					)
 				: null }
-			{ ! connected &&
+			{ ( ! connected || reconnecting ) &&
 			( state.phase === 'choose_site' || state.phase === 'pairing' ) ? (
 				<ChooseSiteModal
 					matches={ state.matches }

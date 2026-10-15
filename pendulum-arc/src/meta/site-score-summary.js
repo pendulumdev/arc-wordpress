@@ -14,6 +14,7 @@ export function SiteScoreSummary( {
 	error,
 	loading,
 	connectUrl,
+	portalUrl = '',
 	selected,
 	onSelect,
 } ) {
@@ -42,8 +43,15 @@ export function SiteScoreSummary( {
 							? found.visitors
 							: null;
 					const hasVisitors = ! loading && Boolean( visitors );
+					const setup =
+						found &&
+						( found.setup === 'connect_google' ||
+							found.setup === 'assign_site' )
+							? found.setup
+							: null;
 					const hasScore =
 						! loading &&
+						! setup &&
 						! hasVisitors &&
 						score !== null &&
 						score !== undefined;
@@ -51,6 +59,8 @@ export function SiteScoreSummary( {
 					let state = 'empty';
 					if ( loading ) {
 						state = 'loading';
+					} else if ( setup ) {
+						state = 'setup';
 					} else if ( hasVisitors ) {
 						state = 'visitors';
 					} else if ( hasScore ) {
@@ -77,6 +87,8 @@ export function SiteScoreSummary( {
 										}
 									: null
 							}
+							setup={ setup }
+							actionHref={ setup ? portalUrl : '' }
 							keyphrase={
 								hasScore &&
 								found.keyphraseScore !== null &&

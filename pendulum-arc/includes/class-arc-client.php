@@ -85,7 +85,7 @@ final class Arc_Client {
 	 * @param string               $env        production or preview.
 	 * @param string               $token      Bearer.
 	 * @param string               $project_id Project id.
-	 * @param array<string, string> $body      name and baseUrl.
+	 * @param array<string, mixed> $body            name, baseUrl, auto_run, auto_schedule, auto_sitemap.
 	 * @param string               $idempotency_key Replay key.
 	 * @return array<string, mixed>
 	 */
@@ -258,7 +258,7 @@ final class Arc_Client {
 	 * @param string                    $method Extra headers method.
 	 * @param string                    $url    Absolute URL.
 	 * @param string                    $token  Bearer.
-	 * @param array<string, string>|null $body  JSON body.
+	 * @param array<string, mixed>|null $body   JSON body.
 	 * @param array<string, string>     $extra  Extra headers.
 	 * @return array<string, mixed>
 	 */

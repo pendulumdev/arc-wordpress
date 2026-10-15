@@ -462,14 +462,19 @@
 	font-weight: 500;
 }
 
-.arc-report-alert svg {
+.arc-report-alert > p svg {
 	flex: 0 0 auto;
 	margin-top: 0.1rem;
 	color: var(--arc-accent-amber);
 }
 
+.arc-report-alert .arc-generate svg {
+	margin-top: 0;
+	color: inherit;
+}
+
 .arc-scores .arc-report-alert {
-	margin-bottom: 0.75rem;
+	margin-bottom: 1.5rem;
 }
 
 .arc-report-alert--error {
@@ -482,8 +487,8 @@
 }
 
 .pendulum-arc-screen > .arc-report-alert {
-	margin-top: 1.25rem;
-	margin-bottom: 1rem;
+	margin-top: 1.5rem;
+	margin-bottom: 0;
 }
 
 .arc-report-alert--error .arc-generate svg {

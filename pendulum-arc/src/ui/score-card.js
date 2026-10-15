@@ -311,13 +311,15 @@ function IssuePill( { issueCount, manualCount, severity } ) {
  * @param {string}                                                                   props.service
  * @param {string}                                                                   props.accent
  * @param {string}                                                                   props.label
- * @param {'empty'|'loading'|'score'|'visitors'}                                     props.state
+ * @param {'empty'|'loading'|'score'|'visitors'|'setup'}                             props.state
  * @param {number|null}                                                              [props.score]
  * @param {string|null}                                                              [props.band]
  * @param {string|null}                                                              [props.mood]
  * @param {Object|null}                                                              [props.visitors]
  * @param {{issueCount?: number, manualCount?: number, severity?: string|null}|null} [props.issues]
  * @param {{score?: number|null, band?: string|null}|null}                           [props.keyphrase]
+ * @param {'connect_google'|'assign_site'|null}                                      [props.setup]
+ * @param {string}                                                                   [props.actionHref]
  * @param {boolean}                                                                  [props.selected]
  * @param {(service: string) => void}                                                [props.onSelect]
  */
@@ -332,6 +334,8 @@ export function ScoreCard( {
 	visitors = null,
 	issues = null,
 	keyphrase = null,
+	setup = null,
+	actionHref = '',
 	selected = false,
 	onSelect,
 } ) {
@@ -343,8 +347,15 @@ export function ScoreCard( {
 		bad: __( 'Critical gaps', 'pendulum-arc' ),
 	}[ mood ];
 	let hint = __( 'No report yet', 'pendulum-arc' );
+	let actionLabel = '';
 	if ( state === 'loading' ) {
 		hint = __( 'Loading scores…', 'pendulum-arc' );
+	} else if ( state === 'setup' && setup === 'connect_google' ) {
+		hint = __( 'No Google connection', 'pendulum-arc' );
+		actionLabel = __( 'Connect Google', 'pendulum-arc' );
+	} else if ( state === 'setup' ) {
+		hint = __( 'Assign a Google property', 'pendulum-arc' );
+		actionLabel = __( 'Assign in Arc', 'pendulum-arc' );
 	} else if ( state === 'score' ) {
 		hint = band || moodLabel || '';
 	} else if ( state === 'visitors' ) {
@@ -356,21 +367,24 @@ export function ScoreCard( {
 			: null;
 	const keyphraseMood =
 		keyphraseScore === null ? null : scoreMood( keyphraseScore );
-	const Tag = onSelect ? 'button' : 'article';
+	const interactive = Boolean( onSelect ) && state !== 'setup';
+	const Tag = interactive ? 'button' : 'article';
 
 	return (
 		<Tag
 			className="arc-score-card"
-			type={ onSelect ? 'button' : undefined }
+			type={ interactive ? 'button' : undefined }
 			data-service={ service }
 			data-accent={ accent }
 			data-state={
-				state === 'score' || state === 'visitors' ? state : 'empty'
+				state === 'score' || state === 'visitors' || state === 'setup'
+					? state
+					: 'empty'
 			}
 			data-mood={ mood || undefined }
 			data-selected={ selected ? 'true' : undefined }
-			aria-pressed={ onSelect ? selected : undefined }
-			onClick={ onSelect ? () => onSelect( service ) : undefined }
+			aria-pressed={ interactive ? selected : undefined }
+			onClick={ interactive ? () => onSelect( service ) : undefined }
 		>
 			<div className="arc-score-card__face">
 				<div className="arc-score-card__title">
@@ -447,6 +461,16 @@ export function ScoreCard( {
 						{ state === 'visitors' ? null : (
 							<p className="arc-score-card__hint">{ hint }</p>
 						) }
+						{ state === 'setup' && actionHref && actionLabel ? (
+							<a
+								className="arc-score-card__action"
+								href={ actionHref }
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								{ actionLabel }
+							</a>
+						) : null }
 						{ state === 'visitors' ? null : (
 							<div
 								className="arc-score-card__keyphrase"

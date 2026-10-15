@@ -34,6 +34,7 @@ if ( widgetElement ) {
 			dashboardUrl={ widgetElement.dataset.dashboardUrl || '' }
 			connectUrl={ widgetElement.dataset.connectUrl || '' }
 			connected={ widgetElement.dataset.connected === '1' }
+			portalUrl={ widgetElement.dataset.portalUrl || '' }
 		/>
 	);
 }

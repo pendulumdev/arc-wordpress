@@ -53,7 +53,7 @@ final class Admin {
 	 */
 	public function menu(): void {
 		add_menu_page(
-			__( 'Arc • Dashboard', 'pendulum-arc' ),
+			__( 'Pendulum Arc • Dashboard', 'pendulum-arc' ),
 			__( 'Arc', 'pendulum-arc' ),
 			'manage_options',
 			'pendulum-arc',
@@ -63,7 +63,7 @@ final class Admin {
 		);
 		add_submenu_page(
 			'pendulum-arc',
-			__( 'Arc • Dashboard', 'pendulum-arc' ),
+			__( 'Pendulum Arc • Dashboard', 'pendulum-arc' ),
 			__( 'Dashboard', 'pendulum-arc' ),
 			'manage_options',
 			'pendulum-arc',
@@ -71,7 +71,7 @@ final class Admin {
 		);
 		add_submenu_page(
 			'pendulum-arc',
-			__( 'Arc • Connect', 'pendulum-arc' ),
+			__( 'Pendulum Arc • Connect', 'pendulum-arc' ),
 			__( 'Connect', 'pendulum-arc' ),
 			'manage_options',
 			'pendulum-arc-connect',
@@ -167,7 +167,7 @@ final class Admin {
 		}
 		wp_add_dashboard_widget(
 			'pendulum_arc_scores',
-			__( 'Arc Website Scores', 'pendulum-arc' ),
+			__( 'Pendulum Arc', 'pendulum-arc' ),
 			array( $this, 'render_dashboard_widget' )
 		);
 	}
@@ -178,9 +178,11 @@ final class Admin {
 	public function render_dashboard_widget(): void {
 		$url     = admin_url( 'admin.php?page=pendulum-arc' );
 		$connect = admin_url( 'admin.php?page=pendulum-arc-connect' );
+		$view    = $this->store->public_view();
 		echo '<div id="pendulum-arc-dashboard-widget" class="pendulum-arc-dashboard-widget"';
 		echo ' data-dashboard-url="' . esc_url( $url ) . '"';
 		echo ' data-connect-url="' . esc_url( $connect ) . '"';
+		echo ' data-portal-url="' . esc_url( (string) ( $view['portalUrl'] ?? '' ) ) . '"';
 		echo ' data-connected="' . ( $this->store->is_connected() ? '1' : '0' ) . '"';
 		echo '></div>';
 	}
@@ -264,9 +266,11 @@ final class Admin {
 			'connection' => $this->store->public_view(),
 			'pending'    => $this->store->pending_public( $user_id ),
 			'urls'       => array(
-				'dashboard' => admin_url( 'admin.php?page=pendulum-arc' ),
-				'connect'   => admin_url( 'admin.php?page=pendulum-arc-connect' ),
-				'portal'    => Arc_Config::portal( Arc_Config::env() ),
+				'dashboard'    => admin_url( 'admin.php?page=pendulum-arc' ),
+				'connect'      => admin_url( 'admin.php?page=pendulum-arc-connect' ),
+				'portal'       => Arc_Config::portal( Arc_Config::env() ),
+				'arcMark'      => plugins_url( 'assets/arc-mark-color.svg', ARC_WORDPRESS_FILE ),
+				'pendulumMark' => plugins_url( 'assets/pendulum-mark.svg', ARC_WORDPRESS_FILE ),
 			),
 		);
 		$json      = wp_json_encode( $bootstrap );

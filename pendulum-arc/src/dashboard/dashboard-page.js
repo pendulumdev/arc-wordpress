@@ -9,32 +9,35 @@ import { useCallback, useState } from '@wordpress/element';
 import { SiteScoreSummary, useSiteScores } from '../meta';
 import { GenerationNotice } from '../reports/report-cta';
 import { ReportSummary } from '../reports/report-summary';
+import { isSiteMissingError } from '../ui/error-alert';
 import { OpenInArc } from '../ui/open-in-arc';
 
 export function DashboardPage( { bootstrap } ) {
-	const scores = useSiteScores();
+	const { scores: scoreRows, error, loading, reload } = useSiteScores();
 	const connection = bootstrap.connection || {};
 	const portalUrl = connection.portalUrl || bootstrap.urls.portal;
 	const [ service, setService ] = useState( 'analytics' );
-	const [ gap, setGap ] = useState( null );
-	const onGap = useCallback( ( next ) => {
-		setGap( ( current ) => ( current === next ? current : next ) );
-	}, [] );
+	const [ refreshKey, setRefreshKey ] = useState( 0 );
+	const onSettled = useCallback( () => {
+		reload();
+		setRefreshKey( ( current ) => current + 1 );
+	}, [ reload ] );
 
 	return (
 		<div className="pendulum-arc-screen">
 			<OpenInArc bootstrap={ bootstrap } />
-			{ gap ? (
+			{ isSiteMissingError( error ) ? null : (
 				<GenerationNotice
-					generating={ gap === 'generating' }
 					connectUrl={ bootstrap.urls.connect }
+					onSettled={ onSettled }
 				/>
-			) : null }
+			) }
 			<SiteScoreSummary
-				scores={ scores.scores }
-				error={ scores.error }
-				loading={ scores.loading }
+				scores={ scoreRows }
+				error={ error }
+				loading={ loading }
 				connectUrl={ bootstrap.urls.connect }
+				portalUrl={ portalUrl }
 				selected={ service }
 				onSelect={ setService }
 			/>
@@ -43,7 +46,7 @@ export function DashboardPage( { bootstrap } ) {
 				connectUrl={ bootstrap.urls.connect }
 				service={ service }
 				onService={ setService }
-				onGap={ onGap }
+				refreshKey={ refreshKey }
 			/>
 		</div>
 	);

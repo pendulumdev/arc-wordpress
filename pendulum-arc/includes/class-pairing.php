@@ -208,7 +208,7 @@ final class Pairing {
 	 * One row per service, using the latest score when Arc sent one.
 	 *
 	 * @param array<string, mixed> $json Scores response.
-	 * @return array<int, array{service: string, score: float|null, band: string|null, issueCount: int, manualCount: int, issueSeverity: string|null, keyphraseScore: float|null, keyphraseBand: string|null}>
+	 * @return array<int, array{service: string, score: float|null, band: string|null, issueCount: int, manualCount: int, issueSeverity: string|null, keyphraseScore: float|null, keyphraseBand: string|null, setup: string|null}>
 	 */
 	public static function scores( array $json ): array {
 		$indexed = array();
@@ -231,7 +231,8 @@ final class Pairing {
 			}
 		}
 
-		$out = array();
+		$setup = self::analytics_setup( $json['analyticsSetup'] ?? null );
+		$out   = array();
 		foreach ( self::SERVICES as $service ) {
 			$row   = $indexed[ $service ] ?? array();
 			$out[] = array(
@@ -244,6 +245,7 @@ final class Pairing {
 				'keyphraseScore' => self::decimal_score( $row, 'keyphraseScore' ),
 				'keyphraseBand'  => self::label_value( $row, array( 'keyphraseBand', 'keyphrase_band' ) ),
 				'visitors'       => self::visitors( $service, $row ),
+				'setup'          => 'analytics' === $service ? $setup : null,
 			);
 		}
 		return $out;
@@ -438,6 +440,18 @@ final class Pairing {
 			'previousReturningUsers' => is_numeric( $raw['previousReturningUsers'] ?? null ) ? (int) $raw['previousReturningUsers'] : null,
 			'series'                 => $series,
 		);
+	}
+
+	/**
+	 * Analytics gap from the scores payload, or null when it can run.
+	 *
+	 * @param mixed $value Raw analyticsSetup.
+	 */
+	private static function analytics_setup( $value ): ?string {
+		if ( 'connect_google' === $value || 'assign_site' === $value ) {
+			return $value;
+		}
+		return null;
 	}
 
 	/**

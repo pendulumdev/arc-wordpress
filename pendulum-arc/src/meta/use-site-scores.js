@@ -1,13 +1,15 @@
 /**
  * WordPress dependencies
  */
-import { useEffect, useState } from '@wordpress/element';
+import { useCallback, useEffect, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
 import { errorMessage, fetchScores } from '../api';
+
+const SCORE_ERROR = __( 'Scores could not be loaded.', 'pendulum-arc' );
 
 export function useSiteScores( enabled = true ) {
 	const [ state, setState ] = useState( {
@@ -16,12 +18,34 @@ export function useSiteScores( enabled = true ) {
 		error: '',
 	} );
 
+	const reload = useCallback( () => {
+		if ( ! enabled ) {
+			return Promise.resolve();
+		}
+		return fetchScores()
+			.then( ( result ) => {
+				setState( {
+					loading: false,
+					scores: result.scores || [],
+					error: result.error || '',
+				} );
+			} )
+			.catch( ( error ) => {
+				setState( ( current ) => ( {
+					...current,
+					loading: false,
+					error: errorMessage( error, SCORE_ERROR ),
+				} ) );
+			} );
+	}, [ enabled ] );
+
 	useEffect( () => {
 		if ( ! enabled ) {
 			setState( { loading: false, scores: [], error: '' } );
 			return undefined;
 		}
 		let cancelled = false;
+		setState( ( current ) => ( { ...current, loading: true } ) );
 		fetchScores()
 			.then( ( result ) => {
 				if ( cancelled ) {
@@ -40,10 +64,7 @@ export function useSiteScores( enabled = true ) {
 				setState( {
 					loading: false,
 					scores: [],
-					error: errorMessage(
-						error,
-						__( 'Scores could not be loaded.', 'pendulum-arc' )
-					),
+					error: errorMessage( error, SCORE_ERROR ),
 				} );
 			} );
 		return () => {
@@ -51,5 +72,5 @@ export function useSiteScores( enabled = true ) {
 		};
 	}, [ enabled ] );
 
-	return state;
+	return { ...state, reload };
 }

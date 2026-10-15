@@ -56,62 +56,57 @@ final class Connect_Service {
 			);
 		}
 
-		$env      = Pairing::env_for_key( $api_key );
-		$profile  = Arc_Config::install_profile();
-		$account  = Pairing::account_label( $this->client->me( $env, $api_key ) );
-		$projects = $this->client->projects( $env, $api_key );
-		$portal   = Arc_Config::portal( $env );
+		$env     = Pairing::env_for_key( $api_key );
+		$account = Pairing::account_label( $this->client->me( $env, $api_key ) );
 
-		if ( array() === $projects ) {
-			$this->store->clear_pending( $user_id );
-			return array(
-				'status'    => 'needs_project',
-				'portalUrl' => $portal,
-			);
-		}
-
-		$sites = array();
-		foreach ( $projects as $project ) {
-			$sites = array_merge( $sites, $this->client->sites( $env, $api_key, $project['id'] ) );
-		}
-		$matches = Site_Origin::matching( $sites, $profile['origin'] );
-
-		if ( 1 === count( $matches ) ) {
-			$this->save_connection( 'api_key', $env, $api_key, '', 0, $account, $matches[0] );
-			$this->store->clear_pending( $user_id );
-			return array(
-				'status'     => 'connected',
-				'connection' => $this->store->public_view(),
-			);
-		}
-
-		$draft  = array(
-			'name'      => $profile['name'],
-			'baseUrl'   => (string) ( Site_Origin::normalize( $profile['origin'] ) ?? $profile['origin'] ),
-			'projectId' => 1 === count( $projects ) ? $projects[0]['id'] : '',
-		);
-		$status = count( $matches ) > 1 ? 'choose_site' : 'needs_site';
-		$this->store->put_pending(
+		return $this->offer_sites(
 			$user_id,
 			array(
-				'status'       => $status,
+				'method'       => 'api_key',
 				'env'          => $env,
 				'accessToken'  => $api_key,
+				'refreshToken' => '',
+				'expiresAt'    => 0,
 				'accountLabel' => $account,
-				'projects'     => $projects,
-				'matches'      => $matches,
-				'draft'        => $draft,
-				'portalUrl'    => $portal,
 			)
 		);
+	}
 
-		return array(
-			'status'    => $status,
-			'projects'  => $projects,
-			'matches'   => $matches,
-			'draft'     => $draft,
-			'portalUrl' => $portal,
+	/**
+	 * Uses the saved API key or Arc account to attach this address again.
+	 *
+	 * @param int $user_id Admin user id.
+	 * @return array<string, mixed>
+	 */
+	public function reconnect( int $user_id ): array {
+		$creds = $this->store->credentials();
+		if ( null === $creds || '' === (string) ( $creds['accessToken'] ?? '' ) ) {
+			throw new Arc_Api_Exception( __( 'Arc is not connected on this site.', 'pendulum-arc' ), 400 );
+		}
+		$view       = $this->store->public_view();
+		$credential = array(
+			'method'       => (string) ( $creds['method'] ?? 'api_key' ),
+			'env'          => (string) ( $creds['env'] ?? 'production' ),
+			'accessToken'  => (string) $creds['accessToken'],
+			'refreshToken' => (string) ( $creds['refreshToken'] ?? '' ),
+			'expiresAt'    => (int) ( $creds['expiresAt'] ?? 0 ),
+			'accountLabel' => (string) ( $view['accountLabel'] ?? '' ),
 		);
+		try {
+			return $this->offer_sites( $user_id, $credential );
+		} catch ( Arc_Api_Exception $error ) {
+			if ( 401 !== $error->status_code() || 'oauth' !== $credential['method'] || '' === $credential['refreshToken'] ) {
+				throw $error;
+			}
+		}
+		$fresh                      = $this->refreshed_credentials( $creds );
+		$again                      = $this->store->credentials();
+		$credential['accessToken']  = (string) $fresh['accessToken'];
+		$credential['refreshToken'] = (string) ( $fresh['refreshToken'] ?? '' );
+		if ( is_array( $again ) ) {
+			$credential['expiresAt'] = (int) ( $again['expiresAt'] ?? 0 );
+		}
+		return $this->offer_sites( $user_id, $credential );
 	}
 
 	/**
@@ -133,15 +128,7 @@ final class Connect_Service {
 		if ( ! is_array( $chosen ) ) {
 			throw new Arc_Api_Exception( __( 'Choose one of the matching sites.', 'pendulum-arc' ), 400 );
 		}
-		$this->save_connection(
-			'api_key',
-			(string) $pending['env'],
-			(string) $pending['accessToken'],
-			'',
-			0,
-			(string) ( $pending['accountLabel'] ?? '' ),
-			$chosen
-		);
+		$this->save_from_pending( $pending, $chosen );
 		$this->store->clear_pending( $user_id );
 		return array(
 			'status'     => 'connected',
@@ -178,8 +165,11 @@ final class Connect_Service {
 			(string) $pending['accessToken'],
 			$project_id,
 			array(
-				'name'    => trim( $name ),
-				'baseUrl' => (string) $normalized,
+				'name'          => trim( $name ),
+				'baseUrl'       => (string) $normalized,
+				'auto_run'      => true,
+				'auto_schedule' => true,
+				'auto_sitemap'  => true,
 			),
 			wp_generate_uuid4()
 		);
@@ -187,15 +177,7 @@ final class Connect_Service {
 		if ( null === $site ) {
 			throw new Arc_Api_Exception( __( 'Arc did not return the site.', 'pendulum-arc' ), 502 );
 		}
-		$this->save_connection(
-			'api_key',
-			(string) $pending['env'],
-			(string) $pending['accessToken'],
-			'',
-			0,
-			(string) ( $pending['accountLabel'] ?? '' ),
-			$site
-		);
+		$this->save_from_pending( $pending, $site );
 		$this->store->clear_pending( $user_id );
 		return array(
 			'status'     => 'connected',
@@ -321,6 +303,21 @@ final class Connect_Service {
 	}
 
 	/**
+	 * Admin sentence for a failed read of the paired site.
+	 *
+	 * A 404 means the stored site is not on this account. Other statuses keep
+	 * the message Arc already made safe to show.
+	 *
+	 * @param Arc_Api_Exception $error Arc error.
+	 */
+	public static function admin_message( Arc_Api_Exception $error ): string {
+		if ( 404 === $error->status_code() ) {
+			return __( 'Arc cannot find this site on the connected account. Reconnect to attach the site for this WordPress address.', 'pendulum-arc' );
+		}
+		return $error->getMessage();
+	}
+
+	/**
 	 * Scores for the dashboard. A failed read still returns the six rows.
 	 *
 	 * @return array{scores: array<int, array<string, mixed>>, error: string|null}
@@ -338,7 +335,7 @@ final class Connect_Service {
 		} catch ( Arc_Api_Exception $error ) {
 			return array(
 				'scores' => Pairing::scores( array() ),
-				'error'  => $error->getMessage(),
+				'error'  => self::admin_message( $error ),
 			);
 		}
 		return array(
@@ -367,7 +364,7 @@ final class Connect_Service {
 				}
 			);
 		} catch ( Arc_Api_Exception $error ) {
-			$empty['error'] = $error->getMessage();
+			$empty['error'] = self::admin_message( $error );
 			return $empty;
 		}
 		$view                 = Pairing::analytics( $payload );
@@ -405,7 +402,7 @@ final class Connect_Service {
 				}
 			);
 		} catch ( Arc_Api_Exception $error ) {
-			$empty['error'] = $error->getMessage();
+			$empty['error'] = self::admin_message( $error );
 			return $empty;
 		}
 		$view            = Pairing::report( $payload );
@@ -439,7 +436,7 @@ final class Connect_Service {
 				}
 			);
 		} catch ( Arc_Api_Exception $error ) {
-			$empty['error'] = $error->getMessage();
+			$empty['error'] = self::admin_message( $error );
 			return $empty;
 		}
 		$view          = Pairing::in_flight_runs( $payload );
@@ -480,6 +477,9 @@ final class Connect_Service {
 					__( 'Reconnect this site in Arc to allow generating reports.', 'pendulum-arc' ),
 					403
 				);
+			}
+			if ( 404 === $error->status_code() ) {
+				throw new Arc_Api_Exception( self::admin_message( $error ), 404 );
 			}
 			throw $error;
 		}
@@ -720,6 +720,101 @@ final class Connect_Service {
 			$out[]           = $page;
 		}
 		return $out;
+	}
+
+	/**
+	 * Lists the account's sites and pairs, chooses, or asks to create one.
+	 *
+	 * @param int                  $user_id    Admin user id.
+	 * @param array<string, mixed> $credential Saved or pasted bearer.
+	 * @return array<string, mixed>
+	 */
+	private function offer_sites( int $user_id, array $credential ): array {
+		$env      = (string) $credential['env'];
+		$token    = (string) $credential['accessToken'];
+		$profile  = Arc_Config::install_profile();
+		$projects = $this->client->projects( $env, $token );
+		$portal   = Arc_Config::portal( $env );
+
+		if ( array() === $projects ) {
+			$this->store->clear_pending( $user_id );
+			return array(
+				'status'    => 'needs_project',
+				'portalUrl' => $portal,
+			);
+		}
+
+		$sites = array();
+		foreach ( $projects as $project ) {
+			$sites = array_merge( $sites, $this->client->sites( $env, $token, $project['id'] ) );
+		}
+		$matches = Site_Origin::matching( $sites, $profile['origin'] );
+
+		if ( 1 === count( $matches ) ) {
+			$this->save_connection(
+				(string) $credential['method'],
+				$env,
+				$token,
+				(string) ( $credential['refreshToken'] ?? '' ),
+				(int) ( $credential['expiresAt'] ?? 0 ),
+				(string) ( $credential['accountLabel'] ?? '' ),
+				$matches[0]
+			);
+			$this->store->clear_pending( $user_id );
+			return array(
+				'status'     => 'connected',
+				'connection' => $this->store->public_view(),
+			);
+		}
+
+		$draft  = array(
+			'name'      => $profile['name'],
+			'baseUrl'   => (string) ( Site_Origin::normalize( $profile['origin'] ) ?? $profile['origin'] ),
+			'projectId' => 1 === count( $projects ) ? $projects[0]['id'] : '',
+		);
+		$status = count( $matches ) > 1 ? 'choose_site' : 'needs_site';
+		$this->store->put_pending(
+			$user_id,
+			array(
+				'status'       => $status,
+				'method'       => (string) $credential['method'],
+				'env'          => $env,
+				'accessToken'  => $token,
+				'refreshToken' => (string) ( $credential['refreshToken'] ?? '' ),
+				'expiresAt'    => (int) ( $credential['expiresAt'] ?? 0 ),
+				'accountLabel' => (string) ( $credential['accountLabel'] ?? '' ),
+				'projects'     => $projects,
+				'matches'      => $matches,
+				'draft'        => $draft,
+				'portalUrl'    => $portal,
+			)
+		);
+
+		return array(
+			'status'    => $status,
+			'projects'  => $projects,
+			'matches'   => $matches,
+			'draft'     => $draft,
+			'portalUrl' => $portal,
+		);
+	}
+
+	/**
+	 * Keeps the API key or Arc account that started this attempt.
+	 *
+	 * @param array<string, mixed> $pending Pending attempt.
+	 * @param array<string, mixed> $site    Paired site.
+	 */
+	private function save_from_pending( array $pending, array $site ): void {
+		$this->save_connection(
+			(string) ( $pending['method'] ?? 'api_key' ),
+			(string) $pending['env'],
+			(string) $pending['accessToken'],
+			(string) ( $pending['refreshToken'] ?? '' ),
+			(int) ( $pending['expiresAt'] ?? 0 ),
+			(string) ( $pending['accountLabel'] ?? '' ),
+			$site
+		);
 	}
 
 	/**

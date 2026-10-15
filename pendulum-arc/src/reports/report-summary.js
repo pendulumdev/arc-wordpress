@@ -17,19 +17,19 @@ import { VisitorAnalytics } from './visitor-analytics';
 /**
  * Category pills and the selected report preview.
  *
- * @param {Object}                                    props
- * @param {string}                                    [props.portalUrl]
- * @param {string}                                    [props.connectUrl]
- * @param {string}                                    [props.service]
- * @param {(service: string) => void}                 [props.onService]
- * @param {(gap: 'needed'|'generating'|null) => void} [props.onGap]
+ * @param {Object}                    props
+ * @param {string}                    [props.portalUrl]
+ * @param {string}                    [props.connectUrl]
+ * @param {string}                    [props.service]
+ * @param {(service: string) => void} [props.onService]
+ * @param {number}                    [props.refreshKey] Bumps when a run leaves in-flight.
  */
 export function ReportSummary( {
 	portalUrl,
 	connectUrl,
 	service,
 	onService,
-	onGap,
+	refreshKey = 0,
 } ) {
 	const [ ownService, setOwnService ] = useState( 'analytics' );
 	const selected = service || ownService;
@@ -40,6 +40,8 @@ export function ReportSummary( {
 	} );
 	const [ reports, setReports ] = useState( {} );
 	const reportCache = useRef( {} );
+	const selectedRef = useRef( selected );
+	selectedRef.current = selected;
 
 	useEffect( () => {
 		let cancelled = false;
@@ -121,18 +123,64 @@ export function ReportSummary( {
 	const issues = Array.isArray( preview.issues ) ? preview.issues : [];
 
 	useEffect( () => {
-		if ( ! onGap ) {
-			return;
+		if ( ! refreshKey ) {
+			return undefined;
 		}
-		const current = selected === 'analytics' ? report : reports[ selected ];
-		if ( ! current || current.loading || current.error || current.runId ) {
-			onGap( null );
-			return;
-		}
-		const generating =
-			current.generation === 'queued' || current.generation === 'running';
-		onGap( generating ? 'generating' : 'needed' );
-	}, [ selected, report, reports, onGap ] );
+		let cancelled = false;
+		const serviceKey = selectedRef.current;
+		const request =
+			serviceKey === 'analytics'
+				? fetchAnalytics()
+				: fetchReport( serviceKey );
+		request
+			.then( ( result ) => {
+				if ( cancelled ) {
+					return;
+				}
+				const next = { ...result, loading: false, error: '' };
+				if ( serviceKey === 'analytics' ) {
+					setReport( next );
+					return;
+				}
+				reportCache.current[ serviceKey ] = next;
+				setReports( ( current ) => ( {
+					...current,
+					[ serviceKey ]: next,
+				} ) );
+			} )
+			.catch( ( error ) => {
+				if ( cancelled ) {
+					return;
+				}
+				const failed = {
+					loading: false,
+					error: errorMessage(
+						error,
+						serviceKey === 'analytics'
+							? __(
+									'The analytics report could not be loaded.',
+									'pendulum-arc'
+								)
+							: __(
+									'The report could not be loaded.',
+									'pendulum-arc'
+								)
+					),
+				};
+				if ( serviceKey === 'analytics' ) {
+					setReport( failed );
+					return;
+				}
+				delete reportCache.current[ serviceKey ];
+				setReports( ( current ) => ( {
+					...current,
+					[ serviceKey ]: failed,
+				} ) );
+			} );
+		return () => {
+			cancelled = true;
+		};
+	}, [ refreshKey ] );
 
 	return (
 		<section className="arc-reports">

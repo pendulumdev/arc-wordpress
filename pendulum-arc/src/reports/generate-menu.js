@@ -1,8 +1,14 @@
 /**
  * WordPress dependencies
  */
-import { useEffect, useId, useRef, useState } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import {
+	useCallback,
+	useEffect,
+	useId,
+	useRef,
+	useState,
+} from '@wordpress/element';
+import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
@@ -51,6 +57,8 @@ const SERVICES = [
 	},
 ];
 
+const POLL_MS = 60000;
+
 /**
  * A poll of the run list wins. A queue that has not landed yet is queued.
  *
@@ -65,6 +73,24 @@ function busyStatus( inFlight, pending ) {
 		return 'queued';
 	}
 	return null;
+}
+
+/**
+ * Server statuses only. A local queue that has not landed is added by the caller.
+ *
+ * @param {Object|null|undefined} view Runs payload.
+ */
+function listedBusy( view ) {
+	const next = {};
+	const raw =
+		view && view.busy && typeof view.busy === 'object' ? view.busy : {};
+	for ( const service of SERVICES ) {
+		const status = raw[ service.key ];
+		if ( status === 'queued' || status === 'running' ) {
+			next[ service.key ] = status;
+		}
+	}
+	return next;
 }
 
 function PlayIcon() {
@@ -94,14 +120,14 @@ function Spinner() {
 
 /**
  * Portal Generate bloom: confirm, then queue one service or every idle one.
- * In-flight labels come from one runs read when the notice opens, and one
- * more after a queue. The menu does not poll.
+ * Runs are read on load, then once a minute while any service is in flight.
  *
  * @param {Object}     props
  * @param {() => void} [props.onActivity] Called when any service is queued or running.
+ * @param {() => void} [props.onSettled]  Called when a service leaves in-flight.
  * @param {string}     [props.connectUrl] WordPress Connect settings page.
  */
-export function GenerateReports( { onActivity, connectUrl } ) {
+export function GenerateReports( { onActivity, onSettled, connectUrl } ) {
 	const [ open, setOpen ] = useState( false );
 	const [ confirm, setConfirm ] = useState( null );
 	const [ busy, setBusy ] = useState( {} );
@@ -110,21 +136,53 @@ export function GenerateReports( { onActivity, connectUrl } ) {
 	const [ error, setError ] = useState( null );
 	const rootRef = useRef( null );
 	const menuId = useId();
+	const busyRef = useRef( {} );
+	const pendingRef = useRef( null );
+	const pendingAllRef = useRef( false );
+	const onSettledRef = useRef( onSettled );
+	pendingRef.current = pending;
+	pendingAllRef.current = pendingAll;
+	onSettledRef.current = onSettled;
 
-	useEffect( () => {
-		let cancel = false;
-		fetchRuns()
-			.then( ( view ) => {
-				if ( cancel || ! view || ! view.busy ) {
-					return;
+	const applyBusy = useCallback( ( view ) => {
+		const next = listedBusy( view );
+		if ( pendingRef.current && ! next[ pendingRef.current ] ) {
+			next[ pendingRef.current ] = 'queued';
+		}
+		if ( pendingAllRef.current ) {
+			for ( const service of SERVICES ) {
+				if ( busyRef.current[ service.key ] && ! next[ service.key ] ) {
+					next[ service.key ] = busyRef.current[ service.key ];
 				}
-				setBusy( ( current ) => ( { ...view.busy, ...current } ) );
-				if ( view.error ) {
-					setError( view.error );
-				}
-			} )
-			.catch( ( failure ) => {
-				if ( ! cancel ) {
+			}
+		}
+		const settled = SERVICES.some(
+			( service ) =>
+				busyRef.current[ service.key ] && ! next[ service.key ]
+		);
+		busyRef.current = next;
+		setBusy( next );
+		if ( settled && onSettledRef.current ) {
+			onSettledRef.current();
+		}
+	}, [] );
+
+	const readRuns = useCallback(
+		( isCurrent ) => {
+			fetchRuns()
+				.then( ( view ) => {
+					if ( ! isCurrent() ) {
+						return;
+					}
+					applyBusy( view );
+					if ( view && view.error ) {
+						setError( view.error );
+					}
+				} )
+				.catch( ( failure ) => {
+					if ( ! isCurrent() ) {
+						return;
+					}
 					setError(
 						errorMessage(
 							failure,
@@ -134,18 +192,38 @@ export function GenerateReports( { onActivity, connectUrl } ) {
 							)
 						)
 					);
-				}
-			} );
+				} );
+		},
+		[ applyBusy ]
+	);
+
+	useEffect( () => {
+		let cancel = false;
+		readRuns( () => ! cancel );
 		return () => {
 			cancel = true;
 		};
-	}, [] );
+	}, [ readRuns ] );
 
 	const anyBusy = SERVICES.some(
 		( service ) =>
 			busyStatus( busy[ service.key ], pending === service.key ) !== null
 	);
 	const submitting = pendingAll || pending !== null;
+
+	useEffect( () => {
+		if ( ! anyBusy ) {
+			return undefined;
+		}
+		let cancel = false;
+		const timer = window.setInterval( () => {
+			readRuns( () => ! cancel );
+		}, POLL_MS );
+		return () => {
+			cancel = true;
+			window.clearInterval( timer );
+		};
+	}, [ anyBusy, readRuns ] );
 
 	useEffect( () => {
 		if ( onActivity ) {
@@ -187,10 +265,12 @@ export function GenerateReports( { onActivity, connectUrl } ) {
 	}, [ open, confirm ] );
 
 	function markQueued( service ) {
-		setBusy( ( current ) => ( {
-			...current,
-			[ service ]: current[ service ] || 'queued',
-		} ) );
+		const next = {
+			...busyRef.current,
+			[ service ]: busyRef.current[ service ] || 'queued',
+		};
+		busyRef.current = next;
+		setBusy( next );
 	}
 
 	async function queueOne( service ) {
@@ -216,20 +296,33 @@ export function GenerateReports( { onActivity, connectUrl } ) {
 	async function queueAll( services ) {
 		setPendingAll( true );
 		setError( null );
+		const failures = [];
 		try {
 			for ( const service of services ) {
-				await enqueueRun( service );
-				markQueued( service );
+				try {
+					await enqueueRun( service );
+					markQueued( service );
+				} catch ( failure ) {
+					const label =
+						SERVICES.find( ( row ) => row.key === service )
+							?.label || service;
+					failures.push(
+						errorMessage(
+							failure,
+							sprintf(
+								/* translators: %s is the report name. */
+								__( 'Could not queue %s.', 'pendulum-arc' ),
+								label
+							)
+						)
+					);
+				}
+			}
+			if ( failures.length > 0 ) {
+				setError( failures.join( ' ' ) );
+				return false;
 			}
 			return true;
-		} catch ( failure ) {
-			setError(
-				errorMessage(
-					failure,
-					__( 'Could not queue that report.', 'pendulum-arc' )
-				)
-			);
-			return false;
 		} finally {
 			setPendingAll( false );
 		}
