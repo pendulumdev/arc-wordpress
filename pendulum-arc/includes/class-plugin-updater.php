@@ -15,21 +15,70 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Plugins-screen update, and the same action on the Arc screens.
+ *
+ * WordPress shows Enable auto-updates only for plugins present in the
+ * update cache. This plugin is not on WordPress.org, so it is added when
+ * that cache is read.
  */
 final class Plugin_Updater {
+
+	/**
+	 * Cached GitHub release.
+	 */
+	private const CACHE = 'arc_wordpress_release';
+
+	/**
+	 * Installed version the cache was stored for.
+	 */
+	private const VERSION_OPTION = 'arc_wordpress_release_version';
+
+	/**
+	 * Set after the one-time automatic-update opt-in.
+	 */
+	private const AUTO_OPTION = 'arc_wordpress_auto_update_set';
+
+	/**
+	 * How long a successful GitHub answer is kept.
+	 */
+	private const HIT_TTL = 12 * HOUR_IN_SECONDS;
+
+	/**
+	 * How long a failed GitHub answer is kept.
+	 */
+	private const MISS_TTL = HOUR_IN_SECONDS;
+
+	/**
+	 * Whether this request already read the release.
+	 *
+	 * @var bool
+	 */
+	private bool $known = false;
+
+	/**
+	 * Release for this request, when GitHub had one.
+	 *
+	 * @var Github_Release|null
+	 */
+	private ?Github_Release $known_release = null;
 
 	/**
 	 * Hooks.
 	 */
 	public function register(): void {
-		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'offer' ) );
+		add_filter( 'site_transient_update_plugins', array( $this, 'offer' ) );
 		add_filter( 'plugins_api', array( $this, 'info' ), 20, 3 );
 		add_filter( 'upgrader_source_selection', array( $this, 'source' ), 10, 4 );
 		add_action( 'admin_notices', array( $this, 'notice' ) );
+		$this->forget_release_after_upgrade();
+		$this->enable_auto_update();
 	}
 
 	/**
-	 * Adds this plugin to the update list when GitHub has a newer release.
+	 * Adds this plugin to the update cache WordPress is reading.
+	 *
+	 * A newer release goes in `response`, which is what cron installs.
+	 * The current release goes in `no_update`, which is what makes the
+	 * auto-update action appear on the Plugins screen.
 	 *
 	 * @param mixed $transient Update transient.
 	 * @return mixed
@@ -38,30 +87,51 @@ final class Plugin_Updater {
 		if ( ! is_object( $transient ) ) {
 			return $transient;
 		}
-
-		$release = $this->release();
-		if ( null === $release ) {
-			return $transient;
-		}
-
-		$file = $this->plugin_file();
-		if ( $release->is_newer_than( ARC_WORDPRESS_VERSION ) ) {
-			if ( ! isset( $transient->response ) || ! is_array( $transient->response ) ) {
-				$transient->response = array();
-			}
-			$transient->response[ $file ] = $this->update_object( $release );
-			return $transient;
-		}
-
-		if ( isset( $transient->response[ $file ] ) ) {
-			unset( $transient->response[ $file ] );
+		if ( ! isset( $transient->response ) || ! is_array( $transient->response ) ) {
+			$transient->response = array();
 		}
 		if ( ! isset( $transient->no_update ) || ! is_array( $transient->no_update ) ) {
 			$transient->no_update = array();
 		}
-		$transient->no_update[ $file ] = $this->update_object( $release );
 
+		$file    = $this->plugin_file();
+		$release = $this->release();
+		if ( null === $release ) {
+			if ( ! isset( $transient->response[ $file ] ) && ! isset( $transient->no_update[ $file ] ) ) {
+				$transient->no_update[ $file ] = $this->installed_object();
+			}
+			return $transient;
+		}
+
+		if ( $release->is_newer_than( ARC_WORDPRESS_VERSION ) ) {
+			unset( $transient->no_update[ $file ] );
+			$transient->response[ $file ] = $this->update_object( $release );
+			return $transient;
+		}
+
+		unset( $transient->response[ $file ] );
+		$transient->no_update[ $file ] = $this->update_object( $release );
 		return $transient;
+	}
+
+	/**
+	 * Turns automatic updates on once. Disable on the Plugins screen stays off.
+	 */
+	public function enable_auto_update(): void {
+		if ( get_site_option( self::AUTO_OPTION ) ) {
+			return;
+		}
+
+		$file = $this->plugin_file();
+		$auto = get_site_option( 'auto_update_plugins', array() );
+		if ( ! is_array( $auto ) ) {
+			$auto = array();
+		}
+		if ( ! in_array( $file, $auto, true ) ) {
+			$auto[] = $file;
+			update_site_option( 'auto_update_plugins', $auto );
+		}
+		update_site_option( self::AUTO_OPTION, '1' );
 	}
 
 	/**
@@ -179,6 +249,21 @@ final class Plugin_Updater {
 	 * Latest release, or null when GitHub has nothing we can install.
 	 */
 	private function release(): ?Github_Release {
+		if ( $this->known ) {
+			return $this->known_release;
+		}
+		$this->known = true;
+
+		if ( $this->force_check() ) {
+			delete_transient( self::CACHE );
+		}
+
+		$cached = get_transient( self::CACHE );
+		if ( is_array( $cached ) && array_key_exists( 'json', $cached ) ) {
+			$this->known_release = is_array( $cached['json'] ) ? Github_Release::from_api( $cached['json'] ) : null;
+			return $this->known_release;
+		}
+
 		$response = wp_remote_get(
 			Github_Release::api_url(),
 			array(
@@ -190,15 +275,59 @@ final class Plugin_Updater {
 			)
 		);
 		if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+			set_transient( self::CACHE, array( 'json' => null ), self::MISS_TTL );
 			return null;
 		}
 
 		$json = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 		if ( ! is_array( $json ) ) {
+			set_transient( self::CACHE, array( 'json' => null ), self::MISS_TTL );
 			return null;
 		}
 
-		return Github_Release::from_api( $json );
+		set_transient( self::CACHE, array( 'json' => $json ), self::HIT_TTL );
+		$this->known_release = Github_Release::from_api( $json );
+		return $this->known_release;
+	}
+
+	/**
+	 * Drops the cached release after the installed version changes.
+	 */
+	private function forget_release_after_upgrade(): void {
+		if ( ARC_WORDPRESS_VERSION === get_site_option( self::VERSION_OPTION ) ) {
+			return;
+		}
+		delete_transient( self::CACHE );
+		update_site_option( self::VERSION_OPTION, ARC_WORDPRESS_VERSION );
+	}
+
+	/**
+	 * Whether this admin request asked WordPress to check again.
+	 */
+	private function force_check(): bool {
+		if ( ! is_admin() || ! current_user_can( 'update_plugins' ) ) {
+			return false;
+		}
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Same query arg as the core Updates screen.
+		return isset( $_GET['force-check'] );
+	}
+
+	/**
+	 * Current install, recorded when GitHub cannot be read.
+	 */
+	private function installed_object(): object {
+		$file = $this->plugin_file();
+		return (object) array(
+			'id'           => $file,
+			'slug'         => $this->slug(),
+			'plugin'       => $file,
+			'new_version'  => ARC_WORDPRESS_VERSION,
+			'url'          => '',
+			'package'      => '',
+			'tested'       => '7.1',
+			'requires'     => '6.7',
+			'requires_php' => '8.1',
+		);
 	}
 
 	/**

@@ -1,0 +1,320 @@
+/*
+ * Cookie banner. One class deep, no !important, so a theme can override it.
+ * Button colours come from --arc-cookie-accept, --arc-cookie-decline, and
+ * --arc-cookie-more on .arc-cookie-root or on a single button.
+ */
+
+.arc-cookie-root {
+	font-family: inherit;
+	font-size: 0.875rem;
+	line-height: 1.5;
+	color: #12141a;
+}
+
+.arc-cookie {
+	box-sizing: border-box;
+	z-index: 100000;
+	max-width: 32rem;
+	margin: 1rem;
+	padding: 1.25rem;
+	border: 1px solid #d8dce6;
+	border-radius: 1.5rem;
+	background: #fff;
+	color: #12141a;
+	box-shadow: 0 12px 40px rgba(18, 20, 26, 0.12);
+}
+
+.arc-cookie[hidden],
+.arc-cookie__modal[hidden],
+.arc-cookie__reopen[hidden] {
+	display: none;
+}
+
+.arc-cookie--header.arc-cookie--fixed,
+.arc-cookie--footer.arc-cookie--fixed {
+	position: fixed;
+	z-index: 100000;
+	right: 0;
+	left: 0;
+	max-width: none;
+	margin: 0;
+	border-radius: 0;
+}
+
+.arc-cookie--header.arc-cookie--fixed {
+	top: 0;
+}
+
+.arc-cookie--footer.arc-cookie--fixed {
+	bottom: 0;
+	padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+}
+
+.arc-cookie--header.arc-cookie--static,
+.arc-cookie--footer.arc-cookie--static {
+	position: static;
+	max-width: none;
+	margin: 0;
+	border-radius: 0;
+}
+
+.arc-cookie[class*="arc-cookie--pos-"],
+.arc-cookie__reopen[class*="arc-cookie--pos-"] {
+	position: fixed;
+	z-index: 100000;
+	margin: 0;
+}
+
+body.admin-bar .arc-cookie--pos-top-left,
+body.admin-bar .arc-cookie--pos-top-center,
+body.admin-bar .arc-cookie--pos-top-right,
+body.admin-bar .arc-cookie__reopen.arc-cookie--pos-top-left,
+body.admin-bar .arc-cookie__reopen.arc-cookie--pos-top-center,
+body.admin-bar .arc-cookie__reopen.arc-cookie--pos-top-right {
+	top: 3rem;
+}
+
+.arc-cookie--pos-top-left,
+.arc-cookie__reopen.arc-cookie--pos-top-left {
+	top: 1rem;
+	right: auto;
+	bottom: auto;
+	left: 1rem;
+}
+
+.arc-cookie--pos-top-center,
+.arc-cookie__reopen.arc-cookie--pos-top-center {
+	top: 1rem;
+	right: auto;
+	bottom: auto;
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+.arc-cookie--pos-top-right,
+.arc-cookie__reopen.arc-cookie--pos-top-right {
+	top: 1rem;
+	right: 1rem;
+	bottom: auto;
+	left: auto;
+}
+
+.arc-cookie--pos-middle-left,
+.arc-cookie__reopen.arc-cookie--pos-middle-left {
+	top: 50%;
+	right: auto;
+	bottom: auto;
+	left: 1rem;
+	transform: translateY(-50%);
+}
+
+.arc-cookie--pos-center,
+.arc-cookie__reopen.arc-cookie--pos-center {
+	top: 50%;
+	right: auto;
+	bottom: auto;
+	left: 50%;
+	transform: translate(-50%, -50%);
+}
+
+.arc-cookie--pos-middle-right,
+.arc-cookie__reopen.arc-cookie--pos-middle-right {
+	top: 50%;
+	right: 1rem;
+	bottom: auto;
+	left: auto;
+	transform: translateY(-50%);
+}
+
+.arc-cookie--pos-bottom-left,
+.arc-cookie__reopen.arc-cookie--pos-bottom-left {
+	top: auto;
+	right: auto;
+	bottom: 1rem;
+	left: 1rem;
+}
+
+.arc-cookie--pos-bottom-center,
+.arc-cookie__reopen.arc-cookie--pos-bottom-center {
+	top: auto;
+	right: auto;
+	bottom: 1rem;
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+.arc-cookie--pos-bottom-right,
+.arc-cookie__reopen.arc-cookie--pos-bottom-right {
+	top: auto;
+	right: 1rem;
+	bottom: 1rem;
+	left: auto;
+}
+
+.arc-cookie__title {
+	margin: 0 0 0.5rem;
+	color: #12141a;
+	font-size: 1rem;
+	font-weight: 650;
+	line-height: 1.3;
+}
+
+.arc-cookie__content {
+	margin: 0;
+	color: #4a5160;
+}
+
+.arc-cookie__content p {
+	margin: 0 0 0.75rem;
+}
+
+.arc-cookie__content p:last-child {
+	margin-bottom: 0;
+}
+
+.arc-cookie__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin-top: 1rem;
+}
+
+.arc-cookie__button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	min-height: 2.25rem;
+	margin: 0;
+	padding: 0.4rem 1rem;
+	border: 0;
+	border-radius: 0.75rem;
+	background: var(--arc-cookie-decline, #6b7280);
+	color: #fff;
+	font: inherit;
+	font-weight: 650;
+	line-height: 1.2;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.arc-cookie__button--accept {
+	background: var(--arc-cookie-accept, #1a9bb8);
+}
+
+.arc-cookie__button--decline {
+	background: var(--arc-cookie-decline, #6b7280);
+}
+
+.arc-cookie__button--more {
+	background: var(--arc-cookie-more, #6b7280);
+}
+
+.arc-cookie__reopen {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 3rem;
+	height: 3rem;
+	padding: 0;
+	border: 1px solid #d8dce6;
+	border-radius: 999px;
+	background: #fff;
+	box-shadow: 0 8px 24px rgba(18, 20, 26, 0.12);
+	cursor: pointer;
+}
+
+.arc-cookie__reopen.arc-cookie--header,
+.arc-cookie__reopen.arc-cookie--footer {
+	position: static;
+	margin: 1rem;
+}
+
+.arc-cookie__reopen img {
+	width: 1.375rem;
+	height: 1.375rem;
+}
+
+.arc-cookie__modal {
+	position: fixed;
+	z-index: 99999;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+}
+
+.arc-cookie__backdrop {
+	position: absolute;
+	inset: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: rgba(0, 0, 0, 0.55);
+	cursor: pointer;
+}
+
+.arc-cookie__dialog {
+	position: relative;
+	z-index: 1;
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 40rem;
+	max-height: min(80vh, 40rem);
+	overflow: auto;
+	padding: 1.5rem;
+	border: 1px solid #d8dce6;
+	border-radius: 1.5rem;
+	background: #fff;
+	box-shadow: 0 12px 40px rgba(18, 20, 26, 0.18);
+}
+
+.arc-cookie__table {
+	width: 100%;
+	margin-top: 1rem;
+	border-collapse: collapse;
+	font-size: 0.8125rem;
+}
+
+.arc-cookie__table th,
+.arc-cookie__table td {
+	padding: 0.5rem;
+	border-bottom: 1px solid #d8dce6;
+	text-align: left;
+	vertical-align: top;
+}
+
+.arc-cookie__table th {
+	color: #6b7280;
+	font-size: 0.75rem;
+	font-weight: 650;
+}
+
+.arc-cookie__name {
+	display: block;
+	color: #12141a;
+	font-weight: 650;
+}
+
+.arc-cookie__cookie {
+	display: block;
+	margin-top: 0.15rem;
+	color: #6b7280;
+	font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+	font-size: 0.75rem;
+}
+
+.arc-cookie__choice {
+	width: 1rem;
+	height: 1rem;
+	margin: 0.15rem 0 0;
+}
+
+@media print {
+	.arc-cookie,
+	.arc-cookie__modal,
+	.arc-cookie__reopen {
+		display: none;
+	}
+}

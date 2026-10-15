@@ -28,11 +28,14 @@ final class Admin_Access {
 	}
 
 	/**
-	 * Connect stays open. Every other plugin screen needs a connection.
+	 * Connect and GDPR consent stay open. Every other plugin screen needs a connection.
 	 *
 	 * @param string $page Sanitized page query value.
 	 */
 	public static function requires_connection( string $page ): bool {
-		return self::is_plugin_page( $page ) && 'pendulum-arc-connect' !== $page;
+		if ( 'pendulum-arc-connect' === $page || 'pendulum-arc-gdpr' === $page ) {
+			return false;
+		}
+		return self::is_plugin_page( $page );
 	}
 }

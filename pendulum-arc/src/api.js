@@ -74,6 +74,35 @@ export function enqueueRun( service ) {
 	} );
 }
 
+export function saveConsent( settings ) {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/consent',
+		method: 'POST',
+		data: { settings },
+	} );
+}
+
+export function renewConsent() {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/consent/renew',
+		method: 'POST',
+	} );
+}
+
+export function resetConsent() {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/consent/reset',
+		method: 'POST',
+	} );
+}
+
+export function resetConsentStyles() {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/consent/styles/reset',
+		method: 'POST',
+	} );
+}
+
 export function errorMessage( error, fallback ) {
 	if ( error && typeof error.message === 'string' && error.message ) {
 		return error.message;

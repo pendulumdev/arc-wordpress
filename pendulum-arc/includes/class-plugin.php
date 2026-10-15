@@ -43,7 +43,8 @@ final class Plugin {
 	}
 
 	/**
-	 * Registers the updater, then the admin and REST hooks when sodium is available.
+	 * Registers the updater and cookie consent, then the admin when sodium is available.
+	 * Consent does not call Arc, so it still runs without the sodium extension.
 	 */
 	public function register(): void {
 		if ( $this->registered ) {
@@ -52,6 +53,8 @@ final class Plugin {
 		$this->registered = true;
 
 		( new Plugin_Updater() )->register();
+		( new Consent_Front() )->register();
+		( new Consent_Rest() )->register();
 
 		if ( ! function_exists( 'sodium_crypto_secretbox' ) ) {
 			add_action( 'admin_notices', array( $this, 'sodium_notice' ) );

@@ -50,8 +50,9 @@ final class ConnectRulesTest extends TestCase {
 		);
 	}
 
-	public function test_only_the_connect_screen_is_open_without_a_connection(): void {
+	public function test_connect_and_gdpr_stay_open_without_a_connection(): void {
 		self::assertFalse( Admin_Access::requires_connection( 'pendulum-arc-connect' ) );
+		self::assertFalse( Admin_Access::requires_connection( 'pendulum-arc-gdpr' ) );
 		self::assertTrue( Admin_Access::requires_connection( 'pendulum-arc' ) );
 		self::assertTrue( Admin_Access::requires_connection( 'pendulum-arc-reports' ) );
 		self::assertFalse( Admin_Access::requires_connection( 'plugins' ) );

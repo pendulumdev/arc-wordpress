@@ -6,6 +6,7 @@ import { createRoot } from '@wordpress/element';
 /**
  * Internal dependencies
  */
+import { ConsentPage } from './consent/consent-page';
 import { ConnectPage } from './connect/connect-page';
 import { DashboardPage } from './dashboard/dashboard-page';
 import { DashboardWidget } from './dashboard/dashboard-widget';
@@ -20,7 +21,11 @@ if ( rootElement ) {
 	} catch {
 		bootstrap = {};
 	}
-	const Page = bootstrap.page === 'dashboard' ? DashboardPage : ConnectPage;
+	const pages = {
+		dashboard: DashboardPage,
+		gdpr: ConsentPage,
+	};
+	const Page = pages[ bootstrap.page ] || ConnectPage;
 	createRoot( rootElement ).render( <Page bootstrap={ bootstrap } /> );
 }
 

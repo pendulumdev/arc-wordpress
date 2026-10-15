@@ -4,7 +4,7 @@ Tags: seo, analytics
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.3.6
+Stable tag: 0.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,6 +18,8 @@ Connect with an API key, or sign in through Arc. Signing in opens Arc, where you
 
 An API key pairs the site when Arc already has this address. When it does not, you confirm the site name, address, and project in WordPress.
 
+GDPR Consent, under the Arc menu, is a cookie banner for this site. It does not call Arc, and it is available before the site is paired. Optional cookies, and scripts listed on them, stay off until a visitor accepts them. Decline refuses every optional cookie. Consent logging is off until you turn it on. A static banner is printed at the end of the theme header or footer. A fixed banner is positioned on the screen. Disable, on the Behaviour tab, turns the banner off and leaves script tags unchanged.
+
 = External service =
 
 This plugin sends the site address and an API key or OAuth token to Pendulum Arc.
@@ -29,7 +31,7 @@ This plugin sends the site address and an API key or OAuth token to Pendulum Arc
 
 Tokens are stored encrypted in WordPress and are not shown again. Disconnecting here stops this install from calling Arc. An Arc admin revokes the key or the connected app in Arc.
 
-The plugin also asks GitHub if a newer release exists, at `https://api.github.com/repos/pendulumdev/arc-wordpress/releases/latest`. That request sends no site address and no Arc credential. Update now downloads the release zip from GitHub.
+The plugin also asks GitHub if a newer release exists, at `https://api.github.com/repos/pendulumdev/arc-wordpress/releases/latest`. That request sends no site address and no Arc credential. Update now, and automatic updates, download the release zip from GitHub. Automatic updates are turned on. Disable them on the Plugins screen to leave them off.
 
 == Installation ==
 
@@ -47,11 +49,27 @@ Sign-in creates or pairs the site on Arc before you return. An API key asks you 
 
 Add a project in Arc, then connect again with the API key. Sign-in can add a project by name on the Arc page.
 
+= Does the cookie banner need Arc? =
+
+No. GDPR Consent stores its settings on this site. Pairing is only for the Arc scores.
+
+= What does Accept do? =
+
+Accept allows the optional cookies left checked, and runs the scripts listed on those rows. Required cookies always stay. Decline refuses every optional cookie. The cookie table is in the read more modal. Put the shortcodes on a page when Read more is a link.
+
 = How do updates work? =
 
-When the GitHub repository is public and a release is newer than this install, WordPress shows the update on the Plugins screen. Update now installs it. The Arc screens show the same update.
+When the GitHub repository is public and a release is newer than this install, WordPress shows the update on the Plugins screen. Update now installs it, and automatic updates install it on their own. Automatic updates are on until you disable them on the Plugins screen. The Arc screens show the same update.
 
 == Changelog ==
+
+= 0.4.0 =
+* GDPR Consent, under the Arc menu, is a cookie banner. It works before the site is paired and does not call Arc.
+* Accept allows the optional cookies left checked. Decline refuses every optional cookie. Scripts listed on optional cookies stay off until Accept.
+* A static banner, and its collapsed cookie button, sit at the end of the header or footer. A fixed banner and button stay on the chosen screen cell.
+* Disable, on the Behaviour tab, turns the banner off and leaves script tags unchanged.
+* Consent logging is off until you turn it on. Deleting the plugin removes the banner settings and the log.
+* Automatic updates are turned on once. Disable them on the Plugins screen to leave them off.
 
 = 0.3.6 =
 * The report area shows a loader while a report is loading, then the sections fade in.

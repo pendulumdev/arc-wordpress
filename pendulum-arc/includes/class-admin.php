@@ -71,6 +71,14 @@ final class Admin {
 		);
 		add_submenu_page(
 			'pendulum-arc',
+			__( 'Arc Analytics • GDPR Consent', 'pendulum-arc' ),
+			__( 'GDPR Consent', 'pendulum-arc' ),
+			'manage_options',
+			'pendulum-arc-gdpr',
+			array( $this, 'render_gdpr' )
+		);
+		add_submenu_page(
+			'pendulum-arc',
 			__( 'Arc Analytics • Connect', 'pendulum-arc' ),
 			__( 'Connect', 'pendulum-arc' ),
 			'manage_options',
@@ -84,6 +92,13 @@ final class Admin {
 	 */
 	public function render_dashboard(): void {
 		$this->render( 'dashboard' );
+	}
+
+	/**
+	 * GDPR consent screen. Open before the site is paired.
+	 */
+	public function render_gdpr(): void {
+		$this->render( 'gdpr' );
 	}
 
 	/**
@@ -207,11 +222,18 @@ final class Admin {
 		}
 
 		$meta = require $asset;
+		$deps = $meta['dependencies'];
+		if ( 'pendulum-arc-gdpr' === self::current_page() ) {
+			wp_enqueue_editor();
+			wp_enqueue_media();
+			$deps[] = 'wp-editor';
+			$deps[] = 'media-editor';
+		}
 		wp_enqueue_style( 'wp-components' );
 		wp_enqueue_script(
 			'pendulum-arc-admin',
 			plugins_url( 'build/index.js', ARC_WORDPRESS_FILE ),
-			$meta['dependencies'],
+			$deps,
 			$meta['version'],
 			true
 		);
@@ -273,8 +295,15 @@ final class Admin {
 				'pendulumMark' => plugins_url( 'assets/pendulum-mark.svg', ARC_WORDPRESS_FILE ),
 			),
 		);
-		$json      = wp_json_encode( $bootstrap );
-		$mark      = plugins_url( 'assets/arc-mark-color.svg', ARC_WORDPRESS_FILE );
+		if ( 'gdpr' === $page ) {
+			$consent = new Consent_Store();
+			$consent->detect( Consent_Store::request_cookie_names(), array() );
+			$bootstrap['consent']    = $consent->view();
+			$bootstrap['logs']       = ( new Consent_Log() )->latest();
+			$bootstrap['cookieIcon'] = plugins_url( 'assets/cookie-icon.svg', ARC_WORDPRESS_FILE );
+		}
+		$json = wp_json_encode( $bootstrap );
+		$mark = plugins_url( 'assets/arc-mark-color.svg', ARC_WORDPRESS_FILE );
 		echo '<div class="wrap">';
 		echo '<div class="arc-page-head">';
 		echo '<h1 class="arc-page-title">';

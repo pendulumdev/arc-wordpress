@@ -23,11 +23,11 @@ One code change is still required before the upload, because the directory
 serves updates itself:
 
 1. Remove the GitHub updater (`Plugin_Updater`) from the build that
-   WordPress.org will host. Plugin Check reports `plugin_updater_detected`
-   for `pre_set_site_transient_update_plugins`. A directory plugin cannot
-   offer updates from GitHub. Drop the readme FAQ that says Update now
-   installs a GitHub release, and drop the GitHub sentence under External
-   service.
+   WordPress.org will host. It filters `site_transient_update_plugins`.
+   Plugin Check reports `plugin_updater_detected` for that kind of updater.
+   A directory plugin cannot offer updates from GitHub. Drop the readme FAQ
+   that says Update now installs a GitHub release, and drop the GitHub
+   sentence under External service.
 2. Re-run the gate from the repository root: `composer test`,
    `composer lint`, `npm run lint:js`, `npm test`, `npm run build`, and
    `npm run plugin-check`. The updater error must be gone.

@@ -21,6 +21,15 @@ shows the latest scores.
 It is a WordPress plugin, not the Arc portal. Reports stay in Arc. This
 install only stores the connection and reads the scores.
 
+**Cookie consent, on the site.** GDPR Consent, under the Arc menu, is a
+local banner. It does not call Arc and it works before the site is paired.
+Visitors can accept or decline. Optional cookies stay off until they are
+accepted, and scripts listed on those cookies do not run until then.
+Decline refuses every optional cookie. A consent log is off until an
+administrator turns it on. A static banner is printed at the end of the
+theme header or footer. A fixed banner is positioned on the screen. Disable,
+on the Behaviour tab, turns the banner off and leaves script tags unchanged.
+
 - **Arc sign-in** - the browser goes to Arc, which pairs a site or creates
   one, including a project name when the studio needs a new project. WordPress
   stores the site that comes back with the token.
@@ -65,9 +74,11 @@ Copy `pendulum-arc/` into `wp-content/plugins/` and activate it. Open Arc,
 then Connect.
 
 After a public release, WordPress lists a newer version on the Plugins
-screen. Update now installs `pendulum-arc.zip` from that release. The Arc
-screens link to the same update. A private repository does not offer one,
-because GitHub does not publish the release without a token.
+screen. Update now installs `pendulum-arc.zip` from that release, and
+automatic updates install that same zip. Automatic updates are turned on
+until they are disabled on the Plugins screen. The Arc screens link to the
+same update. A private repository does not offer one, because GitHub does
+not publish the release without a token.
 
 The issued OAuth client id is `arc_app_wordpress`. Arc must store that id
 before sign-in works. Override it with `ARC_WORDPRESS_OAUTH_CLIENT_ID` in

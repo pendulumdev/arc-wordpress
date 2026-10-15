@@ -2,13 +2,15 @@
  * Portal button. Secondary is the default. Danger is the red cancel variant.
  *
  * @param {Object}                                      props
- * @param {string}                                      [props.href]     Renders an anchor when set.
- * @param {string}                                      [props.type]     Button type. Ignored when href is set.
+ * @param {string}                                      [props.href]      Renders an anchor when set.
+ * @param {string}                                      [props.type]      Button type. Ignored when href is set.
  * @param {'primary'|'secondary'|'connect'|'danger'}    [props.variant]
  * @param {boolean}                                     [props.disabled]
  * @param {boolean}                                     [props.busy]
- * @param {string}                                      [props.mark]     Logo shown in a left segment.
+ * @param {string}                                      [props.mark]      Logo shown in a left segment.
  * @param {(event: import('react').MouseEvent) => void} [props.onClick]
+ * @param {string}                                      [props.ariaLabel]
+ * @param {boolean}                                     [props.pressed]
  * @param {import('react').ReactNode}                   props.children
  */
 export function ArcButton( {
@@ -19,6 +21,8 @@ export function ArcButton( {
 	busy,
 	mark,
 	onClick,
+	ariaLabel,
+	pressed,
 	children,
 } ) {
 	const className = mark
@@ -47,6 +51,8 @@ export function ArcButton( {
 			type={ type }
 			disabled={ disabled || busy }
 			aria-busy={ busy ? 'true' : undefined }
+			aria-label={ ariaLabel }
+			aria-pressed={ pressed }
 			onClick={ onClick }
 		>
 			{ inner }
