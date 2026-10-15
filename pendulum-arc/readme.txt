@@ -4,7 +4,7 @@ Tags: seo, analytics
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.3.5
+Stable tag: 0.3.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -52,6 +52,14 @@ Add a project in Arc, then connect again with the API key. Sign-in can add a pro
 When the GitHub repository is public and a release is newer than this install, WordPress shows the update on the Plugins screen. Update now installs it. The Arc screens show the same update.
 
 == Changelog ==
+
+= 0.3.6 =
+* The report area shows a loader while a report is loading, then the sections fade in.
+* SEO page previews use the small link card. Accessibility previews use the screenshot thumb.
+* The page analysis URL column has underlined View and Edit links, each with an arrow, and both open in a new tab.
+* Page analysis tables scroll within 600px, and the column headings stay visible.
+* The AI Words column labels the two counts as Static and Rendered.
+* The View report row stays the same height when a report has no issues.
 
 = 0.3.5 =
 * When every report already exists, the dashboard notice says to view the latest data below.

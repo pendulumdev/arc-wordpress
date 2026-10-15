@@ -11,6 +11,7 @@ import { ColumnMark, StrokeMark } from '../ui/column-icon';
 import { Icon } from '../ui/icon';
 import { MoodMark, scoreMood } from '../ui/score-card';
 import { ReportCta } from './report-cta';
+import { ReportLoader } from './report-loading';
 
 const MOOD_ACCENT = {
 	great: 'emerald',
@@ -143,6 +144,40 @@ function scoreColumnCell( service, block, column, cell ) {
 	return null;
 }
 
+/**
+ * AI words cell. Arc sends `static / rendered` as one string.
+ *
+ * @param {Object|undefined} column
+ * @param {Object}           cell
+ */
+function wordsColumnCell( column, cell ) {
+	if ( ! column || column.id !== 'words' ) {
+		return null;
+	}
+	const match = String( cell.text || '' )
+		.trim()
+		.match( /^(\d+)\s*\/\s*(\d+)$/ );
+	if ( ! match ) {
+		return null;
+	}
+	return (
+		<div className="arc-words">
+			<p>
+				<span className="arc-words__label">
+					{ __( 'Static', 'pendulum-arc' ) }
+				</span>
+				<span className="arc-words__value">{ match[ 1 ] }</span>
+			</p>
+			<p>
+				<span className="arc-words__label">
+					{ __( 'Rendered', 'pendulum-arc' ) }
+				</span>
+				<span className="arc-words__value">{ match[ 2 ] }</span>
+			</p>
+		</div>
+	);
+}
+
 function moodAccent( mood ) {
 	return MOOD_ACCENT[ mood ] || 'muted';
 }
@@ -252,6 +287,153 @@ function CellText( { cell, href, newTab } ) {
 	);
 }
 
+/**
+ * SEO page preview. Same thumb as the portal social card: image plane,
+ * title, description. Screenshot-only previews stay a plain thumb.
+ *
+ * @param {Object|undefined} column
+ * @param {Object}           cell
+ */
+function previewColumnCell( column, cell ) {
+	if ( ! column || column.id !== 'preview' ) {
+		return null;
+	}
+	const text = String( cell.text || '' ).trim();
+	if ( cell.caption || ( text && text !== 'No screenshot' ) ) {
+		return <SocialPreviewCard cell={ cell } />;
+	}
+	return <PageThumb image={ cell.image } />;
+}
+
+function SocialPreviewCard( { cell } ) {
+	const src = cell.image && cell.image.src ? cell.image.src : '';
+	const title = String( cell.text || '' ).trim();
+	const description = String( cell.caption || '' ).trim();
+	const [ failed, setFailed ] = useState( false );
+	const [ ready, setReady ] = useState( false );
+	const missingTitle = __( 'Missing title', 'pendulum-arc' );
+	const missingDescription = __( 'Missing description', 'pendulum-arc' );
+	return (
+		<div
+			className="arc-preview-card"
+			title={ [
+				title || missingTitle,
+				description || missingDescription,
+			].join( '\n' ) }
+		>
+			<div className="arc-preview-card__media">
+				{ src && ! failed ? (
+					<img
+						src={ src }
+						alt=""
+						data-hidden={ ready ? undefined : 'true' }
+						onLoad={ () => setReady( true ) }
+						onError={ () => setFailed( true ) }
+					/>
+				) : null }
+				{ ! src || failed ? (
+					<span
+						className="arc-preview-card__fallback"
+						title={
+							failed
+								? __( 'Image failed to load', 'pendulum-arc' )
+								: __( 'Missing image', 'pendulum-arc' )
+						}
+					>
+						<StrokeMark
+							name={ failed ? 'unlink' : 'image' }
+							size={ 14 }
+							strokeWidth={ 1.5 }
+						/>
+					</span>
+				) : null }
+			</div>
+			<div className="arc-preview-card__body">
+				<p
+					className="arc-preview-card__title"
+					data-missing={ title ? undefined : 'true' }
+				>
+					{ title || missingTitle }
+				</p>
+				<p
+					className="arc-preview-card__detail"
+					data-missing={ description ? undefined : 'true' }
+				>
+					{ description || missingDescription }
+				</p>
+			</div>
+		</div>
+	);
+}
+
+function PageThumb( { image } ) {
+	const src = image && image.src ? image.src : '';
+	if ( ! src ) {
+		return (
+			<span
+				className="arc-page-thumb arc-page-thumb--empty"
+				aria-hidden="true"
+			>
+				<StrokeMark name="image" size={ 16 } strokeWidth={ 1.5 } />
+			</span>
+		);
+	}
+	return (
+		<img className="arc-page-thumb" src={ src } alt={ image.alt || '' } />
+	);
+}
+
+/**
+ * Underlined page link. Opens in a new tab with an arrow on the right.
+ *
+ * @param {Object}                    props
+ * @param {string}                    props.href
+ * @param {import('react').ReactNode} props.children
+ */
+function PageLink( { href, children } ) {
+	return (
+		<a
+			className="arc-page-link"
+			href={ href }
+			target="_blank"
+			rel="noreferrer"
+		>
+			<span className="arc-page-link__label">{ children }</span>
+			<StrokeMark name="external" size={ 12 } strokeWidth={ 2 } />
+		</a>
+	);
+}
+
+/**
+ * Page-analysis URL cell. View uses the crawled URL already on the cell.
+ *
+ * @param {Object}           block
+ * @param {Object|undefined} column
+ * @param {Object}           cell
+ */
+function pageUrlCell( block, column, cell ) {
+	if ( block.id !== 'pages' || ! column || column.id !== 'url' ) {
+		return null;
+	}
+	const viewHref = cell.href || '';
+	const editHref = cell.editHref || '';
+	return (
+		<div className="arc-report-cell">
+			<CellText cell={ cell } />
+			{ viewHref ? (
+				<PageLink href={ viewHref }>
+					{ __( 'View', 'pendulum-arc' ) }
+				</PageLink>
+			) : null }
+			{ editHref ? (
+				<PageLink href={ editHref }>
+					{ __( 'Edit', 'pendulum-arc' ) }
+				</PageLink>
+			) : null }
+		</div>
+	);
+}
+
 function ReportCell( { cell } ) {
 	const viewHref = cell.href || '';
 	const editHref = cell.editHref || '';
@@ -264,16 +446,6 @@ function ReportCell( { cell } ) {
 				<span className="arc-report-cell__caption">
 					{ cell.caption }
 				</span>
-			) : null }
-			{ editHref && viewHref ? (
-				<a
-					className="arc-landing__view"
-					href={ viewHref }
-					target="_blank"
-					rel="noreferrer"
-				>
-					{ __( 'View', 'pendulum-arc' ) }
-				</a>
 			) : null }
 		</div>
 	);
@@ -349,7 +521,13 @@ function ReportTable( { block, service, panel = false } ) {
 			{ rows.length === 0 ? (
 				<p className="arc-table-card__empty">{ empty }</p>
 			) : (
-				<div className="arc-table-card__scroll">
+				<div
+					className={
+						block.id === 'pages'
+							? 'arc-table-card__scroll arc-table-card__scroll--pages'
+							: 'arc-table-card__scroll'
+					}
+				>
 					<table className="arc-report-table">
 						<thead>
 							<tr>
@@ -383,9 +561,30 @@ function ReportTable( { block, service, panel = false } ) {
 													block,
 													block.columns[ cellIndex ],
 													cell
-												) || (
-													<ReportCell cell={ cell } />
-												) }
+												) ||
+													wordsColumnCell(
+														block.columns[
+															cellIndex
+														],
+														cell
+													) ||
+													previewColumnCell(
+														block.columns[
+															cellIndex
+														],
+														cell
+													) ||
+													pageUrlCell(
+														block,
+														block.columns[
+															cellIndex
+														],
+														cell
+													) || (
+														<ReportCell
+															cell={ cell }
+														/>
+													) }
 											</td>
 										)
 									) }
@@ -1493,13 +1692,6 @@ function headerMetrics( report, hero ) {
  * @param {Array}                 blocks
  */
 function reportBody( report, blocks ) {
-	if ( report && report.loading ) {
-		return (
-			<p className="arc-report-block__empty">
-				{ __( 'Loading report…', 'pendulum-arc' ) }
-			</p>
-		);
-	}
 	if ( report && report.service === 'ai' ) {
 		return <AiReport blocks={ blocks } />;
 	}
@@ -1522,14 +1714,21 @@ function reportBody( report, blocks ) {
  * @param {string} [props.portalUrl]
  */
 export function ReportPreview( { report, portalUrl } ) {
+	const href = runHref( portalUrl, report && report.runId );
+	if ( report && report.loading ) {
+		return (
+			<div className="arc-visitor" aria-busy="true">
+				<ReportLoader />
+			</div>
+		);
+	}
 	const hero = ( report && report.hero ) || {};
 	const blocks = contentBlocks( report );
-	const href = runHref( portalUrl, report && report.runId );
 	const summary = report && report.runId ? hero.summary : null;
 	const metrics = headerMetrics( report, hero );
 
 	return (
-		<div className="arc-visitor">
+		<div className="arc-visitor" data-ready="true">
 			<section className="arc-report-hero">
 				{ hero.mood ? (
 					<span

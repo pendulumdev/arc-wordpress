@@ -81,11 +81,10 @@ function formatValue( value, format ) {
 /**
  * One visitor chart. Axes stay when there is nothing to plot.
  *
- * @param {Object}  props
- * @param {Object}  props.chart
- * @param {boolean} [props.pending]
+ * @param {Object} props
+ * @param {Object} props.chart
  */
-export function AnalyticsChart( { chart, pending } ) {
+export function AnalyticsChart( { chart } ) {
 	const [ tip, setTip ] = useState( null );
 	const width = CHART_WIDTH;
 	const height = CHART_HEIGHT;
@@ -343,7 +342,7 @@ export function AnalyticsChart( { chart, pending } ) {
 						</ul>
 					</div>
 				) : null }
-				{ chart.empty && ! pending ? (
+				{ chart.empty ? (
 					<p className="arc-chart__empty">
 						{ __( 'Not enough data', 'pendulum-arc' ) }
 					</p>

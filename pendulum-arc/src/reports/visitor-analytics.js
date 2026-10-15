@@ -10,6 +10,7 @@ import { ColumnMark } from '../ui/column-icon';
 import { AnalyticsChart } from './analytics-chart';
 import { mergeCharts } from './chart-shells';
 import { ReportCta } from './report-cta';
+import { ReportLoader } from './report-loading';
 
 function metricNumber( value ) {
 	if ( value === null || value === undefined || value === '' ) {
@@ -100,14 +101,23 @@ export function VisitorAnalytics( { report, portalUrl } ) {
 	const charts = mergeCharts( report && report.charts );
 	const metrics = heroMetrics( report );
 	const pages = ( report && report.landingPages ) || [];
+	const loading = Boolean( report && report.loading );
 	const runId = report && report.runId ? report.runId : '';
 	const href =
 		portalUrl && runId
 			? `${ portalUrl.replace( /\/$/, '' ) }/runs/${ runId }`
 			: portalUrl || '';
 
+	if ( loading ) {
+		return (
+			<div className="arc-visitor" aria-busy="true">
+				<ReportLoader />
+			</div>
+		);
+	}
+
 	return (
-		<div className="arc-visitor">
+		<div className="arc-visitor" data-ready="true">
 			<section className="arc-report-hero">
 				<svg
 					className="arc-report-hero__mark"
@@ -196,11 +206,7 @@ export function VisitorAnalytics( { report, portalUrl } ) {
 			</section>
 			<div className="arc-chart-grid">
 				{ charts.map( ( chart ) => (
-					<AnalyticsChart
-						key={ chart.id }
-						chart={ chart }
-						pending={ Boolean( report && report.loading ) }
-					/>
+					<AnalyticsChart key={ chart.id } chart={ chart } />
 				) ) }
 			</div>
 			<section className="arc-table-card">
@@ -218,12 +224,11 @@ export function VisitorAnalytics( { report, portalUrl } ) {
 						</span>
 					) : null }
 				</div>
-				{ ! ( report && report.loading ) && pages.length === 0 ? (
+				{ pages.length === 0 ? (
 					<p className="arc-table-card__empty">
 						{ __( 'Not enough data', 'pendulum-arc' ) }
 					</p>
-				) : null }
-				{ ! ( report && report.loading ) && pages.length > 0 ? (
+				) : (
 					<div className="arc-table-card__scroll">
 						<table className="arc-report-table">
 							<thead>
@@ -298,7 +303,7 @@ export function VisitorAnalytics( { report, portalUrl } ) {
 							</tbody>
 						</table>
 					</div>
-				) : null }
+				) }
 			</section>
 			<ReportCta href={ href } />
 		</div>

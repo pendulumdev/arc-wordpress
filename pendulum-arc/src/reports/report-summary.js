@@ -41,7 +41,9 @@ export function ReportSummary( {
 	const [ reports, setReports ] = useState( {} );
 	const reportCache = useRef( {} );
 	const selectedRef = useRef( selected );
+	const shownRef = useRef( {} );
 	selectedRef.current = selected;
+	shownRef.current = { analytics: report, reports };
 
 	useEffect( () => {
 		let cancelled = false;
@@ -128,6 +130,28 @@ export function ReportSummary( {
 		}
 		let cancelled = false;
 		const serviceKey = selectedRef.current;
+		const shown =
+			serviceKey === 'analytics'
+				? shownRef.current.analytics
+				: shownRef.current.reports[ serviceKey ];
+		if ( ! shown || ! shown.runId ) {
+			if ( serviceKey === 'analytics' ) {
+				setReport( ( previous ) => ( {
+					...previous,
+					loading: true,
+					error: '',
+				} ) );
+			} else {
+				setReports( ( previous ) => ( {
+					...previous,
+					[ serviceKey ]: {
+						...( previous[ serviceKey ] || {} ),
+						loading: true,
+						error: '',
+					},
+				} ) );
+			}
+		}
 		const request =
 			serviceKey === 'analytics'
 				? fetchAnalytics()
