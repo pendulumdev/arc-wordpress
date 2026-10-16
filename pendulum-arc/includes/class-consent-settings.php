@@ -430,12 +430,13 @@ final class Consent_Settings {
 	}
 
 	/**
-	 * Older installs saved rem sizes. A 10px theme root made that text tiny.
+	 * Older installs saved rem sizes. A 10px theme root shrank the card and
+	 * the cookie table, and theme table or heading rules could restyle them.
 	 *
 	 * @param string $css Saved stylesheet.
 	 */
 	public static function upgrade_css( string $css ): string {
-		return str_replace(
+		$css = str_replace(
 			array(
 				'font-size: 0.875rem;',
 				'font-size: 1rem;',
@@ -450,6 +451,33 @@ final class Consent_Settings {
 			),
 			$css
 		);
+		if ( str_contains( $css, 'arc-cookie-layout-lock' ) ) {
+			return $css;
+		}
+		if ( ! str_contains( $css, 'max-width: 40rem' ) && ! str_contains( $css, 'max-width: 32rem' ) ) {
+			return $css;
+		}
+		return $css . "\n" . self::layout_lock();
+	}
+
+	/**
+	 * Pixel sizes and theme overrides for a stylesheet that still uses rem.
+	 */
+	private static function layout_lock(): string {
+		return <<<'CSS'
+/* arc-cookie-layout-lock */
+.arc-cookie { max-width: 512px; margin: 16px; padding: 20px; border-radius: 24px; }
+.arc-cookie-root h2.arc-cookie__title { margin: 0 0 8px; color: #12141a; font-family: inherit; font-size: 18px; font-weight: 650; letter-spacing: normal; text-transform: none; }
+.arc-cookie__content, .arc-cookie__content p { font-family: inherit; font-size: 16px; letter-spacing: normal; text-transform: none; }
+.arc-cookie__button { min-height: 36px; padding: 6px 16px; border-radius: 12px; font-family: inherit; font-size: 14px; letter-spacing: normal; text-transform: none; }
+.arc-cookie__modal { z-index: 100001; }
+.arc-cookie__dialog { max-width: 640px; max-height: min(80vh, 640px); padding: 24px; border-radius: 24px; }
+.arc-cookie-root table.arc-cookie__table { table-layout: auto; width: 100%; margin: 16px 0 0; background: transparent; font-size: 14px; }
+.arc-cookie__table th, .arc-cookie__table td { padding: 8px 12px; }
+.arc-cookie__table th:first-child, .arc-cookie__table td:first-child, .arc-cookie__table th:last-child, .arc-cookie__table td:last-child { width: 1%; white-space: nowrap; }
+.arc-cookie__table th:nth-child(2), .arc-cookie__table td:nth-child(2) { min-width: 200px; }
+.arc-cookie__cookie { overflow-wrap: break-word; }
+CSS;
 	}
 
 	/**

@@ -4,7 +4,7 @@ Tags: seo, analytics
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.4.2
+Stable tag: 0.4.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -62,6 +62,10 @@ Accept allows the optional cookies left checked, and runs the scripts listed on 
 When the GitHub repository is public and a release is newer than this install, WordPress shows the update on the Plugins screen. Update now installs it, and automatic updates install it on their own. Automatic updates are on until you disable them on the Plugins screen. The Arc screens show the same update.
 
 == Changelog ==
+
+= 0.4.3 =
+* The banner card, buttons, and cookie list use pixel sizes, so a 10px theme root no longer squeezes the layout.
+* An update rewrites a saved stylesheet that still sizes the banner in rem, so the list stays readable without resetting styles.
 
 = 0.4.2 =
 * An update rewrites a saved banner stylesheet that still uses rem text sizes, so the copy stays readable without resetting styles.

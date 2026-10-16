@@ -114,6 +114,29 @@ final class ConsentRulesTest extends TestCase {
 		self::assertStringContainsString( 'font-size: 14px;', $clean['custom_css'] );
 		self::assertStringContainsString( 'font-size: 13px;', $clean['custom_css'] );
 		self::assertStringNotContainsString( 'rem;', $clean['custom_css'] );
+		self::assertStringNotContainsString( 'arc-cookie-layout-lock', $clean['custom_css'] );
+	}
+
+	public function test_saved_rem_layout_gains_pixel_lock(): void {
+		$clean = Consent_Settings::sanitize(
+			array(
+				'custom_css' => ".arc-cookie { max-width: 32rem; }\n.arc-cookie__dialog { max-width: 40rem; }\n",
+			),
+			''
+		);
+
+		self::assertStringContainsString( 'arc-cookie-layout-lock', $clean['custom_css'] );
+		self::assertStringContainsString( 'max-width: 512px', $clean['custom_css'] );
+		self::assertStringContainsString( 'max-width: 640px', $clean['custom_css'] );
+		self::assertStringContainsString( 'table-layout: auto', $clean['custom_css'] );
+
+		$again = Consent_Settings::sanitize(
+			array(
+				'custom_css' => $clean['custom_css'],
+			),
+			''
+		);
+		self::assertSame( 1, substr_count( $again['custom_css'], 'arc-cookie-layout-lock' ) );
 	}
 
 	public function test_banner_class_follows_layout(): void {
