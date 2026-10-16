@@ -424,9 +424,32 @@ final class Consent_Settings {
 	private static function css( string $css ): string {
 		$css = str_replace( "\0", '', $css );
 		if ( strlen( $css ) > 100000 ) {
-			return substr( $css, 0, 100000 );
+			$css = substr( $css, 0, 100000 );
 		}
-		return $css;
+		return self::upgrade_css( $css );
+	}
+
+	/**
+	 * Older installs saved rem sizes. A 10px theme root made that text tiny.
+	 *
+	 * @param string $css Saved stylesheet.
+	 */
+	public static function upgrade_css( string $css ): string {
+		return str_replace(
+			array(
+				'font-size: 0.875rem;',
+				'font-size: 1rem;',
+				'font-size: 0.8125rem;',
+				'font-size: 0.75rem;',
+			),
+			array(
+				'font-size: 16px;',
+				'font-size: 18px;',
+				'font-size: 14px;',
+				'font-size: 13px;',
+			),
+			$css
+		);
 	}
 
 	/**

@@ -101,6 +101,21 @@ final class ConsentRulesTest extends TestCase {
 		self::assertSame( 'prefix', $clean['cookies'][0]['match'] );
 	}
 
+	public function test_saved_rem_font_sizes_become_pixels(): void {
+		$clean = Consent_Settings::sanitize(
+			array(
+				'custom_css' => ".arc-cookie-root {\n\tfont-size: 0.875rem;\n}\n.arc-cookie__title {\n\tfont-size: 1rem;\n}\n.arc-cookie__table {\n\tfont-size: 0.8125rem;\n}\n.arc-cookie__cookie {\n\tfont-size: 0.75rem;\n}\n",
+			),
+			''
+		);
+
+		self::assertStringContainsString( 'font-size: 16px;', $clean['custom_css'] );
+		self::assertStringContainsString( 'font-size: 18px;', $clean['custom_css'] );
+		self::assertStringContainsString( 'font-size: 14px;', $clean['custom_css'] );
+		self::assertStringContainsString( 'font-size: 13px;', $clean['custom_css'] );
+		self::assertStringNotContainsString( 'rem;', $clean['custom_css'] );
+	}
+
 	public function test_banner_class_follows_layout(): void {
 		$fixed = Consent_Settings::defaults( '' );
 		self::assertSame(

@@ -67,10 +67,17 @@ final class Consent_Store {
 	 * @return array<string, mixed>
 	 */
 	public function settings(): array {
-		if ( null === $this->cache ) {
-			$stored      = get_option( Consent_Settings::OPTION, null );
-			$this->cache = Consent_Settings::normalize( $stored, self::default_css() );
+		if ( null !== $this->cache ) {
+			return $this->cache;
 		}
+		$stored     = get_option( Consent_Settings::OPTION, null );
+		$normalized = Consent_Settings::normalize( $stored, self::default_css() );
+		$saved_css  = is_array( $stored ) ? (string) ( $stored['custom_css'] ?? '' ) : '';
+		if ( is_array( $stored ) && $saved_css !== (string) $normalized['custom_css'] ) {
+			$this->write( $normalized );
+			return $this->cache;
+		}
+		$this->cache = $normalized;
 		return $this->cache;
 	}
 
