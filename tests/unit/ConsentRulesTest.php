@@ -139,6 +139,27 @@ final class ConsentRulesTest extends TestCase {
 		self::assertSame( 1, substr_count( $again['custom_css'], 'arc-cookie-layout-lock' ) );
 	}
 
+	public function test_saved_choice_control_gains_pixel_size(): void {
+		$clean = Consent_Settings::sanitize(
+			array(
+				'custom_css' => ".arc-cookie__choice {\n\twidth: 1rem;\n\theight: 1rem;\n}\n/* arc-cookie-layout-lock */\n",
+			),
+			''
+		);
+
+		self::assertStringContainsString( 'arc-cookie-choice-size', $clean['custom_css'] );
+		self::assertStringContainsString( 'width: 20px', $clean['custom_css'] );
+		self::assertStringContainsString( 'min-width: 20px', $clean['custom_css'] );
+
+		$again = Consent_Settings::sanitize(
+			array(
+				'custom_css' => $clean['custom_css'],
+			),
+			''
+		);
+		self::assertSame( 1, substr_count( $again['custom_css'], 'arc-cookie-choice-size' ) );
+	}
+
 	public function test_banner_class_follows_layout(): void {
 		$fixed = Consent_Settings::defaults( '' );
 		self::assertSame(

@@ -337,10 +337,16 @@ body.admin-bar .arc-cookie__reopen.arc-cookie--pos-top-right {
 	font-size: 13px;
 }
 
-.arc-cookie__choice {
-	width: 16px;
-	height: 16px;
+/* arc-cookie-choice-size */
+.arc-cookie-root input[type="checkbox"].arc-cookie__choice {
+	box-sizing: border-box;
+	width: 20px;
+	height: 20px;
+	min-width: 20px;
+	min-height: 20px;
 	margin: 2px 0 0;
+	accent-color: #1a9bb8;
+	font-size: 20px;
 }
 
 @media print {

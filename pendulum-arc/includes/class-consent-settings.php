@@ -451,13 +451,24 @@ final class Consent_Settings {
 			),
 			$css
 		);
-		if ( str_contains( $css, 'arc-cookie-layout-lock' ) ) {
-			return $css;
+		if ( ! str_contains( $css, 'arc-cookie-layout-lock' )
+			&& ( str_contains( $css, 'max-width: 40rem' ) || str_contains( $css, 'max-width: 32rem' ) ) ) {
+			$css .= "\n" . self::layout_lock();
 		}
-		if ( ! str_contains( $css, 'max-width: 40rem' ) && ! str_contains( $css, 'max-width: 32rem' ) ) {
-			return $css;
+		if ( str_contains( $css, '.arc-cookie__choice' ) && ! str_contains( $css, 'arc-cookie-choice-size' ) ) {
+			$css .= "\n" . self::choice_size();
 		}
-		return $css . "\n" . self::layout_lock();
+		return $css;
+	}
+
+	/**
+	 * A 10px theme root made a 1rem checkbox a 10px box.
+	 */
+	private static function choice_size(): string {
+		return <<<'CSS'
+/* arc-cookie-choice-size */
+.arc-cookie-root input[type="checkbox"].arc-cookie__choice { box-sizing: border-box; width: 20px; height: 20px; min-width: 20px; min-height: 20px; margin: 2px 0 0; accent-color: #1a9bb8; font-size: 20px; }
+CSS;
 	}
 
 	/**
