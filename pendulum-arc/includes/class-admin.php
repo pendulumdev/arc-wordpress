@@ -78,19 +78,19 @@ final class Admin {
 		);
 		add_submenu_page(
 			'pendulum-arc',
-			__( 'Arc Analytics • GDPR Consent', 'pendulum-arc' ),
-			__( 'GDPR Consent', 'pendulum-arc' ),
-			'manage_options',
-			'pendulum-arc-gdpr',
-			array( $this, 'render_gdpr' )
-		);
-		add_submenu_page(
-			'pendulum-arc',
 			__( 'Arc Analytics • Connect', 'pendulum-arc' ),
 			__( 'Connect', 'pendulum-arc' ),
 			'manage_options',
 			'pendulum-arc-connect',
 			array( $this, 'render_connect' )
+		);
+		add_submenu_page(
+			'pendulum-arc',
+			__( 'Arc Analytics • GDPR Consent', 'pendulum-arc' ),
+			__( 'GDPR Consent', 'pendulum-arc' ),
+			'manage_options',
+			'pendulum-arc-gdpr',
+			array( $this, 'render_gdpr' )
 		);
 		$this->mark_menu( $this->alerts->menu_count() );
 	}

@@ -45,10 +45,23 @@ describe( 'reportsAreComplete', () => {
 		).toBe( false );
 	} );
 
-	it( 'is not complete when Analytics still needs setup', () => {
+	it( 'is complete when Google is not connected and the other reports exist', () => {
 		expect(
 			reportsAreComplete( [
 				row( 'analytics', { setup: 'connect_google', visitors: null } ),
+				row( 'seo' ),
+				row( 'a11y' ),
+				row( 'ai' ),
+				row( 'security' ),
+				row( 'brand' ),
+			] )
+		).toBe( true );
+	} );
+
+	it( 'is not complete when Analytics still needs a property', () => {
+		expect(
+			reportsAreComplete( [
+				row( 'analytics', { setup: 'assign_site', visitors: null } ),
 				row( 'seo' ),
 				row( 'a11y' ),
 				row( 'ai' ),

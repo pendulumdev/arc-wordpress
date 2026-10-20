@@ -47,7 +47,7 @@ export function ArcIntro( { portalUrl, arcMark, pendulumMark } ) {
 					variant="connect"
 					mark={ pendulumMark }
 				>
-					{ __( 'Visit Pendulum', 'pendulum-arc' ) }
+					{ __( 'Maintained by pendulum', 'pendulum-arc' ) }
 				</ArcButton>
 			</div>
 		</MetaBox>

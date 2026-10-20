@@ -10,7 +10,8 @@ const REPORT_SERVICES = [
 /**
  * True when every dashboard service already has a report.
  * Analytics counts when visitor totals are present, including zeros.
- * A setup gap (Google not connected, Analytics not enabled) is not complete.
+ * No Google connection means Analytics is not required for this notice.
+ * Any other setup gap (property not assigned, Analytics not enabled) is not complete.
  *
  * @param {Array<{service?: string, score?: number|null, setup?: string|null, visitors?: object|null}>|undefined} scores
  */
@@ -20,7 +21,13 @@ export function reportsAreComplete( scores ) {
 	}
 	return REPORT_SERVICES.every( ( service ) => {
 		const row = scores.find( ( item ) => item && item.service === service );
-		if ( ! row || row.setup ) {
+		if ( ! row ) {
+			return false;
+		}
+		if ( service === 'analytics' && row.setup === 'connect_google' ) {
+			return true;
+		}
+		if ( row.setup ) {
 			return false;
 		}
 		if ( service === 'analytics' ) {
