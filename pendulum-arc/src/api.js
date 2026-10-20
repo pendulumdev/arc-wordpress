@@ -74,6 +74,25 @@ export function enqueueRun( service ) {
 	} );
 }
 
+export function fetchKeyphrases() {
+	return apiFetch( { path: '/pendulum-arc/v1/keyphrases' } );
+}
+
+export function setKeyphrasesEnabled( enabled ) {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/keyphrases',
+		method: 'POST',
+		data: { enabled },
+	} );
+}
+
+export function syncKeyphrases() {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/keyphrases/sync',
+		method: 'POST',
+	} );
+}
+
 export function saveConsent( settings ) {
 	return apiFetch( {
 		path: '/pendulum-arc/v1/consent',

@@ -46,12 +46,17 @@ export function ConnectionSummary( { connection, onDisconnect } ) {
 			footer={
 				confirming ? (
 					<div className="arc-meta__confirm">
-						<p>
-							{ __(
-								'Disconnect this site? This install will stop reading Arc. The site and its reports stay in Arc.',
-								'pendulum-arc'
-							) }
-						</p>
+						<div
+							className="arc-report-alert arc-report-alert--error"
+							role="alert"
+						>
+							<p>
+								{ __(
+									'Disconnect this site? This install will stop reading Arc. The site and its reports stay in Arc.',
+									'pendulum-arc'
+								) }
+							</p>
+						</div>
 						<div className="pendulum-arc-modal__actions">
 							<ArcButton
 								variant="danger"

@@ -52,6 +52,20 @@ serves updates itself:
    releases can stay for development. The Plugins screen for directory
    installs must update from WordPress.org only.
 
+### Sync keyphrases
+
+The Connect page Settings box has **Sync keyphrases**. It keeps a local list of focus
+phrases already stored by Yoast, Rank Math, SEOPress, and All in One SEO.
+A background scan fills that list. It does not call Arc. Save and delete
+hooks update one row.
+
+**Sync with Arc** is shown after the first scan,
+and only when the local list hash differs from `GET /v1/sites/{siteId}/seo-targets`.
+The click sends dirty rows when Arc still matches the last accepted hash,
+or the whole list when Arc has moved. Commit uses `auto_run: true`, which
+queues the SEO report. Turning the checkbox off clears the WordPress list
+and leaves the Arc target in place.
+
 ### Generate reports
 
 The dashboard notice uses the same confirm-then-queue menu as the portal

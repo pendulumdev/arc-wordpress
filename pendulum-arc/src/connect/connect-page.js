@@ -22,6 +22,7 @@ import {
 	reconnect,
 	startOAuth,
 } from '../api';
+import { KeyphraseSync } from '../keyphrases/keyphrase-sync';
 import { ConnectionSummary, MetaBox } from '../meta';
 import { ArcButton } from '../ui/button';
 import { ErrorAlert } from '../ui/error-alert';
@@ -205,15 +206,26 @@ export function ConnectPage( { bootstrap } ) {
 						</a>
 					</Notice>
 				) }
-			<ArcIntro
-				portalUrl={
-					( bootstrap.connection &&
-						bootstrap.connection.portalUrl ) ||
-					bootstrap.urls.portal
-				}
-				arcMark={ bootstrap.urls.arcMark }
-				pendulumMark={ bootstrap.urls.pendulumMark }
-			/>
+			<div className="pendulum-arc-intro pendulum-arc-meta-grid">
+				<ArcIntro
+					portalUrl={
+						( bootstrap.connection &&
+							bootstrap.connection.portalUrl ) ||
+						bootstrap.urls.portal
+					}
+					arcMark={ bootstrap.urls.arcMark }
+					pendulumMark={ bootstrap.urls.pendulumMark }
+				/>
+				<MetaBox
+					icon="settings"
+					title={ __( 'Settings', 'pendulum-arc' ) }
+				>
+					<KeyphraseSync
+						connected={ Boolean( connected && ! reconnecting ) }
+						arcMark={ bootstrap.urls.arcMark }
+					/>
+				</MetaBox>
+			</div>
 			{ connected && reconnecting && (
 				<>
 					<ErrorAlert

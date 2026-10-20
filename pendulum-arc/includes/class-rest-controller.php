@@ -24,10 +24,17 @@ final class Rest_Controller {
 	private Connect_Service $connect;
 
 	/**
-	 * @param Connect_Service $connect Connect flow.
+	 * @var Keyphrase_Sync
 	 */
-	public function __construct( Connect_Service $connect ) {
-		$this->connect = $connect;
+	private Keyphrase_Sync $keyphrases;
+
+	/**
+	 * @param Connect_Service $connect    Connect flow.
+	 * @param Keyphrase_Sync  $keyphrases Keyphrase list and Arc sync.
+	 */
+	public function __construct( Connect_Service $connect, Keyphrase_Sync $keyphrases ) {
+		$this->connect    = $connect;
+		$this->keyphrases = $keyphrases;
 	}
 
 	/**
@@ -185,6 +192,39 @@ final class Rest_Controller {
 				),
 			)
 		);
+
+		register_rest_route(
+			'pendulum-arc/v1',
+			'/keyphrases',
+			array(
+				array(
+					'methods'             => 'GET',
+					'callback'            => array( $this, 'keyphrase_status' ),
+					'permission_callback' => array( $this, 'can_manage' ),
+				),
+				array(
+					'methods'             => 'POST',
+					'callback'            => array( $this, 'keyphrase_enabled' ),
+					'permission_callback' => array( $this, 'can_manage' ),
+					'args'                => array(
+						'enabled' => array(
+							'type'     => 'boolean',
+							'required' => true,
+						),
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			'pendulum-arc/v1',
+			'/keyphrases/sync',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'keyphrase_sync' ),
+				'permission_callback' => array( $this, 'can_manage' ),
+			)
+		);
 	}
 
 	/**
@@ -340,6 +380,46 @@ final class Rest_Controller {
 		return $this->respond(
 			function () use ( $request ) {
 				return $this->connect->enqueue_run( (string) $request->get_param( 'service' ) );
+			}
+		);
+	}
+
+	/**
+	 * Local keyphrase list status. This may read the Arc hash once the scan has finished.
+	 *
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function keyphrase_status() {
+		return $this->respond(
+			function () {
+				return $this->keyphrases->status();
+			}
+		);
+	}
+
+	/**
+	 * Turns Sync keyphrases on or off.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function keyphrase_enabled( \WP_REST_Request $request ) {
+		return $this->respond(
+			function () use ( $request ) {
+				return $this->keyphrases->set_enabled( (bool) $request->get_param( 'enabled' ) );
+			}
+		);
+	}
+
+	/**
+	 * Uploads the list, commits the SEO target, and queues the SEO report.
+	 *
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function keyphrase_sync() {
+		return $this->respond(
+			function () {
+				return $this->keyphrases->push();
 			}
 		);
 	}

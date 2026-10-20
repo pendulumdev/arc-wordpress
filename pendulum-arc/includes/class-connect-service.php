@@ -487,6 +487,25 @@ final class Connect_Service {
 	}
 
 	/**
+	 * Calls Arc with the paired site bearer, refreshing OAuth once after a 401.
+	 *
+	 * @param callable(string, string, string): array<string, mixed> $call Env, bearer, and site id.
+	 * @return array<string, mixed>
+	 */
+	public function with_arc( callable $call ): array {
+		$creds = $this->store->credentials();
+		if ( null === $creds ) {
+			throw new Arc_Api_Exception( __( 'Connect this site to Arc first.', 'pendulum-arc' ), 401 );
+		}
+		return $this->bearer_call(
+			$creds,
+			function ( string $token ) use ( $creds, $call ) {
+				return $call( (string) $creds['env'], $token, (string) $creds['siteId'] );
+			}
+		);
+	}
+
+	/**
 	 * Forgets the local connection. The site and its reports stay in Arc.
 	 *
 	 * @param int $user_id Admin user id.

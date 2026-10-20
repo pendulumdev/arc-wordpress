@@ -190,6 +190,92 @@ final class Arc_Client {
 	}
 
 	/**
+	 * Current SEO target hash for the paired site.
+	 *
+	 * @param string $env     production or preview.
+	 * @param string $token   Bearer.
+	 * @param string $site_id Site id.
+	 * @return array<string, mixed>
+	 */
+	public function seo_targets( string $env, string $token, string $site_id ): array {
+		$this->assert_id( $site_id );
+		$url = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/seo-targets';
+		return $this->json( 'GET', $url, $token );
+	}
+
+	/**
+	 * Opens one SEO target sync. A new start replaces any open session.
+	 *
+	 * @param string $env     production or preview.
+	 * @param string $token   Bearer.
+	 * @param string $site_id Site id.
+	 * @param string $key     Idempotency-Key.
+	 * @return array<string, mixed>
+	 */
+	public function start_seo_target_sync( string $env, string $token, string $site_id, string $key ): array {
+		$this->assert_id( $site_id );
+		$this->assert_key( $key );
+		$url = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/seo-target-syncs';
+		return $this->json( 'POST', $url, $token, array(), array( 'Idempotency-Key' => $key ) );
+	}
+
+	/**
+	 * Appends one batch of upserts and deletes.
+	 *
+	 * @param string                                              $env     production or preview.
+	 * @param string                                              $token   Bearer.
+	 * @param string                                              $site_id Site id.
+	 * @param string                                              $sync_id Sync id.
+	 * @param array{upserts: array<int, array<string, string>>, deletes: array<int, string>} $batch Batch.
+	 * @param string                                              $key     Idempotency-Key.
+	 * @return array<string, mixed>
+	 */
+	public function append_seo_target_batch( string $env, string $token, string $site_id, string $sync_id, array $batch, string $key ): array {
+		$this->assert_id( $site_id );
+		$this->assert_id( $sync_id );
+		$this->assert_key( $key );
+		$url = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/seo-target-syncs/' . rawurlencode( $sync_id ) . '/batches';
+		return $this->json( 'POST', $url, $token, $batch, array( 'Idempotency-Key' => $key ) );
+	}
+
+	/**
+	 * Commits the open sync and optionally queues the SEO report.
+	 *
+	 * @param string               $env     production or preview.
+	 * @param string               $token   Bearer.
+	 * @param string               $site_id Site id.
+	 * @param string               $sync_id Sync id.
+	 * @param array<string, mixed> $body    Commit body.
+	 * @param string               $key     Idempotency-Key.
+	 * @return array<string, mixed>
+	 */
+	public function commit_seo_target_sync( string $env, string $token, string $site_id, string $sync_id, array $body, string $key ): array {
+		$this->assert_id( $site_id );
+		$this->assert_id( $sync_id );
+		$this->assert_key( $key );
+		$url = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/seo-target-syncs/' . rawurlencode( $sync_id ) . '/commit';
+		return $this->json( 'POST', $url, $token, $body, array( 'Idempotency-Key' => $key ) );
+	}
+
+	/**
+	 * Drops an open sync. The SEO contract is unchanged.
+	 *
+	 * @param string $env     production or preview.
+	 * @param string $token   Bearer.
+	 * @param string $site_id Site id.
+	 * @param string $sync_id Sync id.
+	 * @param string $key     Idempotency-Key.
+	 * @return array<string, mixed>
+	 */
+	public function abandon_seo_target_sync( string $env, string $token, string $site_id, string $sync_id, string $key ): array {
+		$this->assert_id( $site_id );
+		$this->assert_id( $sync_id );
+		$this->assert_key( $key );
+		$url = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/seo-target-syncs/' . rawurlencode( $sync_id );
+		return $this->json( 'DELETE', $url, $token, null, array( 'Idempotency-Key' => $key ) );
+	}
+
+	/**
 	 * Exchanges an authorization code.
 	 *
 	 * @param string $env          production or preview.
@@ -375,6 +461,17 @@ final class Arc_Client {
 				__( 'That Arc id is not valid.', 'pendulum-arc' ),
 				400
 			);
+		}
+	}
+
+	/**
+	 * Rejects an idempotency key the public API would refuse.
+	 *
+	 * @param string $key Idempotency-Key.
+	 */
+	private function assert_key( string $key ): void {
+		if ( 1 !== preg_match( '/^[A-Za-z0-9_-]{8,200}$/', $key ) ) {
+			throw new Arc_Api_Exception( __( 'Arc refused the request. Try again in a moment.', 'pendulum-arc' ), 400 );
 		}
 	}
 

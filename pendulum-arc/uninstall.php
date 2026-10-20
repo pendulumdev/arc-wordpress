@@ -14,6 +14,8 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 delete_option( 'arc_wordpress_connection' );
 delete_option( 'arc_cookie_consent_settings' );
 delete_option( 'arc_consent_log_db' );
+delete_option( 'arc_keyphrase_sync' );
+delete_option( 'arc_keyphrase_db' );
 
 global $wpdb;
 
@@ -36,3 +38,7 @@ $wpdb->query(
 $arc_wordpress_consent_log = $wpdb->prefix . 'arc_consent_log';
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 $wpdb->query( "DROP TABLE IF EXISTS {$arc_wordpress_consent_log}" );
+
+$arc_wordpress_keyphrases = $wpdb->prefix . 'arc_keyphrases';
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+$wpdb->query( "DROP TABLE IF EXISTS {$arc_wordpress_keyphrases}" );

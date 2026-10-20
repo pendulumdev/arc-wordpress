@@ -61,10 +61,14 @@ final class Plugin {
 			return;
 		}
 
-		$store   = new Connection_Store();
-		$connect = new Connect_Service( $store, new Arc_Client() );
+		$store      = new Connection_Store();
+		$client     = new Arc_Client();
+		$connect    = new Connect_Service( $store, $client );
+		$list       = new Keyphrase_List();
+		$keyphrases = new Keyphrase_Sync( $store, $connect, $client, $list, new Keyphrase_Scan( $list, new Keyphrase_Read() ) );
+		$keyphrases->register();
 		( new Admin( $store, $connect ) )->register();
-		( new Rest_Controller( $connect ) )->register();
+		( new Rest_Controller( $connect, $keyphrases ) )->register();
 	}
 
 	/**
