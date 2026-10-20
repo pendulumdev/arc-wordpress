@@ -43,8 +43,8 @@ export function keyphraseAlert( connectUrl, onConnect ) {
 /**
  * Standing notice when Analytics has no Google account. It does not add to the menu count.
  */
-export function googleAlert() {
-	return {
+export function googleAlert( action = null ) {
+	const alert = {
 		id: 'google',
 		tone: 'info',
 		message: __(
@@ -53,6 +53,13 @@ export function googleAlert() {
 		),
 		count: false,
 	};
+	if ( action && action.onAction ) {
+		alert.onAction = action.onAction;
+		alert.hrefLabel =
+			action.label || __( 'Connect Google', 'pendulum-arc' );
+		alert.disabled = Boolean( action.disabled );
+	}
+	return alert;
 }
 
 function toneClass( tone ) {
@@ -120,7 +127,20 @@ export function PageAlerts( { alerts } ) {
 						<AlertIcon tone={ alert.tone } />
 						<span>
 							{ alert.message }
-							{ alert.href ? (
+							{ alert.onAction ? (
+								<>
+									{ ' ' }
+									<button
+										type="button"
+										className="arc-report-alert__action"
+										onClick={ alert.onAction }
+										disabled={ alert.disabled }
+									>
+										{ alert.hrefLabel }
+									</button>
+								</>
+							) : null }
+							{ ! alert.onAction && alert.href ? (
 								<>
 									{ ' ' }
 									<a href={ alert.href }>

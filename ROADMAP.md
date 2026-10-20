@@ -77,9 +77,28 @@ sites page. It calls `POST /pendulum-arc/v1/runs`, which queues one service
 through `POST /v1/sites/{siteId}/runs` with a fresh `Idempotency-Key`.
 Run all queues each service that is not already queued or running.
 
-OAuth connect requests `arc:read arc:enqueue`. A site connected before that
-scope must reconnect before Generate is allowed. API-key connects already
-include enqueue.
+OAuth connect requests `arc:read arc:enqueue arc:invite`. A site connected
+before enqueue must reconnect before Generate is allowed. A site connected
+before invite must reconnect before Arc can invite a project member. API-key
+connects already include enqueue when the key was created with that
+capability. Invite on an API key is whatever the key was issued with.
+
+### Connect Google
+
+Connect Google and Assign in Arc call `POST /pendulum-arc/v1/google-connect`.
+That mints `POST /v1/sites/{siteId}/google-connect-handoffs`, then reads
+invite-status for the current WordPress user's email. An `active` Arc
+account is sent to the ticket URL. Login continues the same ticket when the
+browser has no Arc session. An `absent` account with status `none` is invited
+with `continue` set to that ticket path, and WordPress asks them to open the
+email. A pending invite is not sent again. After save or cancel, Arc returns
+to the dashboard. The plugin accepts that return only when `state` matches,
+then reads the site again. The query string is not the proof that Google is
+bound.
+
+A grant from before `arc:invite` can still open the ticket for someone who
+already has an Arc account. Inviting a new account needs Disconnect and
+Connect with Arc again.
 
 The menu reads `GET /v1/sites/{siteId}/runs` when the notice opens, and the
 row shows Queued or Running from that page plus the queue that is still in

@@ -89,6 +89,7 @@ final class Connection_Store {
 			'refreshToken' => $refresh,
 			'expiresAt'    => (int) ( $stored['expires_at'] ?? 0 ),
 			'siteId'       => (string) $stored['site_id'],
+			'projectId'    => (string) ( $stored['project_id'] ?? '' ),
 		);
 	}
 
@@ -283,6 +284,37 @@ final class Connection_Store {
 			),
 			2 * MINUTE_IN_SECONDS
 		);
+	}
+
+	/**
+	 * Remembers the Google connect return state for this admin.
+	 *
+	 * @param int    $user_id Admin user id.
+	 * @param string $state   Round-trip state.
+	 */
+	public function put_google_state( int $user_id, string $state ): void {
+		set_transient( $this->google_state_key( $user_id ), $state, DAY_IN_SECONDS );
+	}
+
+	/**
+	 * Reads and deletes the Google connect return state.
+	 *
+	 * @param int $user_id Admin user id.
+	 */
+	public function take_google_state( int $user_id ): string {
+		$key    = $this->google_state_key( $user_id );
+		$stored = get_transient( $key );
+		delete_transient( $key );
+		return is_string( $stored ) ? $stored : '';
+	}
+
+	/**
+	 * Transient key for one admin's Google connect state.
+	 *
+	 * @param int $user_id Admin user id.
+	 */
+	private function google_state_key( int $user_id ): string {
+		return 'arc_wordpress_google_state_' . $user_id;
 	}
 
 	/**

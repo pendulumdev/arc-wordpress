@@ -51,6 +51,7 @@ final class Admin {
 		add_action( 'admin_menu', array( $this, 'menu' ) );
 		add_action( 'wp_dashboard_setup', array( $this, 'dashboard_widget' ) );
 		add_action( 'admin_init', array( $this, 'finish_oauth' ), 1 );
+		add_action( 'admin_init', array( $this, 'finish_google_connect' ), 1 );
 		add_action( 'admin_init', array( $this, 'guard' ), 20 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'assets' ) );
 	}
@@ -177,6 +178,60 @@ final class Admin {
 			exit;
 		}
 
+		wp_safe_redirect( admin_url( 'admin.php?page=pendulum-arc' ) );
+		exit;
+	}
+
+	/**
+	 * Records the return from Arc Google connect, then drops the query.
+	 *
+	 * The query is not proof that Google is bound. The dashboard reads the site again.
+	 */
+	public function finish_google_connect(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		if ( 'pendulum-arc' !== self::current_page() ) {
+			return;
+		}
+
+		// State is the CSRF check. A WordPress nonce is not part of the Arc redirect.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$status = isset( $_GET['status'] ) ? sanitize_key( wp_unslash( $_GET['status'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$error = isset( $_GET['error'] ) ? sanitize_key( wp_unslash( $_GET['error'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$state = isset( $_GET['state'] ) ? sanitize_text_field( wp_unslash( $_GET['state'] ) ) : '';
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$issuer = isset( $_GET['iss'] ) ? esc_url_raw( wp_unslash( $_GET['iss'] ) ) : '';
+
+		if ( '' === $state || '' === $issuer || ( '' === $status && '' === $error ) ) {
+			return;
+		}
+
+		$user_id = get_current_user_id();
+		$stored  = $this->store->take_google_state( $user_id );
+		if ( '' === $stored || strlen( $stored ) !== strlen( $state ) || ! hash_equals( $stored, $state ) ) {
+			$this->store->put_notice(
+				$user_id,
+				'error',
+				__( 'That return did not match this browser. Start Connect Google again.', 'pendulum-arc' )
+			);
+			wp_safe_redirect( admin_url( 'admin.php?page=pendulum-arc' ) );
+			exit;
+		}
+
+		if ( 'access_denied' === $error ) {
+			$message = __( 'Google connect was cancelled.', 'pendulum-arc' );
+			$tone    = 'error';
+		} elseif ( 'connected' === $status && '' === $error ) {
+			$message = __( 'You are back from Arc. Refresh the page if you do not see your Google connection yet.', 'pendulum-arc' );
+			$tone    = 'success';
+		} else {
+			$message = __( 'Google connect did not finish. Try again.', 'pendulum-arc' );
+			$tone    = 'error';
+		}
+		$this->store->put_notice( $user_id, $tone, $message );
 		wp_safe_redirect( admin_url( 'admin.php?page=pendulum-arc' ) );
 		exit;
 	}

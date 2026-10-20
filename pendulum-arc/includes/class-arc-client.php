@@ -190,6 +190,72 @@ final class Arc_Client {
 	}
 
 	/**
+	 * Starts a Google connect handoff. The response is a portal URL.
+	 *
+	 * @param string $env        production or preview.
+	 * @param string $token      Bearer.
+	 * @param string $site_id    Site id.
+	 * @param string $return_uri WordPress admin URL Arc may send the browser back to.
+	 * @param string $state      Round-trip state.
+	 * @return array<string, mixed>
+	 */
+	public function google_connect_handoff( string $env, string $token, string $site_id, string $return_uri, string $state ): array {
+		$this->assert_id( $site_id );
+		$url = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/google-connect-handoffs';
+		return $this->json(
+			'POST',
+			$url,
+			$token,
+			array(
+				'return_uri' => $return_uri,
+				'state'      => $state,
+			)
+		);
+	}
+
+	/**
+	 * Project membership and whether each email has an Arc account.
+	 *
+	 * @param string             $env        production or preview.
+	 * @param string             $token      Bearer.
+	 * @param string             $project_id Project id.
+	 * @param array<int, string> $emails     Normalized emails.
+	 * @return array<string, mixed>
+	 */
+	public function invite_status( string $env, string $token, string $project_id, array $emails ): array {
+		$this->assert_id( $project_id );
+		$url = Arc_Config::api( $env ) . '/v1/projects/' . rawurlencode( $project_id ) . '/invite-status';
+		return $this->json( 'POST', $url, $token, array( 'emails' => array_values( $emails ) ) );
+	}
+
+	/**
+	 * Invites one project member. continue is the portal path after accept.
+	 *
+	 * @param string $env           production or preview.
+	 * @param string $token         Bearer.
+	 * @param string $project_id    Project id.
+	 * @param string $email         Invitee.
+	 * @param string $continue_path Allowlisted portal path.
+	 * @param string $key           Idempotency-Key.
+	 * @return array<string, mixed>
+	 */
+	public function create_invite( string $env, string $token, string $project_id, string $email, string $continue_path, string $key ): array {
+		$this->assert_id( $project_id );
+		$this->assert_key( $key );
+		$url = Arc_Config::api( $env ) . '/v1/projects/' . rawurlencode( $project_id ) . '/invites';
+		return $this->json(
+			'POST',
+			$url,
+			$token,
+			array(
+				'email'    => $email,
+				'continue' => $continue_path,
+			),
+			array( 'Idempotency-Key' => $key )
+		);
+	}
+
+	/**
 	 * Current SEO target hash for the paired site.
 	 *
 	 * @param string $env     production or preview.
@@ -420,7 +486,7 @@ final class Arc_Client {
 		$raw    = (string) wp_remote_retrieve_body( $response );
 		$json   = json_decode( $raw, true );
 		if ( $status < 200 || $status >= 300 ) {
-			throw new Arc_Api_Exception( self::safe_message( $json, $status ), $status );
+			throw new Arc_Api_Exception( self::safe_message( $json, $status ), $status, self::error_code( $json ) );
 		}
 		return is_array( $json ) ? $json : array();
 	}
@@ -435,19 +501,50 @@ final class Arc_Client {
 		if ( 401 === $status ) {
 			return __( 'Arc did not accept those credentials.', 'pendulum-arc' );
 		}
+		$detail = self::public_sentence( $json );
+		if ( null !== $detail ) {
+			return $detail;
+		}
 		if ( 403 === $status ) {
 			return __( 'This Arc account cannot do that.', 'pendulum-arc' );
 		}
-		if ( is_array( $json ) && isset( $json['error'] ) && is_array( $json['error'] ) ) {
-			$message = $json['error']['message'] ?? '';
-			if ( is_string( $message ) ) {
-				$message = trim( wp_strip_all_tags( $message ) );
-				if ( '' !== $message && strlen( $message ) <= 180 && ! preg_match( '/bearer|token|api[_ ]?key/i', $message ) ) {
-					return $message;
-				}
-			}
-		}
 		return __( 'Arc refused the request. Try again in a moment.', 'pendulum-arc' );
+	}
+
+	/**
+	 * Arc error code when it is a short token of capitals and underscores.
+	 *
+	 * @param mixed $json Decoded body.
+	 */
+	private static function error_code( $json ): string {
+		if ( ! is_array( $json ) || ! isset( $json['error'] ) || ! is_array( $json['error'] ) ) {
+			return '';
+		}
+		$code = $json['error']['code'] ?? '';
+		if ( ! is_string( $code ) || 1 !== preg_match( '/^[A-Z0-9_]{1,64}$/', $code ) ) {
+			return '';
+		}
+		return $code;
+	}
+
+	/**
+	 * A short Arc sentence that does not mention a credential.
+	 *
+	 * @param mixed $json Decoded body.
+	 */
+	private static function public_sentence( $json ): ?string {
+		if ( ! is_array( $json ) || ! isset( $json['error'] ) || ! is_array( $json['error'] ) ) {
+			return null;
+		}
+		$message = $json['error']['message'] ?? '';
+		if ( ! is_string( $message ) ) {
+			return null;
+		}
+		$message = trim( wp_strip_all_tags( $message ) );
+		if ( '' === $message || strlen( $message ) > 180 || preg_match( '/bearer|token|api[_ ]?key/i', $message ) ) {
+			return null;
+		}
+		return $message;
 	}
 
 	/**

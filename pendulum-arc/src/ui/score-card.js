@@ -320,6 +320,8 @@ function IssuePill( { issueCount, manualCount, severity } ) {
  * @param {{score?: number|null, band?: string|null}|null}                           [props.keyphrase]
  * @param {'connect_google'|'assign_site'|'not_enabled'|null}                        [props.setup]
  * @param {string}                                                                   [props.actionHref]
+ * @param {() => void}                                                               [props.onAction]
+ * @param {boolean}                                                                  [props.actionPending]
  * @param {boolean}                                                                  [props.selected]
  * @param {(service: string) => void}                                                [props.onSelect]
  */
@@ -336,6 +338,8 @@ export function ScoreCard( {
 	keyphrase = null,
 	setup = null,
 	actionHref = '',
+	onAction,
+	actionPending = false,
 	selected = false,
 	onSelect,
 } ) {
@@ -352,13 +356,17 @@ export function ScoreCard( {
 		hint = __( 'Loading scores…', 'pendulum-arc' );
 	} else if ( state === 'setup' && setup === 'connect_google' ) {
 		hint = __( 'No Google connection', 'pendulum-arc' );
-		actionLabel = __( 'Connect Google', 'pendulum-arc' );
+		actionLabel = actionPending
+			? __( 'Connecting…', 'pendulum-arc' )
+			: __( 'Connect Google', 'pendulum-arc' );
 	} else if ( state === 'setup' && setup === 'not_enabled' ) {
 		hint = __( 'Not enabled for this site', 'pendulum-arc' );
 		actionLabel = __( 'Connect in Arc', 'pendulum-arc' );
 	} else if ( state === 'setup' ) {
 		hint = __( 'Assign a Google property', 'pendulum-arc' );
-		actionLabel = __( 'Assign in Arc', 'pendulum-arc' );
+		actionLabel = actionPending
+			? __( 'Connecting…', 'pendulum-arc' )
+			: __( 'Assign in Arc', 'pendulum-arc' );
 	} else if ( state === 'score' ) {
 		hint = band || moodLabel || '';
 	} else if ( state === 'visitors' ) {
@@ -464,7 +472,20 @@ export function ScoreCard( {
 						{ state === 'visitors' ? null : (
 							<p className="arc-score-card__hint">{ hint }</p>
 						) }
-						{ state === 'setup' && actionHref && actionLabel ? (
+						{ state === 'setup' && onAction && actionLabel ? (
+							<button
+								type="button"
+								className="arc-score-card__action"
+								onClick={ onAction }
+								disabled={ actionPending }
+							>
+								{ actionLabel }
+							</button>
+						) : null }
+						{ state === 'setup' &&
+						! onAction &&
+						actionHref &&
+						actionLabel ? (
 							<a
 								className="arc-score-card__action"
 								href={ actionHref }

@@ -15,6 +15,8 @@ export function SiteScoreSummary( {
 	loading,
 	connectUrl,
 	portalUrl = '',
+	onGoogleConnect,
+	googlePending = false,
 	selected,
 	onSelect,
 } ) {
@@ -50,6 +52,8 @@ export function SiteScoreSummary( {
 							found.setup === 'not_enabled' )
 							? found.setup
 							: null;
+					const googleSetup =
+						setup === 'connect_google' || setup === 'assign_site';
 					const hasScore =
 						! loading &&
 						! setup &&
@@ -89,7 +93,13 @@ export function SiteScoreSummary( {
 									: null
 							}
 							setup={ setup }
-							actionHref={ setup ? portalUrl : '' }
+							actionHref={
+								setup && ! googleSetup ? portalUrl : ''
+							}
+							onAction={
+								googleSetup ? onGoogleConnect : undefined
+							}
+							actionPending={ googleSetup && googlePending }
 							keyphrase={
 								hasScore &&
 								found.keyphraseScore !== null &&

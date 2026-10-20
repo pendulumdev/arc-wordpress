@@ -48,6 +48,13 @@ export function disconnect() {
 	} );
 }
 
+export function startGoogleConnect() {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/google-connect',
+		method: 'POST',
+	} );
+}
+
 export function fetchScores() {
 	return apiFetch( { path: '/pendulum-arc/v1/scores' } );
 }

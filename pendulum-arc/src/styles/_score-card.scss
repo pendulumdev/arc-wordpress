@@ -301,6 +301,33 @@ button.arc-score-card {
 	text-decoration: underline;
 }
 
+.wp-core-ui button.arc-score-card__action {
+	height: auto;
+	min-height: 0;
+	margin: 0.35rem 0 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--arc-accent-cyan);
+	line-height: 1.375;
+	vertical-align: baseline;
+	cursor: pointer;
+}
+
+.wp-core-ui button.arc-score-card__action:hover,
+.wp-core-ui button.arc-score-card__action:focus {
+	background: transparent;
+	box-shadow: none;
+	color: var(--arc-accent-cyan);
+}
+
+.wp-core-ui button.arc-score-card__action:disabled {
+	cursor: wait;
+	opacity: 0.7;
+}
+
 .wp-core-ui .arc-score-card__action:focus {
 	border-radius: var(--arc-radius-tiny);
 }

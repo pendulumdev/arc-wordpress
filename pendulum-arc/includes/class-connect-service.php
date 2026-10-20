@@ -212,7 +212,7 @@ final class Connect_Service {
 			'response_type'         => 'code',
 			'client_id'             => Arc_Config::client_id(),
 			'redirect_uri'          => $redirect,
-			'scope'                 => 'arc:read arc:enqueue',
+			'scope'                 => 'arc:read arc:enqueue arc:invite',
 			'state'                 => $state,
 			'code_challenge'        => Pkce::challenge( $verifier ),
 			'code_challenge_method' => 'S256',
@@ -502,6 +502,180 @@ final class Connect_Service {
 			throw $error;
 		}
 		return Pairing::enqueued_run( $payload );
+	}
+
+	/**
+	 * Mints a Google connect handoff for this site.
+	 *
+	 * An Arc account is sent to the portal URL. An email with no Arc account
+	 * is invited, and the inbox link continues onto that same ticket.
+	 *
+	 * @param int $user_id Admin user id.
+	 * @return array<string, mixed>
+	 */
+	public function start_google_connect( int $user_id ): array {
+		$creds = $this->store->credentials();
+		if ( null === $creds ) {
+			throw new Arc_Api_Exception( __( 'Connect this site to Arc first.', 'pendulum-arc' ), 401 );
+		}
+		$project_id = (string) ( $creds['projectId'] ?? '' );
+		if ( '' === $project_id ) {
+			throw new Arc_Api_Exception( __( 'Reconnect this site in Arc before connecting Google.', 'pendulum-arc' ), 400 );
+		}
+		$email      = self::admin_email( $user_id );
+		$state      = Pkce::state();
+		$return_uri = admin_url( 'admin.php?page=pendulum-arc' );
+		$handoff    = $this->bearer_call(
+			$creds,
+			function ( string $token ) use ( $creds, $return_uri, $state ) {
+				return $this->client->google_connect_handoff(
+					(string) $creds['env'],
+					$token,
+					(string) $creds['siteId'],
+					$return_uri,
+					$state
+				);
+			}
+		);
+		$url        = isset( $handoff['url'] ) && is_string( $handoff['url'] ) ? $handoff['url'] : '';
+		$continue   = self::ticket_continue( $url );
+		$this->store->put_google_state( $user_id, $state );
+
+		try {
+			$status = $this->bearer_call(
+				$creds,
+				function ( string $token ) use ( $creds, $project_id, $email ) {
+					return $this->client->invite_status(
+						(string) $creds['env'],
+						$token,
+						$project_id,
+						array( $email )
+					);
+				}
+			);
+		} catch ( Arc_Api_Exception $error ) {
+			if ( 'INSUFFICIENT_SCOPE' === $error->error_code() ) {
+				return array(
+					'url'       => $url,
+					'reconnect' => true,
+					'message'   => __( 'Disconnect and Connect with Arc again before inviting someone who has no Arc account. If you already have an Arc account, continue.', 'pendulum-arc' ),
+				);
+			}
+			throw $error;
+		}
+
+		$row = self::invite_row( $status, $email );
+		if ( 'pending' === $row['status'] ) {
+			return self::check_email();
+		}
+		if ( 'active' === $row['account'] || 'member' === $row['status'] ) {
+			return array( 'url' => $url );
+		}
+		if ( 'absent' !== $row['account'] || 'none' !== $row['status'] ) {
+			throw new Arc_Api_Exception( __( 'Arc did not return the Google connect link.', 'pendulum-arc' ), 502 );
+		}
+
+		try {
+			$this->bearer_call(
+				$creds,
+				function ( string $token ) use ( $creds, $project_id, $email, $continue ) {
+					return $this->client->create_invite(
+						(string) $creds['env'],
+						$token,
+						$project_id,
+						$email,
+						$continue,
+						wp_generate_uuid4()
+					);
+				}
+			);
+		} catch ( Arc_Api_Exception $error ) {
+			if ( 'OPEN_INVITE' === $error->error_code() ) {
+				return self::check_email();
+			}
+			if ( 'ALREADY_MEMBER' === $error->error_code() ) {
+				return array( 'url' => $url );
+			}
+			throw $error;
+		}
+		return self::check_email();
+	}
+
+	/**
+	 * WordPress email for the admin who clicked Connect Google.
+	 *
+	 * @param int $user_id Admin user id.
+	 */
+	private static function admin_email( int $user_id ): string {
+		$user  = get_userdata( $user_id );
+		$email = ( $user instanceof \WP_User ) ? strtolower( sanitize_email( $user->user_email ) ) : '';
+		if ( ! is_email( $email ) ) {
+			throw new Arc_Api_Exception( __( 'This WordPress user needs an email address before connecting Google.', 'pendulum-arc' ), 400 );
+		}
+		return $email;
+	}
+
+	/**
+	 * Ticket path Arc will accept as an invite continue value.
+	 *
+	 * @param string $url Portal handoff URL.
+	 */
+	private static function ticket_continue( string $url ): string {
+		$parts    = wp_parse_url( $url );
+		$path     = is_array( $parts ) ? (string) ( $parts['path'] ?? '' ) : '';
+		$query    = is_array( $parts ) ? (string) ( $parts['query'] ?? '' ) : '';
+		$continue = $path . '?' . $query;
+		if ( 1 !== preg_match( '/^\/connect\/google\?ticket=[A-Za-z0-9_-]{16,128}$/', $continue ) ) {
+			throw new Arc_Api_Exception( __( 'Arc did not return the Google connect link.', 'pendulum-arc' ), 502 );
+		}
+		return $continue;
+	}
+
+	/**
+	 * One invite-status row for this email.
+	 *
+	 * @param array<string, mixed> $payload Invite-status body.
+	 * @param string               $email   Expected email.
+	 * @return array{status: string, account: string}
+	 */
+	private static function invite_row( array $payload, string $email ): array {
+		$results = $payload['results'] ?? null;
+		if ( ! is_array( $results ) ) {
+			throw new Arc_Api_Exception( __( 'Arc did not return the Google connect link.', 'pendulum-arc' ), 502 );
+		}
+		foreach ( $results as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			if ( strtolower( (string) ( $row['email'] ?? '' ) ) !== $email ) {
+				continue;
+			}
+			$status  = (string) ( $row['status'] ?? '' );
+			$account = (string) ( $row['account'] ?? '' );
+			if ( ! in_array( $status, array( 'member', 'pending', 'none' ), true ) ) {
+				break;
+			}
+			if ( ! in_array( $account, array( 'active', 'absent' ), true ) ) {
+				break;
+			}
+			return array(
+				'status'  => $status,
+				'account' => $account,
+			);
+		}
+		throw new Arc_Api_Exception( __( 'Arc did not return the Google connect link.', 'pendulum-arc' ), 502 );
+	}
+
+	/**
+	 * Asks the admin to open the invite Arc already sent.
+	 *
+	 * @return array{checkEmail: true, message: string}
+	 */
+	private static function check_email(): array {
+		return array(
+			'checkEmail' => true,
+			'message'    => __( 'Check your email for an Arc invite. Accept it to connect Google. You will return to this site.', 'pendulum-arc' ),
+		);
 	}
 
 	/**

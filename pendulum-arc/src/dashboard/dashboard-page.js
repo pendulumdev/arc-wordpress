@@ -13,6 +13,7 @@ import {
 	pageAlerts,
 	PageAlerts,
 } from '../alerts/page-alerts';
+import { useGoogleConnect } from '../google/use-google-connect';
 import { SiteScoreSummary, useSiteScores } from '../meta';
 import { GenerationNotice } from '../reports/report-cta';
 import { reportsAreComplete } from '../reports/reports-ready';
@@ -26,6 +27,7 @@ export function DashboardPage( { bootstrap } ) {
 	const portalUrl = connection.portalUrl || bootstrap.urls.portal;
 	const [ service, setService ] = useState( 'analytics' );
 	const [ refreshKey, setRefreshKey ] = useState( 0 );
+	const google = useGoogleConnect();
 	const onSettled = useCallback( () => {
 		reload();
 		setRefreshKey( ( current ) => current + 1 );
@@ -35,11 +37,14 @@ export function DashboardPage( { bootstrap } ) {
 		loading || error ? null : googleAccountMissing( scoreRows );
 	const alerts = pageAlerts(
 		bootstrap.alerts,
-		[],
+		google.notice ? [ google.notice ] : [],
 		null,
 		keyphraseAlert( bootstrap.urls.connect, false ),
 		googleMissing,
-		googleAlert()
+		googleAlert( {
+			onAction: google.start,
+			disabled: google.pending,
+		} )
 	);
 
 	return (
@@ -59,6 +64,8 @@ export function DashboardPage( { bootstrap } ) {
 				loading={ loading }
 				connectUrl={ bootstrap.urls.connect }
 				portalUrl={ portalUrl }
+				onGoogleConnect={ google.start }
+				googlePending={ google.pending }
 				selected={ service }
 				onSelect={ setService }
 			/>

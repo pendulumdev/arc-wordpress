@@ -516,6 +516,24 @@
 	text-decoration: underline;
 }
 
+.wp-core-ui .arc-report-alert button.arc-report-alert__action,
+.wp-core-ui .pendulum-arc-dashboard-widget__note button.arc-report-alert__action {
+	height: auto;
+	min-height: 0;
+	margin: 0 0 0 0.35rem;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+	color: inherit;
+	font-size: inherit;
+	font-weight: 600;
+	line-height: inherit;
+	text-decoration: underline;
+	vertical-align: baseline;
+	cursor: pointer;
+}
+
 .arc-generate {
 	position: relative;
 	flex: 0 0 auto;

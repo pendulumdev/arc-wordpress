@@ -141,6 +141,16 @@ final class Rest_Controller {
 
 		register_rest_route(
 			'pendulum-arc/v1',
+			'/google-connect',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'google_connect' ),
+				'permission_callback' => array( $this, 'can_manage' ),
+			)
+		);
+
+		register_rest_route(
+			'pendulum-arc/v1',
 			'/scores',
 			array(
 				'methods'             => 'GET',
@@ -340,6 +350,19 @@ final class Rest_Controller {
 	 */
 	public function scores() {
 		return rest_ensure_response( $this->connect->scores() );
+	}
+
+	/**
+	 * Starts Google connect for the current admin and this paired site.
+	 *
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function google_connect() {
+		return $this->respond(
+			function () {
+				return $this->connect->start_google_connect( get_current_user_id() );
+			}
+		);
 	}
 
 	/**
