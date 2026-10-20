@@ -32,6 +32,7 @@ import { OpenInArc } from '../ui/open-in-arc';
 import { ArcIntro } from './arc-intro';
 import { ChooseSiteModal } from './choose-site-modal';
 import { CreateSiteModal } from './create-site-modal';
+import { InviteBox } from './invite-box';
 import { connectReducer, initialConnectState } from './reducer';
 
 const SAVED_API_KEY = '************';
@@ -256,7 +257,8 @@ export function ConnectPage( { bootstrap } ) {
 				</>
 			) }
 			{ connected && ! reconnecting && (
-				<div className="pendulum-arc-connection">
+				<div className="pendulum-arc-meta-grid">
+					<InviteBox mode="connected" />
 					<ConnectionSummary
 						connection={ bootstrap.connection }
 						onDisconnect={ async () => {

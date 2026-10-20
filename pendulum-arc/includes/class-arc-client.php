@@ -231,15 +231,45 @@ final class Arc_Client {
 	/**
 	 * Invites one project member. continue is the portal path after accept.
 	 *
+	 * An empty continue is omitted. Connect Google passes a ticket path.
+	 * The Connect invite list does not.
+	 *
 	 * @param string $env           production or preview.
 	 * @param string $token         Bearer.
 	 * @param string $project_id    Project id.
 	 * @param string $email         Invitee.
-	 * @param string $continue_path Allowlisted portal path.
+	 * @param string $continue_path Allowlisted portal path, or empty.
 	 * @param string $key           Idempotency-Key.
 	 * @return array<string, mixed>
 	 */
 	public function create_invite( string $env, string $token, string $project_id, string $email, string $continue_path, string $key ): array {
+		$this->assert_id( $project_id );
+		$this->assert_key( $key );
+		$url  = Arc_Config::api( $env ) . '/v1/projects/' . rawurlencode( $project_id ) . '/invites';
+		$body = array( 'email' => $email );
+		if ( '' !== $continue_path ) {
+			$body['continue'] = $continue_path;
+		}
+		return $this->json(
+			'POST',
+			$url,
+			$token,
+			$body,
+			array( 'Idempotency-Key' => $key )
+		);
+	}
+
+	/**
+	 * Invites many project members in one call. No continue path.
+	 *
+	 * @param string             $env        production or preview.
+	 * @param string             $token      Bearer.
+	 * @param string             $project_id Project id.
+	 * @param array<int, string> $emails     Normalized emails.
+	 * @param string             $key        Idempotency-Key for the whole list.
+	 * @return array<string, mixed>
+	 */
+	public function create_invites( string $env, string $token, string $project_id, array $emails, string $key ): array {
 		$this->assert_id( $project_id );
 		$this->assert_key( $key );
 		$url = Arc_Config::api( $env ) . '/v1/projects/' . rawurlencode( $project_id ) . '/invites';
@@ -247,10 +277,7 @@ final class Arc_Client {
 			'POST',
 			$url,
 			$token,
-			array(
-				'email'    => $email,
-				'continue' => $continue_path,
-			),
+			array( 'emails' => array_values( $emails ) ),
 			array( 'Idempotency-Key' => $key )
 		);
 	}

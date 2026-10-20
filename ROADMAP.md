@@ -100,6 +100,29 @@ A grant from before `arc:invite` can still open the ticket for someone who
 already has an Arc account. Inviting a new account needs Disconnect and
 Connect with Arc again.
 
+### Invite administrators
+
+The Connect screen shows an Invite card to the left of Connection when the
+site is paired. The card is hidden until the site is connected.
+
+An invited person becomes a member of this project. They can view and
+generate reports for every site on it. They cannot invite other people,
+change the plan, or remove sites.
+
+Invite opens a list of WordPress administrators (`manage_options`), 100 per
+page. A search box matches name or email across the whole list, and Previous
+and Next stay on that search. The plugin reads
+`POST /v1/projects/{projectId}/invite-status` for that page. Someone who is not on this project is checked, whether or not they
+already have an Arc account. A member, a pending
+invite, or a user with no email cannot be selected. Send invites posts the
+checked people on the current page to `POST /pendulum-arc/v1/invites`, which
+calls `POST /v1/projects/{projectId}/invites` once for that page with
+`{ "emails" }` and no `continue` path. Other pages are not included. Arc
+allows 3 open project invites. Further people come back as pending-cap
+refusals and are not retried. A rate limit or a reconnect refusal is one
+error for the page.
+A grant without `arc:invite` asks the admin to disconnect and connect again.
+
 The menu reads `GET /v1/sites/{siteId}/runs` when the notice opens, and the
 row shows Queued or Running from that page plus the queue that is still in
 flight. It does not poll. Each list spends a public API credit, so the notice

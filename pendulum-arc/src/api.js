@@ -55,6 +55,24 @@ export function startGoogleConnect() {
 	} );
 }
 
+export function fetchInvites( page, search = '' ) {
+	const params = new URLSearchParams( { page: String( page ) } );
+	if ( search ) {
+		params.set( 'search', search );
+	}
+	return apiFetch( {
+		path: `/pendulum-arc/v1/invites?${ params.toString() }`,
+	} );
+}
+
+export function sendInvites( userIds ) {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/invites',
+		method: 'POST',
+		data: { userIds },
+	} );
+}
+
 export function fetchScores() {
 	return apiFetch( { path: '/pendulum-arc/v1/scores' } );
 }

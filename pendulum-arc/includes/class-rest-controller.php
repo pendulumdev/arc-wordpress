@@ -29,12 +29,19 @@ final class Rest_Controller {
 	private Keyphrase_Sync $keyphrases;
 
 	/**
+	 * @var Invite_Service
+	 */
+	private Invite_Service $invites;
+
+	/**
 	 * @param Connect_Service $connect    Connect flow.
 	 * @param Keyphrase_Sync  $keyphrases Keyphrase list and Arc sync.
+	 * @param Invite_Service  $invites    Administrator invites.
 	 */
-	public function __construct( Connect_Service $connect, Keyphrase_Sync $keyphrases ) {
+	public function __construct( Connect_Service $connect, Keyphrase_Sync $keyphrases, Invite_Service $invites ) {
 		$this->connect    = $connect;
 		$this->keyphrases = $keyphrases;
+		$this->invites    = $invites;
 	}
 
 	/**
@@ -146,6 +153,47 @@ final class Rest_Controller {
 				'methods'             => 'POST',
 				'callback'            => array( $this, 'google_connect' ),
 				'permission_callback' => array( $this, 'can_manage' ),
+			)
+		);
+
+		register_rest_route(
+			'pendulum-arc/v1',
+			'/invites',
+			array(
+				array(
+					'methods'             => 'GET',
+					'callback'            => array( $this, 'invite_page' ),
+					'permission_callback' => array( $this, 'can_manage' ),
+					'args'                => array(
+						'page'   => array(
+							'type'              => 'integer',
+							'required'          => false,
+							'default'           => 1,
+							'minimum'           => 1,
+							'sanitize_callback' => 'absint',
+						),
+						'search' => array(
+							'type'              => 'string',
+							'required'          => false,
+							'default'           => '',
+							'sanitize_callback' => 'sanitize_text_field',
+						),
+					),
+				),
+				array(
+					'methods'             => 'POST',
+					'callback'            => array( $this, 'invite_send' ),
+					'permission_callback' => array( $this, 'can_manage' ),
+					'args'                => array(
+						'userIds' => array(
+							'type'     => 'array',
+							'required' => true,
+							'items'    => array(
+								'type' => 'integer',
+							),
+						),
+					),
+				),
 			)
 		);
 
@@ -361,6 +409,38 @@ final class Rest_Controller {
 		return $this->respond(
 			function () {
 				return $this->connect->start_google_connect( get_current_user_id() );
+			}
+		);
+	}
+
+	/**
+	 * Administrators on one page, and whether each is on the Arc project.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function invite_page( \WP_REST_Request $request ) {
+		return $this->respond(
+			function () use ( $request ) {
+				return $this->invites->page(
+					(int) $request->get_param( 'page' ),
+					Invite_Rules::search( (string) $request->get_param( 'search' ) )
+				);
+			}
+		);
+	}
+
+	/**
+	 * Sends project invites for the checked administrators on the current page.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function invite_send( \WP_REST_Request $request ) {
+		return $this->respond(
+			function () use ( $request ) {
+				$ids = $request->get_param( 'userIds' );
+				return $this->invites->send( is_array( $ids ) ? $ids : array() );
 			}
 		);
 	}

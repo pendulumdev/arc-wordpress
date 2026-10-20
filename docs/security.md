@@ -16,6 +16,10 @@ OAuth code flow with PKCE. The browser goes to the portal, then returns to
 this site's Connect screen. The plugin stores the token that comes back. It
 does not store the Arc password.
 
+Invite, on the Connect screen, sends the email addresses of WordPress
+administrators to Arc. That check sees who is already on the project, and a
+chosen person receives a project invite. The list is not stored on this site.
+
 ## Version check
 
 WordPress asks GitHub whether a newer release exists. The request goes to

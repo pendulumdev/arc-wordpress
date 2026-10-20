@@ -18,6 +18,8 @@ Connect with an API key, or sign in through Arc. Signing in opens Arc, where you
 
 An API key pairs the site when Arc already has this address. When it does not, you confirm the site name, address, and project in WordPress.
 
+On Connect, Invite sends project invites to WordPress administrators who are not already on the Arc project.
+
 Sync keyphrases, in Settings on the Connect page, reads focus keyphrases already stored by Yoast, Rank Math, SEOPress, and All in One SEO. When that list differs from Arc, a notice appears at the top of Arc screens and the Arc menu shows a count of 1. Sync with Arc sends that list to Arc and queues the SEO report. Turning the checkbox off clears the list in WordPress and leaves the Arc target as it is.
 
 GDPR Consent, under the Arc menu, is a cookie banner for this site. It does not call Arc, and it is available before the site is paired. Optional cookies, and scripts listed on them, stay off until a visitor accepts them. Decline refuses every optional cookie. Consent logging is off until you turn it on. A static banner is printed at the end of the theme header or footer. A fixed banner is positioned on the screen. Disable, on the Behaviour tab, turns the banner off and leaves script tags unchanged.
@@ -32,6 +34,8 @@ This plugin sends the site address and an API key or OAuth token to Pendulum Arc
 * Preview API: `https://api.arc.preview.pendulumdev.co.uk`
 
 Tokens are stored encrypted in WordPress and are not shown again. Disconnecting here stops this install from calling Arc. An Arc admin revokes the key or the connected app in Arc.
+
+Invite sends administrator email addresses to Arc to see who is already on the project and to send a project invite. That list is not stored in WordPress.
 
 The plugin also asks GitHub if a newer release exists, at `https://api.github.com/repos/pendulumdev/arc-wordpress/releases/latest`. That request sends no site address and no Arc credential. Update now, and automatic updates, download the release zip from GitHub. Automatic updates are turned on. Disable them on the Plugins screen to leave them off.
 
@@ -66,6 +70,7 @@ When the GitHub repository is public and a release is newer than this install, W
 == Changelog ==
 
 = 0.4.4 =
+* Connect can invite WordPress administrators onto the Arc project. The Invite card sits to the left of the connection when the site is connected.
 * Cookie choice boxes are 20px, so a 10px theme root no longer shrinks them.
 * An update adds that size to a saved stylesheet, including one that already received the layout fix.
 

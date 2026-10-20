@@ -14,6 +14,7 @@ import { __, sprintf } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { enqueueRun, errorMessage, fetchRuns } from '../api';
+import { ArcButton } from '../ui/button';
 import { StrokeMark } from '../ui/column-icon';
 import { ErrorAlert } from '../ui/error-alert';
 import { Icon } from '../ui/icon';
@@ -346,10 +347,10 @@ export function GenerateReports( { onActivity, onSettled, connectUrl } ) {
 
 	return (
 		<div className="arc-generate" ref={ rootRef }>
-			<button
-				type="button"
-				className="arc-button arc-button--primary arc-generate__trigger"
-				aria-label={ menuLabel }
+			<ArcButton
+				variant="primary"
+				className="arc-generate__trigger"
+				ariaLabel={ menuLabel }
 				aria-expanded={ open }
 				aria-controls={ menuId }
 				aria-haspopup="menu"
@@ -375,7 +376,7 @@ export function GenerateReports( { onActivity, onSettled, connectUrl } ) {
 						<path d="m6 9 6 6 6-6" />
 					</Icon>
 				</span>
-			</button>
+			</ArcButton>
 			{ open ? (
 				<div
 					id={ menuId }

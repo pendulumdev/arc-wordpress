@@ -28,7 +28,8 @@ if ( ! function_exists( '__' ) ) {
 	 *
 	 * @param string $text Text.
 	 */
-	function __( string $text ): string {
+	function __( string $text, string $domain = '' ): string {
+		unset( $domain );
 		return $text;
 	}
 }
@@ -54,5 +55,6 @@ require $root . '/includes/class-keyphrase-cursor.php';
 require $root . '/includes/class-keyphrase-push.php';
 require $root . '/includes/class-keyphrase-sources.php';
 require $root . '/includes/class-page-alerts.php';
+require $root . '/includes/class-invite-rules.php';
 require $root . '/includes/class-arc-api-exception.php';
 require $root . '/includes/class-connect-service.php';

@@ -44,13 +44,10 @@
 
 .pendulum-arc-screen > .components-notice + .pendulum-arc-intro,
 .pendulum-arc-screen > .components-notice + .pendulum-arc-meta-grid,
-.pendulum-arc-screen > .components-notice + .pendulum-arc-connection,
 .pendulum-arc-screen > .arc-alerts + .pendulum-arc-intro,
 .pendulum-arc-screen > .arc-alerts + .pendulum-arc-meta-grid,
-.pendulum-arc-screen > .arc-alerts + .pendulum-arc-connection,
 .pendulum-arc-screen > .arc-alerts + .arc-report-alert,
-.pendulum-arc-screen > .arc-report-alert + .pendulum-arc-meta-grid,
-.pendulum-arc-screen > .arc-report-alert + .pendulum-arc-connection {
+.pendulum-arc-screen > .arc-report-alert + .pendulum-arc-meta-grid {
 	margin-top: 1.5rem;
 }
 
@@ -58,11 +55,6 @@
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--arc-layout-gap);
-}
-
-.pendulum-arc-connection {
-	max-width: 36rem;
-	margin-top: 16px;
 }
 
 .arc-keyphrases {
@@ -93,6 +85,156 @@
 
 .pendulum-arc-meta-grid .arc-meta__body > .arc-button {
 	align-self: flex-start;
+}
+
+.pendulum-arc-meta-grid > .arc-meta > .arc-meta__body > .arc-meta__footer {
+	margin-top: auto;
+	padding-top: 1.25rem;
+}
+
+.components-modal__frame.pendulum-arc-modal {
+	border-radius: var(--arc-radius-large);
+}
+
+.components-modal__frame.pendulum-arc-invite-modal {
+	display: flex;
+	flex-direction: column;
+	width: min(40rem, calc(100vw - 2rem));
+	height: min(44rem, calc(100vh - 3rem));
+	max-height: min(44rem, calc(100vh - 3rem));
+	overflow: hidden;
+}
+
+.pendulum-arc-invite-modal .components-modal__content {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-x: hidden;
+	overflow-y: auto;
+}
+
+.pendulum-arc-invite-modal .components-modal__children-container {
+	display: flex;
+	flex-direction: column;
+	flex: 0 0 auto;
+	overflow: visible;
+}
+
+.pendulum-arc-invite-modal .components-modal__children-container > * {
+	flex-shrink: 0;
+}
+
+.arc-invite-search {
+	box-sizing: border-box;
+	margin: 0 0 calc(1rem - 5px);
+	padding: 5px;
+}
+
+.arc-invite-stage {
+	--arc-invite-table-height: max(12rem, min(22rem, calc(100vh - 20rem)));
+	display: flex;
+	flex-direction: column;
+	min-height: 12rem;
+}
+
+.pendulum-arc-invite-modal .components-modal__children-container > .arc-invite-stage {
+	flex: 0 0 auto;
+	overflow: visible;
+}
+
+.pendulum-arc-invite-modal .arc-invite-ready {
+	display: flex;
+	flex-direction: column;
+	overflow: visible;
+}
+
+.arc-invite-table-scroll {
+	height: var(--arc-invite-table-height);
+	overflow-x: hidden;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+
+.arc-invite-stage > .arc-report-loader {
+	height: var(--arc-invite-table-height);
+	min-height: var(--arc-invite-table-height);
+}
+
+.arc-invite-ready[data-ready="true"] > :not(.arc-invite-table-scroll) {
+	animation: arc-report-rise 0.45s ease both;
+}
+
+.arc-invite-ready[data-ready="true"] .arc-invite-table thead th,
+.arc-invite-ready[data-ready="true"] .arc-invite-table tbody td {
+	animation: arc-report-rise 0.4s ease both;
+}
+
+@for $row from 1 through 16 {
+	.arc-invite-ready[data-ready="true"]
+		.arc-invite-table
+		tbody
+		tr:nth-child(#{$row})
+		td {
+		animation-delay: #{0.04 + ($row - 1) * 0.045}s;
+	}
+}
+
+.arc-invite-ready[data-ready="true"]
+	.arc-invite-table
+	tbody
+	tr:nth-child(n + 17)
+	td {
+	animation-delay: 0.76s;
+}
+
+.arc-invite-table {
+	width: 100%;
+	margin: 0;
+	border-collapse: separate;
+	border-spacing: 0;
+}
+
+.arc-invite-table th,
+.arc-invite-table td {
+	padding: 0.5rem 0.75rem;
+	border-bottom: 1px solid var(--arc-border-subtle);
+	text-align: start;
+	vertical-align: middle;
+}
+
+.arc-invite-table th {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	background: var(--arc-bg-secondary);
+	color: var(--arc-fg-secondary);
+	font-size: 0.75rem;
+}
+
+.arc-invite-table tbody tr[data-disabled="false"] {
+	cursor: pointer;
+}
+
+.arc-invite-table tr[data-disabled="true"] {
+	color: var(--arc-fg-tertiary);
+}
+
+.arc-invite-results__line {
+	display: block;
+}
+
+.arc-invite-results__line + .arc-invite-results__line {
+	margin-top: 0.35rem;
+}
+
+.arc-invite-pager {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	margin-top: 1rem;
 }
 
 .pendulum-arc-modal .arc-report-alert {
@@ -168,6 +310,14 @@
 
 .pendulum-arc-dashboard-widget__actions {
 	display: flex;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.arc-invite-ready[data-ready="true"] > *,
+	.arc-invite-ready[data-ready="true"] .arc-invite-table th,
+	.arc-invite-ready[data-ready="true"] .arc-invite-table td {
+		animation: none;
+	}
 }
 
 @media (max-width: 782px) {

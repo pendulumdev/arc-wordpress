@@ -492,6 +492,15 @@
 	background: color-mix(in srgb, var(--arc-accent-red) 14%, var(--arc-bg-secondary));
 }
 
+.arc-report-alert--success {
+	border-color: color-mix(in srgb, var(--arc-accent-emerald) 42%, transparent);
+	background: color-mix(in srgb, var(--arc-accent-emerald) 14%, var(--arc-bg-secondary));
+}
+
+.arc-report-alert--success > p svg {
+	color: var(--arc-accent-emerald);
+}
+
 .arc-report-alert--error svg {
 	color: var(--arc-accent-red);
 }

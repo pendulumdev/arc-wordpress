@@ -68,7 +68,8 @@ final class Plugin {
 		$keyphrases = new Keyphrase_Sync( $store, $connect, $client, $list, new Keyphrase_Scan( $list, new Keyphrase_Read() ) );
 		$keyphrases->register();
 		( new Admin( $store, $connect, new Alerts( $store, $list ) ) )->register();
-		( new Rest_Controller( $connect, $keyphrases ) )->register();
+		$invites = new Invite_Service( $store, $connect, $client );
+		( new Rest_Controller( $connect, $keyphrases, $invites ) )->register();
 	}
 
 	/**
