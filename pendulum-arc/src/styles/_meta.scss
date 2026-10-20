@@ -48,6 +48,17 @@ h2.arc-meta__title,
 	margin-bottom: 0;
 }
 
+.arc-meta__actions {
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.arc-meta__actions .components-spinner {
+	float: none;
+	margin: 0;
+}
+
 .arc-meta__description {
 	margin: 0 0 1rem;
 }

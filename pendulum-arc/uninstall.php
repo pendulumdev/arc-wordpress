@@ -16,6 +16,7 @@ delete_option( 'arc_cookie_consent_settings' );
 delete_option( 'arc_consent_log_db' );
 delete_option( 'arc_keyphrase_sync' );
 delete_option( 'arc_keyphrase_db' );
+delete_option( 'arc_google_missing' );
 
 global $wpdb;
 

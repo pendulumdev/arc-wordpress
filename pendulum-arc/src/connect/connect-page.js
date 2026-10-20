@@ -1,7 +1,7 @@
 /**
  * WordPress dependencies
  */
-import { Notice, Spinner, TextControl } from '@wordpress/components';
+import { Spinner, TextControl } from '@wordpress/components';
 import {
 	createInterpolateElement,
 	useReducer,
@@ -12,6 +12,7 @@ import { __ } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
+import { keyphraseAlert, pageAlerts, PageAlerts } from '../alerts/page-alerts';
 import {
 	connectWithApiKey,
 	createSite,
@@ -53,6 +54,7 @@ export function ConnectPage( { bootstrap } ) {
 	const [ keyHeld, setKeyHeld ] = useState( () =>
 		hasStoredApiKey( bootstrap )
 	);
+	const [ keyphraseDiverged, setKeyphraseDiverged ] = useState( null );
 	const showSavedKey = keyHeld && apiKey === '';
 	const connected = bootstrap.connection && bootstrap.connection.connected;
 
@@ -177,35 +179,37 @@ export function ConnectPage( { bootstrap } ) {
 		( ! connected || reconnecting ) &&
 		( state.phase === 'needs_site' || state.phase === 'creating' ) &&
 		Boolean( state.draft );
+	const extras = [];
+	if ( state.error && ! siteFormOpen ) {
+		extras.push( {
+			id: 'connect-error',
+			tone: 'error',
+			message: state.error,
+		} );
+	}
+	if ( ( ! connected || reconnecting ) && state.phase === 'needs_project' ) {
+		extras.push( {
+			id: 'needs-project',
+			tone: 'warning',
+			message: __(
+				'This Arc account has no project yet. Add one in Arc, then connect again.',
+				'pendulum-arc'
+			),
+			href: state.portalUrl || bootstrap.urls.portal,
+			hrefLabel: __( 'Open Arc', 'pendulum-arc' ),
+		} );
+	}
+	const alerts = pageAlerts(
+		bootstrap.alerts,
+		extras,
+		keyphraseDiverged,
+		keyphraseAlert( bootstrap.urls.connect, true )
+	);
 
 	return (
 		<div className="pendulum-arc-screen">
 			<OpenInArc bootstrap={ bootstrap } />
-			{ bootstrap.notice && (
-				<Notice
-					status={ bootstrap.notice.status }
-					isDismissible={ false }
-				>
-					{ bootstrap.notice.message }
-				</Notice>
-			) }
-			{ state.error && ! siteFormOpen && (
-				<Notice status="error" isDismissible={ false }>
-					{ state.error }
-				</Notice>
-			) }
-			{ ( ! connected || reconnecting ) &&
-				state.phase === 'needs_project' && (
-					<Notice status="warning" isDismissible={ false }>
-						{ __(
-							'This Arc account has no project yet. Add one in Arc, then connect again.',
-							'pendulum-arc'
-						) }{ ' ' }
-						<a href={ state.portalUrl || bootstrap.urls.portal }>
-							{ __( 'Open Arc', 'pendulum-arc' ) }
-						</a>
-					</Notice>
-				) }
+			<PageAlerts alerts={ alerts } />
 			<div className="pendulum-arc-intro pendulum-arc-meta-grid">
 				<ArcIntro
 					portalUrl={
@@ -223,6 +227,7 @@ export function ConnectPage( { bootstrap } ) {
 					<KeyphraseSync
 						connected={ Boolean( connected && ! reconnecting ) }
 						arcMark={ bootstrap.urls.arcMark }
+						onStatus={ setKeyphraseDiverged }
 					/>
 				</MetaBox>
 			</div>
@@ -279,10 +284,12 @@ export function ConnectPage( { bootstrap } ) {
 							}
 						) }
 					>
-						<ArcButton busy={ busy } onClick={ onOAuth }>
-							{ __( 'Connect with Arc', 'pendulum-arc' ) }
-						</ArcButton>
-						{ busy && <Spinner /> }
+						<div className="arc-meta__actions">
+							<ArcButton busy={ busy } onClick={ onOAuth }>
+								{ __( 'Connect with Arc', 'pendulum-arc' ) }
+							</ArcButton>
+							{ busy ? <Spinner /> : null }
+						</div>
 					</MetaBox>
 					<MetaBox
 						icon="key"

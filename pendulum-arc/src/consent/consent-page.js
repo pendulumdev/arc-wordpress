@@ -1,13 +1,13 @@
 /**
  * WordPress dependencies
  */
-import { Notice } from '@wordpress/components';
 import { useEffect, useId, useState } from '@wordpress/element';
 import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
+import { keyphraseAlert, pageAlerts, PageAlerts } from '../alerts/page-alerts';
 import {
 	errorMessage,
 	renewConsent,
@@ -390,6 +390,22 @@ export function ConsentPage( { bootstrap } ) {
 	}
 
 	const icon = draft.reopen_icon_url || bootstrap.cookieIcon || '';
+	const extras = notice
+		? [
+				{
+					id: 'consent',
+					tone: notice.status === 'error' ? 'error' : 'info',
+					message: notice.message,
+					onDismiss: () => setNotice( null ),
+				},
+			]
+		: [];
+	const alerts = pageAlerts(
+		bootstrap.alerts,
+		extras,
+		null,
+		keyphraseAlert( bootstrap.urls.connect, false )
+	);
 
 	return (
 		<div
@@ -398,15 +414,7 @@ export function ConsentPage( { bootstrap } ) {
 			}` }
 		>
 			<OpenInArc bootstrap={ bootstrap } />
-			{ notice ? (
-				<Notice
-					status={ notice.status }
-					isDismissible
-					onRemove={ () => setNotice( null ) }
-				>
-					{ notice.message }
-				</Notice>
-			) : null }
+			<PageAlerts alerts={ alerts } />
 			<section className="arc-meta">
 				<header className="arc-meta__header">
 					<div

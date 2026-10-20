@@ -36,7 +36,7 @@ final class ConsentRulesTest extends TestCase {
 		self::assertSame( 'collapse', $settings['after_choice'] );
 		self::assertFalse( $settings['logging_enabled'] );
 		self::assertFalse( $settings['disable_identifiable'] );
-		self::assertFalse( $settings['disabled'] );
+		self::assertTrue( $settings['disabled'] );
 		self::assertSame( 'fixed', $settings['layout'] );
 		self::assertSame( 'footer', $settings['placement'] );
 		self::assertSame( 'bottom-left', $settings['fixed_position'] );

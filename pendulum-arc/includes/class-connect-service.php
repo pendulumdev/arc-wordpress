@@ -338,10 +338,28 @@ final class Connect_Service {
 				'error'  => self::admin_message( $error ),
 			);
 		}
+		$scores = Pairing::scores( $payload );
+		Google_Connection::remember( self::analytics_setup( $scores ) );
 		return array(
-			'scores' => Pairing::scores( $payload ),
+			'scores' => $scores,
 			'error'  => null,
 		);
+	}
+
+	/**
+	 * Analytics setup from the scores rows. Null when the card is ready.
+	 *
+	 * @param array<int, array<string, mixed>> $scores Score rows.
+	 */
+	private static function analytics_setup( array $scores ): ?string {
+		foreach ( $scores as $row ) {
+			if ( ! is_array( $row ) || 'analytics' !== (string) ( $row['service'] ?? '' ) ) {
+				continue;
+			}
+			$setup = $row['setup'] ?? null;
+			return is_string( $setup ) ? $setup : null;
+		}
+		return null;
 	}
 
 	/**
@@ -513,6 +531,7 @@ final class Connect_Service {
 	public function disconnect( int $user_id ): void {
 		$this->store->clear();
 		$this->store->clear_pending( $user_id );
+		Google_Connection::clear();
 	}
 
 	/**

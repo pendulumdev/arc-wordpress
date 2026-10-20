@@ -53,5 +53,6 @@ require $root . '/includes/class-keyphrase-collect.php';
 require $root . '/includes/class-keyphrase-cursor.php';
 require $root . '/includes/class-keyphrase-push.php';
 require $root . '/includes/class-keyphrase-sources.php';
+require $root . '/includes/class-page-alerts.php';
 require $root . '/includes/class-arc-api-exception.php';
 require $root . '/includes/class-connect-service.php';

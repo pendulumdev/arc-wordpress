@@ -29,12 +29,19 @@ final class Admin {
 	private Connect_Service $connect;
 
 	/**
+	 * @var Alerts
+	 */
+	private Alerts $alerts;
+
+	/**
 	 * @param Connection_Store $store   Credential store.
 	 * @param Connect_Service  $connect Connect flow.
+	 * @param Alerts           $alerts  Menu count and page banners.
 	 */
-	public function __construct( Connection_Store $store, Connect_Service $connect ) {
+	public function __construct( Connection_Store $store, Connect_Service $connect, Alerts $alerts ) {
 		$this->store   = $store;
 		$this->connect = $connect;
+		$this->alerts  = $alerts;
 	}
 
 	/**
@@ -85,6 +92,7 @@ final class Admin {
 			'pendulum-arc-connect',
 			array( $this, 'render_connect' )
 		);
+		$this->mark_menu( $this->alerts->menu_count() );
 	}
 
 	/**
@@ -284,7 +292,7 @@ final class Admin {
 		$this->connect->ensure_project_slug();
 		$bootstrap = array(
 			'page'       => $page,
-			'notice'     => $this->store->take_notice( $user_id ),
+			'alerts'     => $this->alerts->for_screen( $this->store->take_notice( $user_id ), 'connect' === $page ),
 			'connection' => $this->store->public_view(),
 			'pending'    => $this->store->pending_public( $user_id ),
 			'urls'       => array(
@@ -314,6 +322,32 @@ final class Admin {
 		echo '</div>';
 		echo '<div id="pendulum-arc-root" data-bootstrap="' . esc_attr( (string) $json ) . '"></div>';
 		echo '</div>';
+	}
+
+	/**
+	 * Attention count on the Arc menu. The number is the count of alerts that ask for a click.
+	 *
+	 * @param int $count Alerts that count.
+	 */
+	private function mark_menu( int $count ): void {
+		if ( $count < 1 ) {
+			return;
+		}
+		global $menu;
+		if ( ! is_array( $menu ) ) {
+			return;
+		}
+		foreach ( $menu as $index => $item ) {
+			if ( ! is_array( $item ) || ( $item[2] ?? '' ) !== 'pendulum-arc' ) {
+				continue;
+			}
+			// The menu title is where WordPress prints the attention count.
+			$menu[ $index ][0] .= sprintf( // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+				' <span class="awaiting-mod count-%1$d"><span class="pending-count" id="pendulum-arc-menu-count">%1$d</span></span>',
+				$count
+			);
+			return;
+		}
 	}
 
 	/**

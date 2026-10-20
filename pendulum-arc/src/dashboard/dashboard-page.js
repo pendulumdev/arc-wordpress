@@ -6,6 +6,13 @@ import { useCallback, useState } from '@wordpress/element';
 /**
  * Internal dependencies
  */
+import {
+	googleAccountMissing,
+	googleAlert,
+	keyphraseAlert,
+	pageAlerts,
+	PageAlerts,
+} from '../alerts/page-alerts';
 import { SiteScoreSummary, useSiteScores } from '../meta';
 import { GenerationNotice } from '../reports/report-cta';
 import { reportsAreComplete } from '../reports/reports-ready';
@@ -24,9 +31,21 @@ export function DashboardPage( { bootstrap } ) {
 		setRefreshKey( ( current ) => current + 1 );
 	}, [ reload ] );
 
+	const googleMissing =
+		loading || error ? null : googleAccountMissing( scoreRows );
+	const alerts = pageAlerts(
+		bootstrap.alerts,
+		[],
+		null,
+		keyphraseAlert( bootstrap.urls.connect, false ),
+		googleMissing,
+		googleAlert()
+	);
+
 	return (
 		<div className="pendulum-arc-screen">
 			<OpenInArc bootstrap={ bootstrap } />
+			<PageAlerts alerts={ alerts } />
 			{ isSiteMissingError( error ) ? null : (
 				<GenerationNotice
 					connectUrl={ bootstrap.urls.connect }

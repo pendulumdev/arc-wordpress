@@ -14,28 +14,38 @@ import { ArcButton } from '../ui/button';
 /**
  * Sync keyphrases control. The scan stays on WordPress. Arc is called when this screen loads after the scan, and when the button is clicked.
  *
- * @param {Object}  props
- * @param {boolean} props.connected Paired with an Arc site.
- * @param {string}  [props.arcMark] Arc mark shown on the sync button.
+ * @param {Object}                      props
+ * @param {boolean}                     props.connected  Paired with an Arc site.
+ * @param {string}                      [props.arcMark]  Arc mark shown on the sync button.
+ * @param {(diverged: boolean) => void} [props.onStatus] Called when the list is known to match or differ.
  */
-export function KeyphraseSync( { connected, arcMark } ) {
+export function KeyphraseSync( { connected, arcMark, onStatus } ) {
 	const [ status, setStatus ] = useState( null );
 	const [ message, setMessage ] = useState( '' );
 	const [ error, setError ] = useState( '' );
 	const [ busy, setBusy ] = useState( false );
 
-	const load = useCallback( async () => {
-		try {
-			const next = await fetchKeyphrases();
+	const apply = useCallback(
+		( next ) => {
 			setStatus( next );
 			setError( next.error || '' );
+			if ( onStatus ) {
+				onStatus( Boolean( next?.diverged ) );
+			}
+		},
+		[ onStatus ]
+	);
+
+	const load = useCallback( async () => {
+		try {
+			apply( await fetchKeyphrases() );
 		} catch ( failure ) {
 			setError(
 				failure?.message ||
 					__( 'Keyphrases could not be loaded.', 'pendulum-arc' )
 			);
 		}
-	}, [] );
+	}, [ apply ] );
 
 	useEffect( () => {
 		load();
@@ -54,9 +64,7 @@ export function KeyphraseSync( { connected, arcMark } ) {
 		setMessage( '' );
 		setError( '' );
 		try {
-			const next = await setKeyphrasesEnabled( enabled );
-			setStatus( next );
-			setError( next.error || '' );
+			apply( await setKeyphrasesEnabled( enabled ) );
 		} catch ( failure ) {
 			setError(
 				failure?.message ||

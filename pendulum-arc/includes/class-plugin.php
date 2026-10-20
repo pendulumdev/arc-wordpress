@@ -67,7 +67,7 @@ final class Plugin {
 		$list       = new Keyphrase_List();
 		$keyphrases = new Keyphrase_Sync( $store, $connect, $client, $list, new Keyphrase_Scan( $list, new Keyphrase_Read() ) );
 		$keyphrases->register();
-		( new Admin( $store, $connect ) )->register();
+		( new Admin( $store, $connect, new Alerts( $store, $list ) ) )->register();
 		( new Rest_Controller( $connect, $keyphrases ) )->register();
 	}
 

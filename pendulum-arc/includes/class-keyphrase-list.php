@@ -63,7 +63,7 @@ final class Keyphrase_List {
 	}
 
 	/**
-	 * @return array{enabled: bool, acked_hash: string, focus: string, focus_synced: string, cursor: array<string, mixed>, scan_done: bool, sync_id: string, notice: bool}
+	 * @return array{enabled: bool, acked_hash: string, focus: string, focus_synced: string, cursor: array<string, mixed>, scan_done: bool, sync_id: string, notice: bool, diverged: bool}
 	 */
 	public function state(): array {
 		$stored = get_option( self::OPTION, array() );
@@ -83,6 +83,7 @@ final class Keyphrase_List {
 			'scan_done'    => ! empty( $stored['scan_done'] ),
 			'sync_id'      => (string) ( $stored['sync_id'] ?? '' ),
 			'notice'       => ! empty( $stored['notice'] ),
+			'diverged'     => ! empty( $stored['diverged'] ),
 		);
 	}
 
@@ -103,6 +104,7 @@ final class Keyphrase_List {
 					'scan_done'    => false,
 					'sync_id'      => '',
 					'notice'       => true,
+					'diverged'     => false,
 				),
 				false
 			);
@@ -121,6 +123,7 @@ final class Keyphrase_List {
 				'scan_done'    => false,
 				'sync_id'      => '',
 				'notice'       => false,
+				'diverged'     => false,
 			),
 			false
 		);
@@ -141,11 +144,12 @@ final class Keyphrase_List {
 		$state['cursor']       = Keyphrase_Cursor::start( array() );
 		$state['scan_done']    = false;
 		$state['sync_id']      = '';
+		$state['diverged']     = false;
 		$this->write( $state );
 	}
 
 	/**
-	 * @param array{enabled: bool, acked_hash: string, focus: string, focus_synced: string, cursor: array<string, mixed>, scan_done: bool, sync_id: string, notice: bool} $state State.
+	 * @param array{enabled: bool, acked_hash: string, focus: string, focus_synced: string, cursor: array<string, mixed>, scan_done: bool, sync_id: string, notice: bool, diverged: bool} $state State.
 	 */
 	public function write( array $state ): void {
 		update_option( self::OPTION, $state, false );
@@ -244,6 +248,38 @@ final class Keyphrase_List {
 	}
 
 	/**
+	 * The menu count and the banner. A dirty row is enough; the hash check on Connect confirms it.
+	 */
+	public function needs_sync( bool $connected ): bool {
+		$state = $this->state();
+		$ready = $state['enabled'] && $state['scan_done'] && $connected;
+		$clean = $state['focus'] === $state['focus_synced'] && empty( $state['diverged'] );
+		$dirty = $ready && $clean && $this->has_dirty();
+		return Page_Alerts::keyphrase_pending(
+			$state['enabled'],
+			$state['scan_done'],
+			$connected,
+			$state['focus'],
+			$state['focus_synced'],
+			$dirty,
+			! empty( $state['diverged'] )
+		);
+	}
+
+	/**
+	 * A row Arc has not accepted, including a tombstone.
+	 */
+	public function has_dirty(): bool {
+		if ( '1' !== (string) get_option( self::DB_OPTION, '' ) ) {
+			return false;
+		}
+		global $wpdb;
+		$table = self::table();
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} WHERE deleted = 1 OR phrase <> synced_phrase" ) > 0;
+	}
+
+	/**
 	 * Copies the accepted phrases over the synced columns and drops tombstones.
 	 */
 	public function ack( string $hash, string $focus ): void {
@@ -258,6 +294,7 @@ final class Keyphrase_List {
 		$state['focus']        = $focus;
 		$state['focus_synced'] = $focus;
 		$state['sync_id']      = '';
+		$state['diverged']     = false;
 		$this->write( $state );
 	}
 

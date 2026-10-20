@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace ArcWordpress\Tests;
 
 use ArcWordpress\Keyphrase_Collect;
+use ArcWordpress\Page_Alerts;
 use ArcWordpress\Keyphrase_Cursor;
 use ArcWordpress\Keyphrase_Hash;
 use ArcWordpress\Keyphrase_Phrase;
@@ -20,6 +21,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * @covers \ArcWordpress\Keyphrase_Hash
  * @covers \ArcWordpress\Keyphrase_Push
+ * @covers \ArcWordpress\Page_Alerts
  */
 final class KeyphraseTest extends TestCase {
 
@@ -187,6 +189,48 @@ final class KeyphraseTest extends TestCase {
 		self::assertNull( $plan['focus'] );
 		self::assertSame( array(), $plan['deletes'] );
 		self::assertCount( 1, $plan['upserts'] );
+	}
+
+	public function test_only_the_keyphrase_alert_counts(): void {
+		self::assertFalse( Page_Alerts::keyphrase_pending( true, false, true, 'home', '', true, false ) );
+		self::assertFalse( Page_Alerts::keyphrase_pending( true, true, false, 'home', '', true, false ) );
+		self::assertTrue( Page_Alerts::keyphrase_pending( true, true, true, 'home', 'home', true, false ) );
+		self::assertTrue( Page_Alerts::keyphrase_pending( true, true, true, 'home', '', false, false ) );
+		self::assertTrue( Page_Alerts::keyphrase_pending( true, true, true, 'home', 'home', false, true ) );
+		self::assertFalse( Page_Alerts::keyphrase_pending( true, true, true, 'home', 'home', false, false ) );
+
+		$alerts = Page_Alerts::collect(
+			array(
+				'status'  => 'error',
+				'message' => 'Arc sign-in was cancelled.',
+			),
+			true,
+			'https://example.com/wp-admin/admin.php?page=pendulum-arc-connect',
+			false
+		);
+		self::assertCount( 2, $alerts );
+		self::assertSame( 1, Page_Alerts::count( $alerts ) );
+		self::assertFalse( $alerts[0]['count'] );
+		self::assertTrue( $alerts[1]['count'] );
+		self::assertSame( 'Sync with Arc', $alerts[1]['hrefLabel'] );
+
+		$on_connect = Page_Alerts::collect( null, true, 'https://example.com/connect', true );
+		self::assertArrayNotHasKey( 'href', $on_connect[0] );
+
+		$with_google = Page_Alerts::collect( null, true, 'https://example.com/connect', true, true );
+		self::assertSame( 'google', $with_google[1]['id'] );
+		self::assertFalse( $with_google[1]['count'] );
+		self::assertSame( 1, Page_Alerts::count( $with_google ) );
+
+		$unconnected = Page_Alerts::collect( null, true, 'https://example.com/connect', false, false, true );
+		self::assertSame( 'arc', $unconnected[0]['id'] );
+		self::assertFalse( $unconnected[0]['count'] );
+		self::assertSame( 'Connect with Arc', $unconnected[0]['hrefLabel'] );
+		self::assertSame( 1, Page_Alerts::count( $unconnected ) );
+
+		$on_connect_only = Page_Alerts::collect( null, false, 'https://example.com/connect', true, false, true );
+		self::assertArrayNotHasKey( 'href', $on_connect_only[0] );
+		self::assertSame( 0, Page_Alerts::count( $on_connect_only ) );
 	}
 
 	public function test_batches_stay_within_five_hundred(): void {

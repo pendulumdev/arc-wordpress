@@ -197,8 +197,17 @@ final class Keyphrase_Sync {
 				$arc_hash = (string) ( $remote['hash'] ?? '' );
 				$local    = Keyphrase_Hash::of( $state['focus'], $this->list->current_pages() );
 				$diverged = $arc_hash !== $local;
+				if ( $diverged ) {
+					if ( empty( $state['diverged'] ) ) {
+						$state['diverged'] = true;
+						$this->list->write( $state );
+					}
+				} elseif ( $this->list->needs_sync( true ) ) {
+					$this->list->ack( $arc_hash, $state['focus'] );
+				}
 			} catch ( Arc_Api_Exception $error_object ) {
-				$error = $error_object->getMessage();
+				$error    = $error_object->getMessage();
+				$diverged = $this->list->needs_sync( true );
 			}
 		}
 		return array(

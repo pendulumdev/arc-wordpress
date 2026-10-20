@@ -9,24 +9,25 @@
 	flex-direction: column;
 	align-items: flex-start;
 	gap: 1.25rem;
-	max-width: 64rem;
+	width: 100%;
 	margin-top: 1.25rem;
 }
 
 .arc-consent > .arc-meta,
+.arc-consent > .arc-alerts,
 .arc-consent > .components-notice {
 	align-self: stretch;
 	width: 100%;
+}
+
+.arc-consent > .arc-alerts {
+	margin-top: 0;
 }
 
 .arc-consent .arc-meta__header {
 	align-items: stretch;
 	justify-content: space-between;
 	padding: 0 1rem 0 0.75rem;
-}
-
-.arc-consent--split {
-	max-width: none;
 }
 
 .arc-consent--split .arc-meta__body {

@@ -59,7 +59,11 @@ phrases already stored by Yoast, Rank Math, SEOPress, and All in One SEO.
 A background scan fills that list. It does not call Arc. Save and delete
 hooks update one row.
 
-**Sync with Arc** is shown after the first scan,
+When that list differs from Arc, an alert at the top of Arc screens says so,
+and the Arc menu shows a count of 1. That is the only alert that adds to the
+count. The same area also says to connect a Google account when Analytics
+has none, and to connect this install when it is not paired with Arc.
+Those notices do not change the menu count. **Sync with Arc** is shown after the first scan,
 and only when the local list hash differs from `GET /v1/sites/{siteId}/seo-targets`.
 The click sends dirty rows when Arc still matches the last accepted hash,
 or the whole list when Arc has moved. Commit uses `auto_run: true`, which

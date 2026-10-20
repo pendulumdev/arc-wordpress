@@ -137,7 +137,7 @@ final class Consent_Settings {
 			'after_choice'          => 'collapse',
 			'logging_enabled'       => false,
 			'disable_identifiable'  => false,
-			'disabled'              => false,
+			'disabled'              => true,
 			'layout'                => 'fixed',
 			'placement'             => 'footer',
 			'fixed_position'        => 'bottom-left',
