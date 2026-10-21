@@ -4,7 +4,7 @@ Tags: seo, analytics
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.4.4
+Stable tag: 0.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -68,6 +68,17 @@ Accept allows the optional cookies left checked, and runs the scripts listed on 
 When the GitHub repository is public and a release is newer than this install, WordPress shows the update on the Plugins screen. Update now installs it, and automatic updates install it on their own. Automatic updates are on until you disable them on the Plugins screen. The Arc screens show the same update.
 
 == Changelog ==
+
+= 0.5.0 =
+* Settings greets the current user and shows four steps: Install, Connect, Analytics, and Invite. The next unfinished step starts Arc sign-in, Google connect, or the invite list.
+* The Arc menu reads Analytics, Settings, and GDPR Consent.
+* Sync keyphrases, on Settings, reads focus keyphrases stored by Yoast, Rank Math, SEOPress, and All in One SEO. Sync with Arc sends that list and queues the SEO report.
+* Arc screens say when keyphrases differ from Arc, when Analytics has no Google account, or when the site is not paired. Only the keyphrase notice adds 1 to the menu count.
+* Invite, on Settings, sends project invites to WordPress administrators who are not already on the project. A site signed in before this release must reconnect before inviting someone who has no Arc account.
+* Connect Google starts in Arc. A WordPress user without an Arc account is invited, and continues after they accept. Back from Arc, refresh the page if the Google connection is not visible yet.
+* Maintained by pendulum links to Pendulum.
+* A new GDPR Consent banner starts fixed at the bottom left and turned off. The consent card stretches to the page width.
+* Analytics with no Google account is not shown as a report.
 
 = 0.4.4 =
 * Connect can invite WordPress administrators onto the Arc project. The Invite card sits to the left of the connection when the site is connected.

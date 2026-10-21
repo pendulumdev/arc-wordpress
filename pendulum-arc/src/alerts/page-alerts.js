@@ -42,6 +42,11 @@ export function keyphraseAlert( connectUrl, onConnect ) {
 
 /**
  * Standing notice when Analytics has no Google account. It does not add to the menu count.
+ *
+ * @param {Object|null} [action]          Connect Google control. Omitted when there is no action.
+ * @param {() => void}  [action.onAction] Starts Connect Google.
+ * @param {string}      [action.label]    Button label.
+ * @param {boolean}     [action.disabled] Disables the button while connect is busy.
  */
 export function googleAlert( action = null ) {
 	const alert = {
