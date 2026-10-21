@@ -70,8 +70,8 @@ npm install
 npm run build
 ```
 
-Copy `pendulum-arc/` into `wp-content/plugins/` and activate it. Open Arc,
-then Connect.
+Copy `pendulum-arc/` into `wp-content/plugins/` and activate it. Open Arc
+Analytics, then Settings.
 
 After a public release, WordPress lists a newer version on the Plugins
 screen. Update now installs `pendulum-arc.zip` from that release, and

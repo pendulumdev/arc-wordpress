@@ -33,7 +33,7 @@ export function InviteBox( { mode } ) {
 	}
 	if ( connected ) {
 		description = __(
-			'This site is connected. Choose administrators to invite onto this Arc project. An invited person becomes a member of this project in Arc. They can open every site on the project, view its reports, and generate new ones. They cannot invite other people, change the plan, or remove sites.',
+			'Choose administrators to invite onto this Arc project. An invited person becomes a member of this project in Arc. They can open every site on the project, view its reports, and generate new ones. They cannot invite other people, change the plan, or remove sites.',
 			'pendulum-arc'
 		);
 	}

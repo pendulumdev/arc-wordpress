@@ -23,6 +23,7 @@ import {
 	reconnect,
 	startOAuth,
 } from '../api';
+import { useGoogleConnect } from '../google/use-google-connect';
 import { KeyphraseSync } from '../keyphrases/keyphrase-sync';
 import { ConnectionSummary, MetaBox } from '../meta';
 import { ArcButton } from '../ui/button';
@@ -58,6 +59,7 @@ export function ConnectPage( { bootstrap } ) {
 	const [ keyphraseDiverged, setKeyphraseDiverged ] = useState( null );
 	const showSavedKey = keyHeld && apiKey === '';
 	const connected = bootstrap.connection && bootstrap.connection.connected;
+	const google = useGoogleConnect();
 
 	function replaceSavedKey() {
 		if ( ! showSavedKey ) {
@@ -200,6 +202,9 @@ export function ConnectPage( { bootstrap } ) {
 			hrefLabel: __( 'Open Arc', 'pendulum-arc' ),
 		} );
 	}
+	if ( google.notice ) {
+		extras.push( google.notice );
+	}
 	const alerts = pageAlerts(
 		bootstrap.alerts,
 		extras,
@@ -220,6 +225,12 @@ export function ConnectPage( { bootstrap } ) {
 					}
 					arcMark={ bootstrap.urls.arcMark }
 					pendulumMark={ bootstrap.urls.pendulumMark }
+					userName={ bootstrap.userName }
+					connected={ Boolean( connected && ! reconnecting ) }
+					onConnect={ onOAuth }
+					onAnalytics={ google.start }
+					connectBusy={ busy }
+					analyticsBusy={ google.pending }
 				/>
 				<MetaBox
 					icon="settings"

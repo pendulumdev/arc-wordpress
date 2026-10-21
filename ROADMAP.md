@@ -54,7 +54,7 @@ serves updates itself:
 
 ### Sync keyphrases
 
-The Connect page Settings box has **Sync keyphrases**. It keeps a local list of focus
+The Settings screen has **Sync keyphrases**. It keeps a local list of focus
 phrases already stored by Yoast, Rank Math, SEOPress, and All in One SEO.
 A background scan fills that list. It does not call Arc. Save and delete
 hooks update one row.
@@ -100,9 +100,28 @@ A grant from before `arc:invite` can still open the ticket for someone who
 already has an Arc account. Inviting a new account needs Disconnect and
 Connect with Arc again.
 
+### Setup steps
+
+Settings opens with **Expand your dashboard with Arc Analytics**. It greets
+the current user, then shows four steps above the Arc and pendulum links:
+
+- **Install** is ticked because this plugin is active.
+- **Connect** is ticked when this site is paired with Arc.
+- **Analytics** is ticked when the paired site has a Google connection.
+  A property that still needs assigning still counts. Analytics that is
+  not on the plan does not.
+- **Invite** is ticked when any WordPress administrator has an Arc account
+  and is a member of this project.
+
+The name sits above the marker. Under it, in a quieter colour: Install Arc Analytics, Connect to Arc, Connect to Google, and Connect your users.
+
+The Arc menu labels are Analytics, Settings, and GDPR Consent. The next
+unfinished step is a link: Connect starts Arc sign-in, Analytics starts
+Google connect, and Invite opens the invite list. A ticked step does not.
+
 ### Invite administrators
 
-The Connect screen shows an Invite card to the left of Connection when the
+The Settings screen shows an Invite card to the left of Connection when the
 site is paired. The card is hidden until the site is connected.
 
 An invited person becomes a member of this project. They can view and

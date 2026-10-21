@@ -61,7 +61,7 @@ final class Admin {
 	 */
 	public function menu(): void {
 		add_menu_page(
-			__( 'Arc Analytics • Dashboard', 'pendulum-arc' ),
+			__( 'Arc Analytics • Analytics', 'pendulum-arc' ),
 			__( 'Arc Analytics', 'pendulum-arc' ),
 			'manage_options',
 			'pendulum-arc',
@@ -71,16 +71,16 @@ final class Admin {
 		);
 		add_submenu_page(
 			'pendulum-arc',
-			__( 'Arc Analytics • Dashboard', 'pendulum-arc' ),
-			__( 'Dashboard', 'pendulum-arc' ),
+			__( 'Arc Analytics • Analytics', 'pendulum-arc' ),
+			__( 'Analytics', 'pendulum-arc' ),
 			'manage_options',
 			'pendulum-arc',
 			array( $this, 'render_dashboard' )
 		);
 		add_submenu_page(
 			'pendulum-arc',
-			__( 'Arc Analytics • Connect', 'pendulum-arc' ),
-			__( 'Connect', 'pendulum-arc' ),
+			__( 'Arc Analytics • Settings', 'pendulum-arc' ),
+			__( 'Settings', 'pendulum-arc' ),
 			'manage_options',
 			'pendulum-arc-connect',
 			array( $this, 'render_connect' )
@@ -345,8 +345,14 @@ final class Admin {
 		}
 		$user_id = get_current_user_id();
 		$this->connect->ensure_project_slug();
+		$account   = wp_get_current_user();
+		$user_name = sanitize_text_field( (string) $account->display_name );
+		if ( '' === $user_name ) {
+			$user_name = sanitize_text_field( (string) $account->user_login );
+		}
 		$bootstrap = array(
 			'page'       => $page,
+			'userName'   => $user_name,
 			'alerts'     => $this->alerts->for_screen( $this->store->take_notice( $user_id ), 'connect' === $page ),
 			'connection' => $this->store->public_view(),
 			'pending'    => $this->store->pending_public( $user_id ),

@@ -51,6 +51,161 @@
 	margin-top: 1.5rem;
 }
 
+.arc-meta__lead {
+	margin: 0 0 0.75rem;
+}
+
+.arc-setup-card {
+	margin: 0.25rem 0 1.25rem;
+	/* Cap height sits high in the line box, so equal padding looks short on top. */
+	padding: 1.45rem 0.35rem 1rem;
+	border: 0;
+	border-radius: var(--arc-radius-medium);
+	background: color-mix(
+		in srgb,
+		var(--arc-bg-tertiary) 42%,
+		var(--arc-bg-secondary)
+	);
+}
+
+#wpbody-content .arc-setup-card .arc-setup,
+.arc-setup {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 0;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.arc-setup__step {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.45rem;
+	min-width: 0;
+	text-align: center;
+}
+
+.arc-setup__step:not(:last-child) .arc-setup__track::before {
+	content: "";
+	position: absolute;
+	z-index: 0;
+	top: 50%;
+	left: 50%;
+	width: 100%;
+	height: 2px;
+	margin-top: -1px;
+	background: var(--arc-border-subtle);
+}
+
+.arc-setup__step[data-done="true"]:not(:last-child) .arc-setup__track::before {
+	background: var(--arc-accent-emerald);
+}
+
+.arc-setup__track {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+}
+
+.arc-setup__mark {
+	position: relative;
+	z-index: 1;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.625rem;
+	height: 1.625rem;
+	border: 2px solid var(--arc-border-subtle);
+	border-radius: 999px;
+	background: var(--arc-bg-secondary);
+	color: var(--arc-fg-tertiary);
+	font-size: 0.75rem;
+	font-weight: 600;
+	line-height: 1;
+}
+
+.arc-setup__step[data-done="true"] .arc-setup__mark {
+	border-color: var(--arc-accent-emerald);
+	background: var(--arc-accent-emerald);
+	color: #fff;
+}
+
+.arc-setup__label {
+	color: var(--arc-fg-secondary);
+	font-size: 0.75rem;
+	font-weight: 600;
+	line-height: 1;
+}
+
+.arc-setup__step[data-done="true"] .arc-setup__label {
+	color: var(--arc-fg-primary);
+}
+
+.arc-setup__detail {
+	margin: 0;
+	color: var(--arc-fg-tertiary);
+	font-size: 0.6875rem;
+	font-weight: 400;
+	line-height: 1;
+}
+
+.arc-setup__action {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.2rem;
+	max-width: 100%;
+	height: auto;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0.2rem;
+	background: transparent;
+	box-shadow: none;
+	color: var(--arc-fg-secondary);
+	font: inherit;
+	font-size: 0.75rem;
+	font-weight: 600;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.arc-setup__action .arc-setup__label {
+	color: inherit;
+}
+
+.arc-setup__action:hover:not(:disabled),
+.arc-setup__action:focus-visible:not(:disabled) {
+	color: var(--arc-accent-cyan);
+}
+
+.arc-setup__action:hover:not(:disabled) .arc-setup__label,
+.arc-setup__action:focus-visible:not(:disabled) .arc-setup__label {
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
+}
+
+.arc-setup__action:focus-visible {
+	outline: 2px solid var(--arc-accent-cyan);
+	outline-offset: 2px;
+}
+
+.arc-setup__action:disabled {
+	cursor: wait;
+}
+
+.arc-setup__action-icon {
+	display: flex;
+	flex: 0 0 auto;
+}
+
 .pendulum-arc-intro__actions {
 	display: flex;
 	flex-wrap: wrap;

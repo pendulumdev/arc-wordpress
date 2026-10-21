@@ -18,9 +18,9 @@ Connect with an API key, or sign in through Arc. Signing in opens Arc, where you
 
 An API key pairs the site when Arc already has this address. When it does not, you confirm the site name, address, and project in WordPress.
 
-On Connect, Invite sends project invites to WordPress administrators who are not already on the Arc project.
+On Settings, Invite sends project invites to WordPress administrators who are not already on the Arc project.
 
-Sync keyphrases, in Settings on the Connect page, reads focus keyphrases already stored by Yoast, Rank Math, SEOPress, and All in One SEO. When that list differs from Arc, a notice appears at the top of Arc screens and the Arc menu shows a count of 1. Sync with Arc sends that list to Arc and queues the SEO report. Turning the checkbox off clears the list in WordPress and leaves the Arc target as it is.
+Sync keyphrases, on the Settings page, reads focus keyphrases already stored by Yoast, Rank Math, SEOPress, and All in One SEO. When that list differs from Arc, a notice appears at the top of Arc screens and the Arc menu shows a count of 1. Sync with Arc sends that list to Arc and queues the SEO report. Turning the checkbox off clears the list in WordPress and leaves the Arc target as it is.
 
 GDPR Consent, under the Arc menu, is a cookie banner for this site. It does not call Arc, and it is available before the site is paired. Optional cookies, and scripts listed on them, stay off until a visitor accepts them. Decline refuses every optional cookie. Consent logging is off until you turn it on. A static banner is printed at the end of the theme header or footer. A fixed banner is positioned on the screen. Disable, on the Behaviour tab, turns the banner off and leaves script tags unchanged.
 
@@ -42,7 +42,7 @@ The plugin also asks GitHub if a newer release exists, at `https://api.github.co
 == Installation ==
 
 1. Upload the plugin and activate it.
-2. Open Arc, then Connect.
+2. Open Arc Analytics, then Settings.
 3. Sign in with Arc, or paste an API key.
 
 == Frequently Asked Questions ==
