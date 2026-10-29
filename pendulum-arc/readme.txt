@@ -4,7 +4,7 @@ Tags: seo, analytics
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.5.0
+Stable tag: 0.5.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -68,6 +68,10 @@ Accept allows the optional cookies left checked, and runs the scripts listed on 
 When the GitHub repository is public and a release is newer than this install, WordPress shows the update on the Plugins screen. Update now installs it, and automatic updates install it on their own. Automatic updates are on until you disable them on the Plugins screen. The Arc screens show the same update.
 
 == Changelog ==
+
+= 0.5.1 =
+* Sync keyphrases matches Arc after a successful sync. Curly quotes and invisible characters no longer leave the notice in place.
+* A phrase Arc cannot store no longer keeps that notice on for the other pages.
 
 = 0.5.0 =
 * Settings greets the current user and shows four steps: Install, Connect, Analytics, and Invite. The next unfinished step starts Arc sign-in, Google connect, or the invite list.
