@@ -60,6 +60,42 @@ final class KeyphraseTest extends TestCase {
 		);
 	}
 
+	public function test_phrase_folds_quotes_and_drops_a_row_arc_rejects(): void {
+		self::assertSame(
+			'Saint Barth\'s "villa"',
+			Keyphrase_Phrase::list( "Saint Barth\u{2019}s \u{201C}villa\u{201D}\u{200B}" )
+		);
+		self::assertSame( '', Keyphrase_Phrase::list( str_repeat( 'a', 81 ) ) );
+		self::assertSame( '', Keyphrase_Phrase::list( "hello\u{FF0C}world" ) );
+		self::assertSame( '', Keyphrase_Phrase::list( 'hello, ...' ) );
+	}
+
+	public function test_phrase_folds_to_nfc_when_intl_is_present(): void {
+		if ( ! class_exists( \Normalizer::class, false ) ) {
+			self::markTestSkipped( 'ext-intl is not loaded' );
+		}
+		self::assertSame( "caf\u{00E9}", Keyphrase_Phrase::list( "cafe\u{0301}" ) );
+	}
+
+	public function test_hash_folds_quotes_and_skips_a_phrase_arc_drops(): void {
+		$raw  = "Saint Barth\u{2019}s \u{201C}villa\u{201D}\u{200B}";
+		$hash = Keyphrase_Hash::of(
+			$raw,
+			array(
+				array(
+					'path'   => '/villa',
+					'phrase' => $raw,
+				),
+				array(
+					'path'   => '/long',
+					'phrase' => str_repeat( 'a', 81 ),
+				),
+			)
+		);
+		$text = "focus\tSaint Barth's \"villa\"\n/villa\tSaint Barth's \"villa\"\n";
+		self::assertSame( hash( 'sha256', $text ), $hash );
+	}
+
 	public function test_yoast_reads_the_premium_keyword_list(): void {
 		$json = '[{"keyword":"second"},{"keyword":"third"}]';
 		self::assertSame( 'primary, second, third', Keyphrase_Phrase::yoast( 'primary', $json ) );
@@ -231,6 +267,35 @@ final class KeyphraseTest extends TestCase {
 		$on_connect_only = Page_Alerts::collect( null, false, 'https://example.com/connect', true, false, true );
 		self::assertArrayNotHasKey( 'href', $on_connect_only[0] );
 		self::assertSame( 0, Page_Alerts::count( $on_connect_only ) );
+	}
+
+	public function test_push_sends_the_folded_phrase_and_skips_a_dropped_row(): void {
+		$plan = Keyphrase_Push::plan(
+			'',
+			'moved',
+			"Saint Barth\u{2019}s",
+			'',
+			array(
+				array(
+					'path'          => '/villa',
+					'phrase'        => "Saint Barth\u{2019}s \u{200B}villa",
+					'synced_phrase' => '',
+					'deleted'       => false,
+				),
+				array(
+					'path'          => '/long',
+					'phrase'        => str_repeat( 'b', 81 ),
+					'synced_phrase' => '',
+					'deleted'       => false,
+				),
+			)
+		);
+		self::assertSame( 'replace', $plan['mode'] );
+		self::assertTrue( $plan['send_focus'] );
+		self::assertSame( "Saint Barth's", $plan['focus'] );
+		self::assertCount( 1, $plan['upserts'] );
+		self::assertSame( '/villa', $plan['upserts'][0]['path'] );
+		self::assertSame( "Saint Barth's villa", $plan['upserts'][0]['focusKeyphrase'] );
 	}
 
 	public function test_batches_stay_within_five_hundred(): void {

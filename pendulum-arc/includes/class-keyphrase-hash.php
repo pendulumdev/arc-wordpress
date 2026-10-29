@@ -15,6 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * First line is the focus. Page lines follow in path order.
+ * Phrases are the text Arc stores. A page Arc would drop is left out.
  */
 final class Keyphrase_Hash {
 
@@ -33,10 +34,14 @@ final class Keyphrase_Hash {
 			if ( '' === $path || '/' === $path ) {
 				continue;
 			}
-			$lines[ $path ] = $path . "\t" . (string) ( $page['phrase'] ?? '' ) . "\n";
+			$phrase = Keyphrase_Phrase::list( (string) ( $page['phrase'] ?? '' ) );
+			if ( '' === $phrase ) {
+				continue;
+			}
+			$lines[ $path ] = $path . "\t" . $phrase . "\n";
 		}
 		ksort( $lines, SORT_STRING );
-		$text = 'focus' . "\t" . (string) $focus . "\n" . implode( '', $lines );
+		$text = 'focus' . "\t" . Keyphrase_Phrase::list( (string) $focus ) . "\n" . implode( '', $lines );
 		return hash( 'sha256', $text );
 	}
 }

@@ -25,17 +25,19 @@ final class Keyphrase_Push {
 	 * @return array{mode: string, upserts: array<int, array{path: string, focusKeyphrase: string}>, deletes: array<int, string>, send_focus: bool, focus: string|null}
 	 */
 	public static function plan( ?string $acked_hash, string $arc_hash, string $focus, string $focus_synced, array $rows ): array {
-		$replace = null === $acked_hash || '' === $acked_hash || $acked_hash !== $arc_hash;
-		$upserts = array();
-		$deletes = array();
+		$replace      = null === $acked_hash || '' === $acked_hash || $acked_hash !== $arc_hash;
+		$focus_phrase = Keyphrase_Phrase::list( $focus );
+		$synced_focus = Keyphrase_Phrase::list( $focus_synced );
+		$upserts      = array();
+		$deletes      = array();
 		foreach ( $rows as $row ) {
 			$path = (string) ( $row['path'] ?? '' );
 			if ( '' === $path || '/' === $path ) {
 				continue;
 			}
 			$deleted = ! empty( $row['deleted'] );
-			$phrase  = (string) ( $row['phrase'] ?? '' );
-			$synced  = (string) ( $row['synced_phrase'] ?? '' );
+			$phrase  = Keyphrase_Phrase::list( (string) ( $row['phrase'] ?? '' ) );
+			$synced  = Keyphrase_Phrase::list( (string) ( $row['synced_phrase'] ?? '' ) );
 			if ( $replace ) {
 				if ( ! $deleted && '' !== $phrase ) {
 					$upserts[] = array(
@@ -45,24 +47,23 @@ final class Keyphrase_Push {
 				}
 				continue;
 			}
-			if ( $deleted ) {
+			if ( $deleted || ( '' === $phrase && '' !== $synced ) ) {
 				$deletes[] = $path;
 				continue;
 			}
-			if ( $phrase !== $synced ) {
+			if ( '' !== $phrase && $phrase !== $synced ) {
 				$upserts[] = array(
 					'path'           => $path,
 					'focusKeyphrase' => $phrase,
 				);
 			}
 		}
-		$send_focus = $replace || $focus !== $focus_synced;
 		return array(
 			'mode'       => $replace ? 'replace' : 'patch',
 			'upserts'    => $upserts,
 			'deletes'    => $deletes,
-			'send_focus' => $send_focus,
-			'focus'      => '' === $focus ? null : $focus,
+			'send_focus' => $replace || $focus_phrase !== $synced_focus,
+			'focus'      => '' === $focus_phrase ? null : $focus_phrase,
 		);
 	}
 
