@@ -426,8 +426,34 @@ final class Connect_Service {
 		$view            = Pairing::report( $payload );
 		$view['service'] = $service;
 		$view['blocks']  = $this->link_report_blocks( $view['blocks'] );
+		$view['blocks']  = $this->attach_page_shots( $view['blocks'], (string) ( $view['runId'] ?? '' ) );
 		$view['error']   = null;
 		return $view;
+	}
+
+	/**
+	 * One screenshot for the page-analysis preview. Null when Arc has none.
+	 *
+	 * @param string $run_id Run id.
+	 * @param string $file   Screenshot file name.
+	 * @return array{bytes: string, type: string}|null
+	 */
+	public function report_media( string $run_id, string $file ): ?array {
+		$creds = $this->store->credentials();
+		if ( null === $creds ) {
+			return null;
+		}
+		try {
+			$media = $this->bearer_call(
+				$creds,
+				function ( string $token ) use ( $creds, $run_id, $file ) {
+					return $this->client->report_media( (string) $creds['env'], $token, $run_id, $file );
+				}
+			);
+		} catch ( Arc_Api_Exception $error ) {
+			return null;
+		}
+		return is_array( $media ) ? $media : null;
 	}
 
 	/**
@@ -875,6 +901,59 @@ final class Connect_Service {
 						$cell = $this->link_report_cell( $cell, $home_host );
 					}
 				}
+			}
+		}
+		return $blocks;
+	}
+
+	/**
+	 * Points each accessibility screenshot at this site's media route.
+	 *
+	 * @param array<int, array<string, mixed>> $blocks Report blocks.
+	 * @param string                           $run_id Arc run id.
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function attach_page_shots( array $blocks, string $run_id ): array {
+		if ( '' === $run_id || ! function_exists( 'rest_url' ) || ! function_exists( 'wp_create_nonce' ) ) {
+			return $blocks;
+		}
+		$nonce = wp_create_nonce( 'wp_rest' );
+		foreach ( $blocks as &$block ) {
+			if ( ! is_array( $block ) || 'pages' !== ( $block['id'] ?? '' ) || ! is_array( $block['rows'] ?? null ) ) {
+				continue;
+			}
+			$index = null;
+			foreach ( $block['columns'] ?? array() as $column_index => $column ) {
+				if ( is_array( $column ) && 'preview' === ( $column['id'] ?? '' ) ) {
+					$index = $column_index;
+					break;
+				}
+			}
+			if ( null === $index ) {
+				continue;
+			}
+			foreach ( $block['rows'] as &$row ) {
+				if ( ! is_array( $row ) || ! is_array( $row['cells'] ?? null ) || ! isset( $row['cells'][ $index ] ) || ! is_array( $row['cells'][ $index ] ) ) {
+					continue;
+				}
+				$shot = '';
+				if ( is_array( $row['page'] ?? null ) ) {
+					$shot = (string) ( $row['page']['shot'] ?? '' );
+				}
+				if ( '' === $shot ) {
+					continue;
+				}
+				$row['cells'][ $index ]['image'] = array(
+					'src' => add_query_arg(
+						array(
+							'run'      => $run_id,
+							'file'     => $shot,
+							'_wpnonce' => $nonce,
+						),
+						rest_url( 'pendulum-arc/v1/report-media' )
+					),
+					'alt' => '',
+				);
 			}
 		}
 		return $blocks;

@@ -281,6 +281,61 @@ final class PairingTest extends TestCase {
 						'rows'    => array(
 							array(
 								'id'    => 'page-1',
+								'page'  => array(
+									'title'           => 'About<script>',
+									'path'            => '/about',
+									'url'             => 'javascript:alert(1)',
+									'viewport'        => 'desktop',
+									'keyphrases'      => array( 'widgets', '<b>sale</b>' ),
+									'keyphraseScore'  => '70',
+									'score'           => '88',
+									'siteName'        => 'Example',
+									'brokenLinkCount' => 0,
+									'issueCount'      => 2,
+									'issues'          => array(
+										array(
+											'key'       => 'S-title',
+											'title'     => 'Short title<script>',
+											'severity'  => 'high',
+											'dimension' => 'meta<script>',
+											'summary'   => 'Too short<script>',
+											'fix'       => 'Write more<script>',
+										),
+										array(
+											'title'    => 'Dropped',
+											'severity' => 'nope',
+										),
+									),
+								),
+								'social' => array(
+									'url'      => 'https://user:secret@example.com/acme',
+									'platform' => 'x',
+								),
+								'form'   => array(
+									'label'    => 'contact<script>',
+									'presence' => 'sitewide',
+									'variants' => array(
+										array(
+											'method'           => 'POST',
+											'protections'      => array( 'recaptcha' ),
+											'protectionCheck'  => 'checked',
+											'protectionsKnown' => true,
+											'fieldCount'       => 1,
+											'fields'           => array( 'Email' ),
+											'pageCount'        => 1,
+											'pages'            => array( '/contact' ),
+										),
+									),
+								),
+								'slot'   => array(
+									'id'       => 'favicon',
+									'label'    => 'Favicon',
+									'hint'     => 'Tab icon',
+									'status'   => 'Found',
+									'required' => '-',
+									'observed' => '32 x 32',
+									'image'    => 'javascript:alert(1)',
+								),
 								'cells' => array(
 									array(
 										'text'  => 'About',
@@ -303,6 +358,17 @@ final class PairingTest extends TestCase {
 						),
 					),
 					array(
+						'kind'    => 'card',
+						'id'      => 'short-mark',
+						'heading' => 'Short mark',
+						'mark'    => array(
+							'present'      => true,
+							'family'       => 'F2',
+							'sharedFamily' => true,
+							'role'         => 'short',
+						),
+					),
+					array(
 						'kind'    => 'note',
 						'heading' => 'Ignored',
 					),
@@ -313,6 +379,16 @@ final class PairingTest extends TestCase {
 						'items' => array(
 							array(
 								'title' => 'Short title',
+								'pages' => array(
+									array(
+										'url'   => 'https://example.com/about',
+										'label' => 'About',
+									),
+									array(
+										'url'   => 'javascript:alert(1)',
+										'label' => 'Bad',
+									),
+								),
 							),
 						),
 					),
@@ -323,10 +399,230 @@ final class PairingTest extends TestCase {
 		self::assertSame( '72', $view['hero']['score'] );
 		self::assertSame( 'ok', $view['hero']['mood'] );
 		self::assertSame( 'Needs work', $view['hero']['band'] );
-		self::assertCount( 1, $view['blocks'] );
+		self::assertCount( 2, $view['blocks'] );
+		self::assertTrue( $view['blocks'][1]['mark']['present'] );
+		self::assertSame( 'F2', $view['blocks'][1]['mark']['family'] );
+		self::assertSame( 'short', $view['blocks'][1]['mark']['role'] );
 		self::assertNull( $view['blocks'][0]['rows'][0]['cells'][0]['image'] );
 		self::assertNull( $view['blocks'][0]['rows'][0]['cells'][1]['href'] );
 		self::assertSame( 'https://cdn.example.com/og.png', $view['blocks'][0]['rows'][0]['cells'][1]['image']['src'] );
+		self::assertSame( 'About', $view['blocks'][0]['rows'][0]['page']['title'] );
+		self::assertSame( '', $view['blocks'][0]['rows'][0]['page']['url'] );
+		self::assertSame( array( 'widgets', 'sale' ), $view['blocks'][0]['rows'][0]['page']['keyphrases'] );
+		self::assertArrayNotHasKey( 'social', $view['blocks'][0]['rows'][0] );
+		self::assertSame( 'contact', $view['blocks'][0]['rows'][0]['form']['label'] );
+		self::assertSame( 'sitewide', $view['blocks'][0]['rows'][0]['form']['presence'] );
+		self::assertNull( $view['blocks'][0]['rows'][0]['slot']['image'] );
+		self::assertSame( 'Short title', $view['blocks'][0]['rows'][0]['page']['issues'][0]['title'] );
+		self::assertSame( 'high', $view['blocks'][0]['rows'][0]['page']['issues'][0]['severity'] );
+		self::assertSame( 'meta', $view['blocks'][0]['rows'][0]['page']['issues'][0]['dimension'] );
+		self::assertSame( 'Too short', $view['blocks'][0]['rows'][0]['page']['issues'][0]['summary'] );
+		self::assertSame( 'Write more', $view['blocks'][0]['rows'][0]['page']['issues'][0]['fix'] );
+		self::assertSame( '', $view['blocks'][0]['rows'][0]['page']['issues'][1]['severity'] );
 		self::assertSame( 'Short title', $view['issues'][0]['items'][0]['title'] );
+		self::assertSame( 'https://example.com/about', $view['issues'][0]['items'][0]['pages'][0]['url'] );
+		self::assertCount( 1, $view['issues'][0]['items'][0]['pages'] );
+	}
+
+	public function test_report_keeps_an_accessibility_screenshot_name(): void {
+		$view = Pairing::report(
+			array(
+				'service' => 'a11y',
+				'blocks'  => array(
+					array(
+						'kind'    => 'table',
+						'id'      => 'pages',
+						'heading' => 'Page analysis',
+						'columns' => array(
+							array(
+								'id'    => 'url',
+								'label' => 'URL',
+							),
+						),
+						'rows'    => array(
+							array(
+								'id'    => 'page-1',
+								'cells' => array(
+									array( 'text' => '/about' ),
+								),
+								'page'  => array(
+									'title'      => 'About',
+									'titleKnown' => true,
+									'shot'       => 'about__desktop__dark.webp',
+								),
+							),
+							array(
+								'id'    => 'page-2',
+								'cells' => array(
+									array( 'text' => '/' ),
+								),
+								'page'  => array(
+									'titleKnown' => false,
+									'shot'       => '../secret.webp',
+								),
+							),
+						),
+					),
+				),
+			)
+		);
+		self::assertTrue( $view['blocks'][0]['rows'][0]['page']['titleKnown'] );
+		self::assertSame( 'about__desktop__dark.webp', $view['blocks'][0]['rows'][0]['page']['shot'] );
+		self::assertFalse( $view['blocks'][0]['rows'][1]['page']['titleKnown'] );
+		self::assertArrayNotHasKey( 'shot', $view['blocks'][0]['rows'][1]['page'] );
+	}
+
+	public function test_report_keeps_ai_bot_and_llms_detail(): void {
+		$view = Pairing::report(
+			array(
+				'service' => 'ai',
+				'blocks'  => array(
+					array(
+						'kind'         => 'table',
+						'id'           => 'llms',
+						'heading'      => 'llms.txt',
+						'fileHref'     => 'https://example.com/llms.txt',
+						'formatIssues' => array( 'Missing title', '<script>' ),
+						'columns'      => array(
+							array(
+								'id'    => 'link',
+								'label' => 'Link',
+							),
+						),
+						'rows'         => array(
+							array(
+								'id'    => 'docs',
+								'cells' => array(
+									array( 'text' => 'Docs' ),
+								),
+								'llms'  => array(
+									'title'    => 'Docs',
+									'url'      => 'https://example.com/docs',
+									'notes'    => 'Main guide',
+									'section'  => 'Docs',
+									'optional' => true,
+									'broken'   => false,
+								),
+							),
+						),
+					),
+					array(
+						'kind'    => 'table',
+						'id'      => 'bots',
+						'heading' => 'Bot access',
+						'columns' => array(
+							array(
+								'id'    => 'bot',
+								'label' => 'Bot',
+							),
+						),
+						'rows'    => array(
+							array(
+								'id'    => 'GPTBot',
+								'kind'  => 'disallow',
+								'cells' => array(
+									array( 'text' => 'GPTBot' ),
+								),
+								'bot'   => array(
+									'ua'     => 'GPTBot',
+									'status' => 'disallow',
+									'rule'   => 'Disallow: /',
+									'source' => 'robots',
+								),
+							),
+						),
+					),
+				),
+			)
+		);
+		self::assertSame( 'https://example.com/llms.txt', $view['blocks'][0]['fileHref'] );
+		self::assertSame( 'Missing title', $view['blocks'][0]['formatIssues'][0] );
+		self::assertSame( 'Main guide', $view['blocks'][0]['rows'][0]['llms']['notes'] );
+		self::assertTrue( $view['blocks'][0]['rows'][0]['llms']['optional'] );
+		self::assertSame( 'Disallow: /', $view['blocks'][1]['rows'][0]['bot']['rule'] );
+		self::assertSame( 'disallow', $view['blocks'][1]['rows'][0]['bot']['status'] );
+	}
+
+	public function test_report_keeps_security_surfaces(): void {
+		$view = Pairing::report(
+			array(
+				'service' => 'security',
+				'blocks'  => array(
+					array(
+						'kind'    => 'table',
+						'id'      => 'surfaces',
+						'heading' => 'Surfaces',
+						'empty'   => 'No public login, admin, junk, social, or form surfaces were listed.',
+						'notes'   => array( 'Forms were capped.', '<b>skip</b>' ),
+						'columns' => array(
+							array(
+								'id'    => 'surface',
+								'label' => 'Surface',
+							),
+						),
+						'rows'    => array(
+							array(
+								'id'      => 'junk',
+								'cells'   => array(
+									array(
+										'text'     => '/.env',
+										'pill'     => 'Critical',
+										'pillTone' => 'red',
+									),
+								),
+								'targets' => array(
+									'surfaces::finding:X-surface-secrets',
+									'javascript:alert(1)',
+								),
+								'surface' => array(
+									'kind'        => 'junk',
+									'url'         => 'https://ex.test/.env',
+									'display'     => '/.env',
+									'status'      => 200,
+									'statusLabel' => 'open',
+									'statusTone'  => 'bad',
+									'note'        => 'Env leak probe',
+									'junkGroup'   => 'environment',
+								),
+							),
+							array(
+								'id'      => 'bad',
+								'cells'   => array(
+									array( 'text' => 'nope' ),
+								),
+								'surface' => array(
+									'kind' => 'login',
+									'url'  => 'javascript:alert(1)',
+								),
+							),
+							array(
+								'id'    => 'contact',
+								'cells' => array(
+									array( 'text' => 'contact' ),
+								),
+								'form'  => array(
+									'label'    => 'contact',
+									'presence' => 'single',
+									'variants' => array(),
+								),
+							),
+						),
+					),
+				),
+			)
+		);
+		$block = $view['blocks'][0];
+		self::assertSame( 'Forms were capped.', $block['notes'][0] );
+		self::assertSame( 'skip', $block['notes'][1] );
+		self::assertSame( 'junk', $block['rows'][0]['surface']['kind'] );
+		self::assertSame( 'https://ex.test/.env', $block['rows'][0]['surface']['url'] );
+		self::assertSame( 200, $block['rows'][0]['surface']['status'] );
+		self::assertSame( 'environment', $block['rows'][0]['surface']['junkGroup'] );
+		self::assertSame(
+			array( 'surfaces::finding:X-surface-secrets' ),
+			$block['rows'][0]['targets']
+		);
+		self::assertArrayNotHasKey( 'surface', $block['rows'][1] );
+		self::assertSame( 'contact', $block['rows'][2]['form']['label'] );
 	}
 }

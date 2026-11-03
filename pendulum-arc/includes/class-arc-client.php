@@ -148,6 +148,22 @@ final class Arc_Client {
 	}
 
 	/**
+	 * One stored screenshot. Bytes stay out of the JSON report.
+	 *
+	 * @param string $env    production or preview.
+	 * @param string $token  Bearer.
+	 * @param string $run_id Run id.
+	 * @param string $file   Screenshot file name.
+	 * @return array{bytes: string, type: string}
+	 */
+	public function report_media( string $env, string $token, string $run_id, string $file ): array {
+		$this->assert_id( $run_id );
+		$this->assert_file( $file );
+		$url = Arc_Config::api( $env ) . '/v1/runs/' . rawurlencode( $run_id ) . '/media/' . rawurlencode( $file );
+		return $this->binary( 'GET', $url, $token );
+	}
+
+	/**
 	 * Newest runs for the site, used to label queued and running services.
 	 *
 	 * @param string $env     production or preview.
@@ -476,6 +492,53 @@ final class Arc_Client {
 	}
 
 	/**
+	 * Image bytes. Refuses anything that is not a small bitmap.
+	 *
+	 * @param string $method HTTP method.
+	 * @param string $url    Absolute URL.
+	 * @param string $token  Bearer.
+	 * @return array{bytes: string, type: string}
+	 */
+	private function binary( string $method, string $url, string $token ): array {
+		$args = array(
+			'method'      => $method,
+			'timeout'     => 20,
+			'redirection' => 0,
+			'headers'     => array(
+				'Accept'        => 'image/webp,image/png,image/jpeg,image/gif',
+				'Authorization' => 'Bearer ' . $token,
+				'User-Agent'    => $this->user_agent(),
+			),
+		);
+		/**
+		 * Last chance to adjust an Arc request. Do not log the bearer.
+		 *
+		 * @param array<string, mixed> $args Request args.
+		 * @param string               $url  URL.
+		 */
+		$args     = apply_filters( 'arc_wordpress_http_args', $args, $url );
+		$response = wp_remote_request( $url, $args );
+		if ( is_wp_error( $response ) ) {
+			throw new Arc_Api_Exception(
+				__( 'Arc could not be reached. Try again in a moment.', 'pendulum-arc' ),
+				0
+			);
+		}
+		$status = (int) wp_remote_retrieve_response_code( $response );
+		$raw    = (string) wp_remote_retrieve_body( $response );
+		$type   = (string) wp_remote_retrieve_header( $response, 'content-type' );
+		$type   = strtolower( trim( explode( ';', $type )[0] ) );
+		$images = array( 'image/webp', 'image/png', 'image/jpeg', 'image/gif' );
+		if ( $status < 200 || $status >= 300 || ! in_array( $type, $images, true ) || strlen( $raw ) > 2000000 ) {
+			throw new Arc_Api_Exception( __( 'That screenshot is not available.', 'pendulum-arc' ), $status );
+		}
+		return array(
+			'bytes' => $raw,
+			'type'  => $type,
+		);
+	}
+
+	/**
 	 * Performs the request and decodes a JSON object.
 	 *
 	 * @param string                $method  HTTP method.
@@ -585,6 +648,17 @@ final class Arc_Client {
 				__( 'That Arc id is not valid.', 'pendulum-arc' ),
 				400
 			);
+		}
+	}
+
+	/**
+	 * Rejects a screenshot name that is not one path segment.
+	 *
+	 * @param string $file File name.
+	 */
+	private function assert_file( string $file ): void {
+		if ( str_contains( $file, '..' ) || 1 !== preg_match( '/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/', $file ) ) {
+			throw new Arc_Api_Exception( __( 'That screenshot is not available.', 'pendulum-arc' ), 404 );
 		}
 	}
 

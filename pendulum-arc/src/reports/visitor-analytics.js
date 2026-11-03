@@ -127,82 +127,91 @@ export function VisitorAnalytics( { report, portalUrl } ) {
 					<path d="M3 3v18h18" />
 					<path d="M7 14l4-4 3 3 5-6" />
 				</svg>
-				<div className="arc-report-hero__layout">
-					<div className="arc-report-hero__copy">
-						<p className="arc-report-hero__overline">
-							{ ( report && report.overline ) ||
-								__( 'Whos Visiting?', 'pendulum-arc' ) }
-						</p>
-						<h2 className="arc-report-hero__title">
-							{ ( report && report.title ) ||
-								__( 'Visitor Analytics', 'pendulum-arc' ) }
-						</h2>
-						{ report && report.rangeLabel ? (
-							<p className="arc-report-hero__range">
-								{ report.rangeLabel }
+				<div className="arc-report-hero__body">
+					<div className="arc-report-hero__layout">
+						<div className="arc-report-hero__copy">
+							<p className="arc-report-hero__overline">
+								{ ( report && report.overline ) ||
+									__( 'Whos Visiting?', 'pendulum-arc' ) }
 							</p>
-						) : null }
-						<p className="arc-report-hero__detail">
-							{ ( report && report.detail ) ||
-								__(
-									'Sessions, users, engagement, and landing pages from your bound GA4 property for this date range.',
-									'pendulum-arc'
-								) }
-						</p>
-					</div>
-					<dl className="arc-report-hero__metrics">
-						{ metrics.map( ( metric ) => {
-							const delta = metricDelta( metric );
-							const empty = metricNumber( metric.value ) === null;
-							return (
-								<div key={ metric.key }>
-									<dt>{ metric.label }</dt>
-									<dd>
-										<span
-											className="arc-report-hero__figure"
-											data-empty={
-												empty ? 'true' : undefined
-											}
-										>
-											{ formatMetric( metric ) }
-										</span>
-										{ delta ? (
+							<h2 className="arc-report-hero__title">
+								{ ( report && report.title ) ||
+									__( 'Visitor Analytics', 'pendulum-arc' ) }
+							</h2>
+							{ report && report.rangeLabel ? (
+								<p className="arc-report-hero__range">
+									{ report.rangeLabel }
+								</p>
+							) : null }
+							<p className="arc-report-hero__detail">
+								{ ( report && report.detail ) ||
+									__(
+										'Sessions, users, engagement, and landing pages from your bound GA4 property for this date range.',
+										'pendulum-arc'
+									) }
+							</p>
+						</div>
+						<dl
+							className="arc-report-hero__metrics"
+							data-cols={ String( metrics.length ) }
+						>
+							{ metrics.map( ( metric ) => {
+								const delta = metricDelta( metric );
+								const empty =
+									metricNumber( metric.value ) === null;
+								return (
+									<div key={ metric.key }>
+										<dt>{ metric.label }</dt>
+										<dd>
 											<span
-												className="arc-report-hero__delta"
-												data-tone={ delta.tone }
+												className="arc-report-hero__figure"
+												data-empty={
+													empty ? 'true' : undefined
+												}
 											>
-												{ delta.text }
+												{ formatMetric( metric ) }
 											</span>
-										) : null }
-									</dd>
-								</div>
-							);
-						} ) }
-					</dl>
-				</div>
-				{ report &&
-				( report.connectionMeta || report.searchConsoleMeta ) ? (
-					<div className="arc-report-hero__pills">
-						{ report.connectionMeta ? (
-							<span className="arc-report-hero__chip">
-								<FooterPill accent="cyan">GA4</FooterPill>
-								<FooterPill accent="muted">
-									{ report.connectionMeta }
-								</FooterPill>
-							</span>
-						) : null }
-						{ report.searchConsoleMeta ? (
-							<span className="arc-report-hero__chip">
-								<FooterPill accent="cyan">
-									{ __( 'Search Console', 'pendulum-arc' ) }
-								</FooterPill>
-								<FooterPill accent="muted">
-									{ report.searchConsoleMeta }
-								</FooterPill>
-							</span>
-						) : null }
+											{ delta ? (
+												<span
+													className="arc-report-hero__delta"
+													data-tone={ delta.tone }
+												>
+													{ delta.text }
+												</span>
+											) : null }
+										</dd>
+									</div>
+								);
+							} ) }
+						</dl>
 					</div>
-				) : null }
+					{ report &&
+					( report.connectionMeta || report.searchConsoleMeta ) ? (
+						<div className="arc-report-hero__pills">
+							{ report.connectionMeta ? (
+								<span className="arc-report-hero__chip">
+									<FooterPill accent="lime">GA4</FooterPill>
+									<FooterPill accent="muted">
+										{ report.connectionMeta }
+									</FooterPill>
+								</span>
+							) : null }
+							{ report.searchConsoleMeta ? (
+								<span className="arc-report-hero__chip">
+									<FooterPill accent="lime">
+										{ __(
+											'Search Console',
+											'pendulum-arc'
+										) }
+									</FooterPill>
+									<FooterPill accent="muted">
+										{ report.searchConsoleMeta }
+									</FooterPill>
+								</span>
+							) : null }
+						</div>
+					) : null }
+				</div>
 			</section>
 			<div className="arc-chart-grid">
 				{ charts.map( ( chart ) => (
@@ -265,13 +274,22 @@ export function VisitorAnalytics( { report, portalUrl } ) {
 								{ pages.map( ( page ) => (
 									<tr key={ page.path }>
 										<td>
+											<span className="arc-landing__path">
+												{ page.path }
+											</span>
 											{ page.editUrl ? (
-												<a href={ page.editUrl }>
-													{ page.path }
+												<a
+													className="arc-page-link"
+													href={ page.editUrl }
+												>
+													<span className="arc-page-link__label">
+														{ __(
+															'Edit',
+															'pendulum-arc'
+														) }
+													</span>
 												</a>
-											) : (
-												page.path
-											) }
+											) : null }
 										</td>
 										<td data-align="end">
 											{ Number(

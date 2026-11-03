@@ -373,6 +373,7 @@ final class Pairing {
 						'fix'             => Site_Origin::field( $row, array( 'fix' ) ),
 						'severity'        => Site_Origin::field( $row, array( 'severity' ) ),
 						'occurrenceCount' => self::count_value( $row, 'occurrenceCount' ),
+						'pages'           => self::issue_pages( $row['pages'] ?? null ),
 					);
 				}
 			}
@@ -681,9 +682,10 @@ final class Pairing {
 				);
 			}
 		}
-		$rows = array();
+		$rows  = array();
+		$limit = 'surfaces' === self::report_text( $block['id'] ?? '', 40 ) ? 400 : 200;
 		if ( is_array( $block['rows'] ?? null ) ) {
-			foreach ( array_slice( $block['rows'], 0, 200 ) as $row ) {
+			foreach ( array_slice( $block['rows'], 0, $limit ) as $row ) {
 				if ( ! is_array( $row ) || ! is_array( $row['cells'] ?? null ) ) {
 					continue;
 				}
@@ -693,14 +695,44 @@ final class Pairing {
 						$cells[] = self::report_cell( $cell );
 					}
 				}
-				$rows[] = array(
-					'id'    => self::report_text( $row['id'] ?? '', 180 ),
-					'kind'  => self::report_kind( $row['kind'] ?? '' ),
-					'cells' => $cells,
+				$entry   = array(
+					'id'      => self::report_text( $row['id'] ?? '', 180 ),
+					'kind'    => self::report_kind( $row['kind'] ?? '' ),
+					'cells'   => $cells,
+					'targets' => self::report_targets( $row['targets'] ?? null ),
 				);
+				$page    = self::report_page( $row['page'] ?? null );
+				$bot     = self::report_bot( $row['bot'] ?? null );
+				$llms    = self::report_llms( $row['llms'] ?? null );
+				$social  = self::report_social( $row['social'] ?? null );
+				$form    = self::report_form( $row['form'] ?? null );
+				$surface = self::report_surface( $row['surface'] ?? null );
+				$slot    = self::report_slot( $row['slot'] ?? null );
+				if ( null !== $page ) {
+					$entry['page'] = $page;
+				}
+				if ( null !== $bot ) {
+					$entry['bot'] = $bot;
+				}
+				if ( null !== $llms ) {
+					$entry['llms'] = $llms;
+				}
+				if ( null !== $social ) {
+					$entry['social'] = $social;
+				}
+				if ( null !== $form ) {
+					$entry['form'] = $form;
+				}
+				if ( null !== $surface ) {
+					$entry['surface'] = $surface;
+				}
+				if ( null !== $slot ) {
+					$entry['slot'] = $slot;
+				}
+				$rows[] = $entry;
 			}
 		}
-		return array(
+		$table = array(
 			'kind'    => 'table',
 			'id'      => self::report_text( $block['id'] ?? '', 40 ),
 			'heading' => self::report_text( $block['heading'] ?? '', 80 ),
@@ -708,6 +740,132 @@ final class Pairing {
 			'span'    => 'half' === ( $block['span'] ?? '' ) ? 'half' : 'full',
 			'columns' => $columns,
 			'rows'    => $rows,
+		);
+		$file  = self::http_url( Site_Origin::field( $block, array( 'fileHref' ) ) );
+		if ( null !== $file ) {
+			$table['fileHref'] = $file;
+		}
+		$format = array();
+		if ( is_array( $block['formatIssues'] ?? null ) ) {
+			foreach ( array_slice( $block['formatIssues'], 0, 12 ) as $issue ) {
+				$text = self::report_text( $issue, 240 );
+				if ( '' !== $text ) {
+					$format[] = $text;
+				}
+			}
+		}
+		if ( count( $format ) > 0 ) {
+			$table['formatIssues'] = $format;
+		}
+		$notes = array();
+		if ( is_array( $block['notes'] ?? null ) ) {
+			foreach ( array_slice( $block['notes'], 0, 8 ) as $note ) {
+				$text = self::report_text( $note, 240 );
+				if ( '' !== $text ) {
+					$notes[] = $text;
+				}
+			}
+		}
+		if ( count( $notes ) > 0 ) {
+			$table['notes'] = $notes;
+		}
+		return $table;
+	}
+
+	/**
+	 * Surfaces inventory row. Dropped when the URL is not http(s).
+	 *
+	 * @param mixed $raw Surface detail.
+	 * @return array<string, mixed>|null
+	 */
+	private static function report_surface( $raw ): ?array {
+		if ( ! is_array( $raw ) ) {
+			return null;
+		}
+		$url   = self::http_url( Site_Origin::field( $raw, array( 'url' ) ) );
+		$kind  = is_string( $raw['kind'] ?? null ) ? $raw['kind'] : '';
+		$kinds = array( 'login', 'admin', 'junk', 'social', 'provider', 'other' );
+		if ( null === $url || ! in_array( $kind, $kinds, true ) ) {
+			return null;
+		}
+		$labels = array( 'open', 'blocked', 'missing', 'redirect', 'closed' );
+		$tones  = array( 'good', 'bad', 'info', 'warn', 'muted' );
+		$groups = array( 'environment', 'database', 'other' );
+		$label  = is_string( $raw['statusLabel'] ?? null ) ? $raw['statusLabel'] : '';
+		$tone   = is_string( $raw['statusTone'] ?? null ) ? $raw['statusTone'] : '';
+		$group  = is_string( $raw['junkGroup'] ?? null ) ? $raw['junkGroup'] : '';
+		$status = null;
+		if ( is_numeric( $raw['status'] ?? null ) ) {
+			$parsed = (int) $raw['status'];
+			if ( $parsed >= 0 && $parsed <= 599 ) {
+				$status = $parsed;
+			}
+		}
+		return array(
+			'kind'        => $kind,
+			'url'         => $url,
+			'display'     => self::report_text( $raw['display'] ?? '', 180 ),
+			'status'      => $status,
+			'statusLabel' => in_array( $label, $labels, true ) ? $label : null,
+			'statusTone'  => in_array( $tone, $tones, true ) ? $tone : 'muted',
+			'note'        => self::report_text( $raw['note'] ?? '', 180 ),
+			'junkGroup'   => 'junk' === $kind && in_array( $group, $groups, true )
+				? $group
+				: null,
+		);
+	}
+
+	/**
+	 * Bot access row. Dropped when the user agent or status is missing.
+	 *
+	 * @param mixed $raw Bot detail.
+	 * @return array<string, mixed>|null
+	 */
+	private static function report_bot( $raw ): ?array {
+		if ( ! is_array( $raw ) ) {
+			return null;
+		}
+		$ua     = self::report_text( $raw['ua'] ?? '', 80 );
+		$status = self::report_kind( $raw['status'] ?? '' );
+		if ( '' === $ua || null === $status ) {
+			return null;
+		}
+		return array(
+			'ua'       => $ua,
+			'status'   => $status,
+			'category' => self::report_optional( $raw['category'] ?? '', 40 ),
+			'rule'     => self::report_optional( $raw['rule'] ?? '', 120 ),
+			'source'   => self::report_optional( $raw['source'] ?? '', 40 ),
+		);
+	}
+
+	/**
+	 * One llms.txt link. Dropped when it has no title and no URL.
+	 *
+	 * @param mixed $raw Link detail.
+	 * @return array<string, mixed>|null
+	 */
+	private static function report_llms( $raw ): ?array {
+		if ( ! is_array( $raw ) ) {
+			return null;
+		}
+		$url   = self::http_url( Site_Origin::field( $raw, array( 'url' ) ) ) ?? '';
+		$title = self::report_text( $raw['title'] ?? '', 180 );
+		if ( '' === $title && '' === $url ) {
+			return null;
+		}
+		$status = null;
+		if ( is_numeric( $raw['status'] ?? null ) ) {
+			$status = (int) $raw['status'];
+		}
+		return array(
+			'title'    => '' !== $title ? $title : $url,
+			'url'      => $url,
+			'notes'    => self::report_optional( $raw['notes'] ?? '', 240 ),
+			'section'  => self::report_optional( $raw['section'] ?? '', 80 ),
+			'optional' => ! empty( $raw['optional'] ),
+			'broken'   => ! empty( $raw['broken'] ),
+			'status'   => $status,
 		);
 	}
 
@@ -736,6 +894,9 @@ final class Pairing {
 					'pillTone' => self::report_accent( $field['pillTone'] ?? '' ),
 					'group'    => self::report_optional( $field['group'] ?? '', 40 ),
 					'wide'     => ! empty( $field['wide'] ),
+					'mark'     => self::report_optional( $field['mark'] ?? '', 40 ),
+					'meta'     => self::report_optional( $field['meta'] ?? '', 40 ),
+					'targets'  => self::report_targets( $field['targets'] ?? null ),
 				);
 			}
 		}
@@ -775,7 +936,7 @@ final class Pairing {
 				);
 			}
 		}
-		return array(
+		$card = array(
 			'kind'      => 'card',
 			'id'        => self::report_text( $block['id'] ?? '', 40 ),
 			'heading'   => self::report_text( $block['heading'] ?? '', 80 ),
@@ -790,6 +951,295 @@ final class Pairing {
 			'text'      => self::report_text( $block['text'] ?? '', 4000 ),
 			'links'     => $links,
 		);
+		$mark = self::report_mark( $block['mark'] ?? null );
+		if ( null !== $mark ) {
+			$card['mark'] = $mark;
+		}
+		return $card;
+	}
+
+	/**
+	 * SEO page row. Unsafe URLs become an empty string.
+	 *
+	 * @param mixed $raw Page detail.
+	 * @return array<string, mixed>|null
+	 */
+	private static function report_page( $raw ): ?array {
+		if ( ! is_array( $raw ) ) {
+			return null;
+		}
+		$phrases = array();
+		if ( is_array( $raw['keyphrases'] ?? null ) ) {
+			foreach ( array_slice( $raw['keyphrases'], 0, 8 ) as $phrase ) {
+				$text = self::report_text( $phrase, 80 );
+				if ( '' !== $text ) {
+					$phrases[] = $text;
+				}
+			}
+		}
+		$page = array(
+			'title'           => self::report_text( $raw['title'] ?? '', 180 ),
+			'path'            => self::report_text( $raw['path'] ?? '', 180 ),
+			'url'             => self::http_url( Site_Origin::field( $raw, array( 'url' ) ) ) ?? '',
+			'viewport'        => self::report_text( $raw['viewport'] ?? '', 40 ),
+			'keyphrases'      => $phrases,
+			'keyphraseScore'  => self::report_optional( $raw['keyphraseScore'] ?? '', 16 ),
+			'score'           => self::report_text( $raw['score'] ?? '', 16 ),
+			'error'           => self::report_optional( $raw['error'] ?? '', 180 ),
+			'siteName'        => self::report_optional( $raw['siteName'] ?? '', 80 ),
+			'brokenLinkCount' => self::report_count( $raw['brokenLinkCount'] ?? 0 ),
+			'issueCount'      => self::report_count( $raw['issueCount'] ?? 0 ),
+			'issues'          => self::report_page_issues( $raw['issues'] ?? null ),
+		);
+		$shot = self::report_shot( $raw['shot'] ?? '' );
+		if ( null !== $shot ) {
+			$page['shot'] = $shot;
+		}
+		if ( array_key_exists( 'titleKnown', $raw ) ) {
+			$page['titleKnown'] = ! empty( $raw['titleKnown'] );
+		}
+		return $page;
+	}
+
+	/**
+	 * Screenshot file name. One path segment, or null.
+	 *
+	 * @param mixed $value Raw file name.
+	 */
+	private static function report_shot( $value ): ?string {
+		$text = self::report_text( $value, 128 );
+		if ( '' === $text || str_contains( $text, '..' ) ) {
+			return null;
+		}
+		if ( 1 !== preg_match( '/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/', $text ) ) {
+			return null;
+		}
+		return $text;
+	}
+
+	/**
+	 * Issue rows for one page. Markup and the found-on list stay out.
+	 *
+	 * @param mixed $raw Issue list.
+	 * @return array<int, array{key: string, title: string, severity: string, dimension: string, summary: string, fix: string}>
+	 */
+	private static function report_page_issues( $raw ): array {
+		if ( ! is_array( $raw ) ) {
+			return array();
+		}
+		$allowed = array( 'critical', 'high', 'medium', 'low' );
+		$issues  = array();
+		foreach ( array_slice( $raw, 0, 24 ) as $issue ) {
+			if ( ! is_array( $issue ) ) {
+				continue;
+			}
+			$title = self::report_text( $issue['title'] ?? '', 180 );
+			if ( '' === $title ) {
+				continue;
+			}
+			$severity = self::report_text( $issue['severity'] ?? '', 16 );
+			if ( ! in_array( $severity, $allowed, true ) ) {
+				$severity = '';
+			}
+			$issues[] = array(
+				'key'       => self::report_text( $issue['key'] ?? '', 80 ),
+				'title'     => $title,
+				'severity'  => $severity,
+				'dimension' => self::report_text( $issue['dimension'] ?? '', 40 ),
+				'summary'   => self::report_text( $issue['summary'] ?? '', 240 ),
+				'fix'       => self::report_text( $issue['fix'] ?? '', 240 ),
+			);
+		}
+		return $issues;
+	}
+
+	/**
+	 * Pages an issue was found on. Only http(s) urls.
+	 *
+	 * @param mixed $raw Page list.
+	 * @return array<int, array{url: string, label: string}>
+	 */
+	private static function issue_pages( $raw ): array {
+		if ( ! is_array( $raw ) ) {
+			return array();
+		}
+		$pages = array();
+		foreach ( array_slice( $raw, 0, 12 ) as $page ) {
+			if ( ! is_array( $page ) ) {
+				continue;
+			}
+			$url = self::http_url( Site_Origin::field( $page, array( 'url' ) ) );
+			if ( null === $url ) {
+				continue;
+			}
+			$label   = self::report_text( $page['label'] ?? '', 180 );
+			$pages[] = array(
+				'url'   => $url,
+				'label' => '' !== $label ? $label : $url,
+			);
+		}
+		return $pages;
+	}
+
+	/**
+	 * Social inventory row. Dropped when the URL is not http(s).
+	 *
+	 * @param mixed $raw Social detail.
+	 * @return array<string, string>|null
+	 */
+	private static function report_social( $raw ): ?array {
+		if ( ! is_array( $raw ) ) {
+			return null;
+		}
+		$url = self::http_url( Site_Origin::field( $raw, array( 'url' ) ) );
+		if ( null === $url ) {
+			return null;
+		}
+		return array(
+			'url'      => $url,
+			'platform' => self::report_text( $raw['platform'] ?? '', 40 ),
+		);
+	}
+
+	/**
+	 * Form inventory row.
+	 *
+	 * @param mixed $raw Form detail.
+	 * @return array<string, mixed>|null
+	 */
+	private static function report_form( $raw ): ?array {
+		if ( ! is_array( $raw ) ) {
+			return null;
+		}
+		$label = self::report_text( $raw['label'] ?? '', 120 );
+		if ( '' === $label ) {
+			return null;
+		}
+		$presence = is_string( $raw['presence'] ?? null ) ? $raw['presence'] : '';
+		if ( ! in_array( $presence, array( 'single', 'multiple', 'sitewide' ), true ) ) {
+			$presence = 'single';
+		}
+		$variants = array();
+		if ( is_array( $raw['variants'] ?? null ) ) {
+			foreach ( array_slice( $raw['variants'], 0, 8 ) as $variant ) {
+				if ( ! is_array( $variant ) ) {
+					continue;
+				}
+				$variants[] = self::report_form_variant( $variant );
+			}
+		}
+		return array(
+			'label'    => $label,
+			'presence' => $presence,
+			'variants' => $variants,
+		);
+	}
+
+	/**
+	 * One form variant.
+	 *
+	 * @param array<string, mixed> $variant Variant.
+	 * @return array<string, mixed>
+	 */
+	private static function report_form_variant( array $variant ): array {
+		$protections = array();
+		if ( is_array( $variant['protections'] ?? null ) ) {
+			foreach ( array_slice( $variant['protections'], 0, 6 ) as $protection ) {
+				$text = self::report_text( $protection, 40 );
+				if ( '' !== $text ) {
+					$protections[] = $text;
+				}
+			}
+		}
+		$fields = array();
+		if ( is_array( $variant['fields'] ?? null ) ) {
+			foreach ( array_slice( $variant['fields'], 0, 24 ) as $field ) {
+				$text = self::report_text( $field, 80 );
+				if ( '' !== $text ) {
+					$fields[] = $text;
+				}
+			}
+		}
+		$pages = array();
+		if ( is_array( $variant['pages'] ?? null ) ) {
+			foreach ( array_slice( $variant['pages'], 0, 12 ) as $page ) {
+				$text = self::report_text( $page, 180 );
+				if ( '' !== $text ) {
+					$pages[] = $text;
+				}
+			}
+		}
+		$check = 'skipped' === ( $variant['protectionCheck'] ?? '' ) ? 'skipped' : 'checked';
+		return array(
+			'method'           => self::report_text( $variant['method'] ?? '', 40 ),
+			'protections'      => $protections,
+			'protectionCheck'  => $check,
+			'protectionsKnown' => ! empty( $variant['protectionsKnown'] ),
+			'fieldCount'       => self::report_count( $variant['fieldCount'] ?? 0 ),
+			'fields'           => $fields,
+			'pageCount'        => self::report_count( $variant['pageCount'] ?? 0 ),
+			'pages'            => $pages,
+		);
+	}
+
+	/**
+	 * Brand requirements row.
+	 *
+	 * @param mixed $raw Slot detail.
+	 * @return array<string, mixed>|null
+	 */
+	private static function report_slot( $raw ): ?array {
+		if ( ! is_array( $raw ) ) {
+			return null;
+		}
+		$label = self::report_text( $raw['label'] ?? '', 80 );
+		if ( '' === $label ) {
+			return null;
+		}
+		return array(
+			'id'       => self::report_text( $raw['id'] ?? '', 40 ),
+			'label'    => $label,
+			'hint'     => self::report_text( $raw['hint'] ?? '', 180 ),
+			'status'   => self::report_text( $raw['status'] ?? '', 40 ),
+			'required' => self::report_text( $raw['required'] ?? '', 80 ),
+			'observed' => self::report_text( $raw['observed'] ?? '', 80 ),
+			'image'    => self::http_url( Site_Origin::field( $raw, array( 'image' ) ) ),
+		);
+	}
+
+	/**
+	 * Brand principal mark.
+	 *
+	 * @param mixed $raw Mark detail.
+	 * @return array<string, mixed>|null
+	 */
+	private static function report_mark( $raw ): ?array {
+		if ( ! is_array( $raw ) ) {
+			return null;
+		}
+		$role = 'long' === ( $raw['role'] ?? '' ) ? 'long' : 'short';
+		return array(
+			'present'      => ! empty( $raw['present'] ),
+			'family'       => self::report_optional( $raw['family'] ?? '', 16 ),
+			'sharedFamily' => ! empty( $raw['sharedFamily'] ),
+			'role'         => $role,
+		);
+	}
+
+	/**
+	 * Non-negative count, capped.
+	 *
+	 * @param mixed $value Raw count.
+	 */
+	private static function report_count( $value ): int {
+		if ( ! is_numeric( $value ) ) {
+			return 0;
+		}
+		$count = (int) $value;
+		if ( $count < 0 ) {
+			return 0;
+		}
+		return min( $count, 100000 );
 	}
 
 	/**
@@ -823,6 +1273,26 @@ final class Pairing {
 	 *
 	 * @param mixed $value Raw value.
 	 */
+	/**
+	 * Issue anchors. Only `section::finding:checkId` shapes are kept.
+	 *
+	 * @param mixed $raw Target list.
+	 * @return array<int, string>
+	 */
+	private static function report_targets( $raw ): array {
+		if ( ! is_array( $raw ) ) {
+			return array();
+		}
+		$targets = array();
+		foreach ( array_slice( $raw, 0, 8 ) as $target ) {
+			$text = self::report_text( $target, 80 );
+			if ( preg_match( '/^(system|environment|surfaces)::finding:[A-Za-z0-9._-]+$/', $text ) ) {
+				$targets[] = $text;
+			}
+		}
+		return $targets;
+	}
+
 	private static function report_optional( $value, int $max ): ?string {
 		$text = self::report_text( $value, $max );
 		return '' === $text ? null : $text;

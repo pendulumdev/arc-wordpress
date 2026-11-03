@@ -8,6 +8,11 @@ import { __, sprintf } from '@wordpress/i18n';
  * Internal dependencies
  */
 import { Icon } from '../ui/icon';
+import {
+	PAGE_FOCUS_EVENT,
+	focusIssueTarget,
+	focusPageRow,
+} from './report-chrome';
 
 const SEVERITY_LABEL = {
 	critical: 'Critical',
@@ -135,7 +140,7 @@ function KindIcon( { kind, sectionId, size } ) {
 	);
 }
 
-function IssueRow( { item } ) {
+export function IssueRow( { item } ) {
 	const severity = SEVERITY_LABEL[ item.severity ] ? item.severity : '';
 	const summary = item.summary || '';
 	const pages = Number( item.occurrenceCount );
@@ -260,6 +265,27 @@ export function IssueMenu( { groups } ) {
 		return null;
 	}
 
+	function openIssue( item ) {
+		if ( focusIssueTarget( item ) ) {
+			setOpen( false );
+			return;
+		}
+		const found = Array.isArray( item.pages ) ? item.pages : [];
+		openPage( item, found[ 0 ] );
+	}
+
+	function openPage( item, page ) {
+		if ( ! page || ! page.url ) {
+			return;
+		}
+		window.dispatchEvent(
+			new CustomEvent( PAGE_FOCUS_EVENT, {
+				detail: { url: page.url, key: item.key },
+			} )
+		);
+		focusPageRow( page.url );
+	}
+
 	const severity = worstSeverity( groups );
 	const label = __( 'Issues', 'pendulum-arc' );
 	const panelLabel = `${ label } (${ count })`;
@@ -347,7 +373,8 @@ export function IssueMenu( { groups } ) {
 												} }
 												role="none"
 											>
-												<div
+												<button
+													type="button"
 													role="menuitem"
 													data-severity={
 														SEVERITY_LABEL[
@@ -356,9 +383,22 @@ export function IssueMenu( { groups } ) {
 															? item.severity
 															: undefined
 													}
+													onClick={ () =>
+														openIssue( {
+															...item,
+															sectionId:
+																group.sectionId,
+														} )
+													}
 												>
-													<IssueRow item={ item } />
-												</div>
+													<IssueRow
+														item={ {
+															...item,
+															sectionId:
+																group.sectionId,
+														} }
+													/>
+												</button>
 											</div>
 										);
 									} ) }

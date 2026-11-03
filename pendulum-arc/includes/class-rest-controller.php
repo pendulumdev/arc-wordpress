@@ -34,6 +34,13 @@ final class Rest_Controller {
 	private Invite_Service $invites;
 
 	/**
+	 * Screenshot waiting to be written as the REST body.
+	 *
+	 * @var array{bytes: string, type: string}|null
+	 */
+	private ?array $media = null;
+
+	/**
 	 * @param Connect_Service $connect    Connect flow.
 	 * @param Keyphrase_Sync  $keyphrases Keyphrase list and Arc sync.
 	 * @param Invite_Service  $invites    Administrator invites.
@@ -253,6 +260,26 @@ final class Rest_Controller {
 
 		register_rest_route(
 			'pendulum-arc/v1',
+			'/report-media',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'report_media' ),
+				'permission_callback' => array( $this, 'can_manage' ),
+				'args'                => array(
+					'run'  => array(
+						'type'     => 'string',
+						'required' => true,
+					),
+					'file' => array(
+						'type'     => 'string',
+						'required' => true,
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			'pendulum-arc/v1',
 			'/keyphrases',
 			array(
 				array(
@@ -462,6 +489,52 @@ final class Rest_Controller {
 	 */
 	public function report( \WP_REST_Request $request ) {
 		return rest_ensure_response( $this->connect->report( (string) $request->get_param( 'service' ) ) );
+	}
+
+	/**
+	 * Streams one page screenshot for an img tag on this site.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function report_media( \WP_REST_Request $request ) {
+		$media = $this->connect->report_media(
+			(string) $request->get_param( 'run' ),
+			(string) $request->get_param( 'file' )
+		);
+		if ( null === $media ) {
+			return new \WP_Error(
+				'arc_media',
+				__( 'That screenshot is not available.', 'pendulum-arc' ),
+				array( 'status' => 404 )
+			);
+		}
+		$this->media = $media;
+		add_filter( 'rest_pre_serve_request', array( $this, 'serve_media' ), 10, 2 );
+		return new \WP_REST_Response( null, 200 );
+	}
+
+	/**
+	 * Writes the screenshot bytes instead of JSON.
+	 *
+	 * @param bool              $served Already served.
+	 * @param \WP_REST_Response $result Response.
+	 */
+	public function serve_media( $served, $result ) {
+		remove_filter( 'rest_pre_serve_request', array( $this, 'serve_media' ), 10 );
+		if ( $served || null === $this->media || ! $result instanceof \WP_REST_Response ) {
+			return $served;
+		}
+		$media       = $this->media;
+		$this->media = null;
+		if ( ! headers_sent() ) {
+			header( 'Content-Type: ' . $media['type'] );
+			header( 'Content-Length: ' . strlen( $media['bytes'] ) );
+			header( 'Cache-Control: private, max-age=3600' );
+			header( 'X-Content-Type-Options: nosniff' );
+		}
+		echo $media['bytes']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Image bytes, content type is an image.
+		return true;
 	}
 
 	/**

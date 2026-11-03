@@ -4,7 +4,7 @@ Tags: seo, analytics
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.5.2
+Stable tag: 0.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -68,6 +68,14 @@ Accept allows the optional cookies left checked, and runs the scripts listed on 
 When the GitHub repository is public and a release is newer than this install, WordPress shows the update on the Plugins screen. Update now installs it, and automatic updates install it on their own. Automatic updates are on until you disable them on the Plugins screen. The Arc screens show the same update.
 
 == Changelog ==
+
+= 0.6.0 =
+* The Arc Analytics screen shows the paired site's latest Analytics, SEO, A11Y, AI, Security, and Brand report.
+* SEO, accessibility, and AI page rows open that page's issues. The list scrolls down.
+* SEO social links and forms, and Security Surfaces, use the inventory cards. An empty list reads as a row.
+* Security Surfaces lists login and admin, junk and secrets, social and providers, and forms.
+* Page screenshots in those reports load from the paired run.
+* WordPress 6.7 and PHP 8.1 stay the minimum.
 
 = 0.5.2 =
 * The packages used to build the admin screens are updated. Connection, invites, reports, and the cookie banner behave the same.
