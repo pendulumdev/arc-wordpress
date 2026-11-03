@@ -4,7 +4,7 @@ Tags: seo, analytics
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.6.1
+Stable tag: 0.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -68,6 +68,11 @@ Accept allows the optional cookies left checked, and runs the scripts listed on 
 When the GitHub repository is public and a release is newer than this install, WordPress shows the update on the Plugins screen. Update now installs it, and automatic updates install it on their own. Automatic updates are on until you disable them on the Plugins screen. The Arc screens show the same update.
 
 == Changelog ==
+
+= 0.7.0 =
+* Opening an accessibility report downloads its page screenshots in one batch and keeps them beside the uploads folder.
+* A page preview reads the stored file. Those files are not under the public uploads URL.
+* A screenshot Arc does not have is not requested again.
 
 = 0.6.1 =
 * Sync keyphrases does not send a replace when this site has no focus phrase and no page phrases. Arc keeps the list it already has.

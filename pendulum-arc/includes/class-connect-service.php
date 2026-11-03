@@ -426,8 +426,17 @@ final class Connect_Service {
 		$view            = Pairing::report( $payload );
 		$view['service'] = $service;
 		$view['blocks']  = $this->link_report_blocks( $view['blocks'] );
-		$view['blocks']  = $this->attach_page_shots( $view['blocks'], (string) ( $view['runId'] ?? '' ) );
-		$view['error']   = null;
+		$run_id          = (string) ( $view['runId'] ?? '' );
+		if ( 'a11y' === $service && '' !== $run_id ) {
+			try {
+				$this->store_shots( $run_id, $this->shot_names( $view['blocks'] ) );
+			} catch ( Arc_Api_Exception $error ) {
+				$empty['error'] = self::admin_message( $error );
+				return $empty;
+			}
+		}
+		$view['blocks'] = $this->attach_page_shots( $view['blocks'], $run_id );
+		$view['error']  = null;
 		return $view;
 	}
 
@@ -439,21 +448,241 @@ final class Connect_Service {
 	 * @return array{bytes: string, type: string}|null
 	 */
 	public function report_media( string $run_id, string $file ): ?array {
-		$creds = $this->store->credentials();
-		if ( null === $creds ) {
+		if ( null === $this->store->credentials() ) {
 			return null;
 		}
-		try {
-			$media = $this->bearer_call(
-				$creds,
-				function ( string $token ) use ( $creds, $run_id, $file ) {
-					return $this->client->report_media( (string) $creds['env'], $token, $run_id, $file );
+		return $this->read_shot( $run_id, $file );
+	}
+
+	/**
+	 * Downloads accessibility screenshots in batches and keeps them off the public uploads URL.
+	 *
+	 * @param string             $run_id Run id.
+	 * @param array<int, string> $names  Shot file names from the report.
+	 */
+	private function store_shots( string $run_id, array $names ): void {
+		$pending = array();
+		foreach ( $names as $name ) {
+			if ( '' === $name || $this->shot_exists( $run_id, $name ) ) {
+				continue;
+			}
+			$pending[ $name ] = $name;
+		}
+		$pending = array_values( $pending );
+		for ( $loop = 0; $loop < 30 && array() !== $pending; $loop++ ) {
+			$asked  = array_slice( $pending, 0, 40 );
+			$result = $this->with_arc(
+				function ( string $env, string $token, string $site_id ) use ( $run_id, $asked ) {
+					unset( $site_id );
+					return $this->client->report_media_batch( $env, $token, $run_id, $asked );
 				}
 			);
-		} catch ( Arc_Api_Exception $error ) {
+			$done   = array();
+			$images = $result['images'] ?? array();
+			if ( is_array( $images ) ) {
+				foreach ( $images as $image ) {
+					if ( ! is_array( $image ) ) {
+						continue;
+					}
+					$file    = (string) ( $image['file'] ?? '' );
+					$type    = (string) ( $image['contentType'] ?? '' );
+					$encoded = (string) ( $image['data'] ?? '' );
+					// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- Arc returns screenshot bytes as base64.
+					$bytes = base64_decode( $encoded, true );
+					if ( '' === $file || ! is_string( $bytes ) || '' === $bytes ) {
+						continue;
+					}
+					$this->write_shot( $run_id, $file, $bytes, $type );
+					$done[ $file ] = true;
+				}
+			}
+			$missing = $result['missing'] ?? array();
+			if ( is_array( $missing ) ) {
+				foreach ( $missing as $file ) {
+					if ( is_string( $file ) && '' !== $file ) {
+						$this->mark_shot_missing( $run_id, $file );
+						$done[ $file ] = true;
+					}
+				}
+			}
+			$next = array();
+			foreach ( $pending as $file ) {
+				if ( ! isset( $done[ $file ] ) ) {
+					$next[] = $file;
+				}
+			}
+			if ( count( $next ) === count( $pending ) ) {
+				throw new Arc_Api_Exception( __( 'Arc refused the request. Try again in a moment.', 'pendulum-arc' ), 502 );
+			}
+			$pending = $next;
+		}
+		if ( array() !== $pending ) {
+			throw new Arc_Api_Exception( __( 'Arc refused the request. Try again in a moment.', 'pendulum-arc' ), 502 );
+		}
+	}
+
+	/**
+	 * @param array<int, array<string, mixed>> $blocks Report blocks.
+	 * @return array<int, string>
+	 */
+	private function shot_names( array $blocks ): array {
+		$names = array();
+		foreach ( $blocks as $block ) {
+			if ( ! is_array( $block ) || 'pages' !== ( $block['id'] ?? '' ) || ! is_array( $block['rows'] ?? null ) ) {
+				continue;
+			}
+			foreach ( $block['rows'] as $row ) {
+				if ( ! is_array( $row ) || ! is_array( $row['page'] ?? null ) ) {
+					continue;
+				}
+				$shot = $row['page']['shot'] ?? '';
+				if ( is_string( $shot ) && '' !== $shot ) {
+					$names[] = $shot;
+				}
+			}
+		}
+		return $names;
+	}
+
+	/**
+	 * Directory beside the uploads folder. The media route is the only reader.
+	 */
+	private function shot_root(): string {
+		$uploads = function_exists( 'wp_upload_dir' ) ? wp_upload_dir() : array();
+		$parent  = is_array( $uploads ) && ! empty( $uploads['basedir'] ) ? dirname( (string) $uploads['basedir'] ) : WP_CONTENT_DIR;
+		return $parent . '/pendulum-arc-private';
+	}
+
+	/**
+	 * @param string $run_id Run id.
+	 * @param string $file   Screenshot file name.
+	 */
+	private function shot_path( string $run_id, string $file ): ?string {
+		if ( 1 !== preg_match( '/^[A-Za-z0-9_-]{1,128}$/', $run_id ) ) {
 			return null;
 		}
-		return is_array( $media ) ? $media : null;
+		if ( str_contains( $file, '..' ) || 1 !== preg_match( '/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/', $file ) ) {
+			return null;
+		}
+		return $this->shot_root() . '/reports/' . $run_id . '/' . $file;
+	}
+
+	/**
+	 * @param string $file Screenshot file name.
+	 */
+	private function shot_type( string $file ): ?string {
+		$extension = strtolower( pathinfo( $file, PATHINFO_EXTENSION ) );
+		$types     = array(
+			'webp' => 'image/webp',
+			'png'  => 'image/png',
+			'jpg'  => 'image/jpeg',
+			'jpeg' => 'image/jpeg',
+			'gif'  => 'image/gif',
+		);
+		return $types[ $extension ] ?? null;
+	}
+
+	/**
+	 * @param string $run_id Run id.
+	 * @param string $file   Screenshot file name.
+	 */
+	private function shot_exists( string $run_id, string $file ): bool {
+		$path = $this->shot_path( $run_id, $file );
+		if ( null === $path ) {
+			return false;
+		}
+		if ( is_file( $path ) && filesize( $path ) > 0 ) {
+			return true;
+		}
+		return is_file( $path . '.missing' );
+	}
+
+	/**
+	 * @param string $run_id Run id.
+	 * @param string $file   Screenshot file name Arc does not have.
+	 */
+	private function mark_shot_missing( string $run_id, string $file ): void {
+		$path = $this->shot_path( $run_id, $file );
+		if ( null === $path ) {
+			return;
+		}
+		$this->prepare_shot_root();
+		$directory = dirname( $path );
+		if ( ! wp_mkdir_p( $directory ) ) {
+			throw new Arc_Api_Exception( __( 'The screenshots could not be stored.', 'pendulum-arc' ), 500 );
+		}
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Local cache marker.
+		$written = file_put_contents( $path . '.missing', '1' );
+		if ( false === $written ) {
+			throw new Arc_Api_Exception( __( 'The screenshots could not be stored.', 'pendulum-arc' ), 500 );
+		}
+	}
+
+	/**
+	 * @param string $run_id Run id.
+	 * @param string $file   Screenshot file name.
+	 * @return array{bytes: string, type: string}|null
+	 */
+	private function read_shot( string $run_id, string $file ): ?array {
+		$path = $this->shot_path( $run_id, $file );
+		$type = $this->shot_type( $file );
+		if ( null === $path || null === $type || ! is_file( $path ) ) {
+			return null;
+		}
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local cache, not a remote URL.
+		$bytes = file_get_contents( $path );
+		if ( ! is_string( $bytes ) || '' === $bytes || strlen( $bytes ) > 2000000 ) {
+			return null;
+		}
+		return array(
+			'bytes' => $bytes,
+			'type'  => $type,
+		);
+	}
+
+	/**
+	 * @param string $run_id Run id.
+	 * @param string $file   Screenshot file name.
+	 * @param string $bytes  Image bytes.
+	 * @param string $type   Image content type.
+	 */
+	private function write_shot( string $run_id, string $file, string $bytes, string $type ): void {
+		$allowed = array( 'image/webp', 'image/png', 'image/jpeg', 'image/gif' );
+		$path    = $this->shot_path( $run_id, $file );
+		if ( null === $path || ! in_array( $type, $allowed, true ) || '' === $bytes || strlen( $bytes ) > 2000000 ) {
+			throw new Arc_Api_Exception( __( 'That screenshot is not available.', 'pendulum-arc' ), 502 );
+		}
+		$this->prepare_shot_root();
+		$directory = dirname( $path );
+		if ( ! wp_mkdir_p( $directory ) ) {
+			throw new Arc_Api_Exception( __( 'The screenshots could not be stored.', 'pendulum-arc' ), 500 );
+		}
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Local cache beside uploads.
+		$written = file_put_contents( $path, $bytes );
+		if ( false === $written ) {
+			throw new Arc_Api_Exception( __( 'The screenshots could not be stored.', 'pendulum-arc' ), 500 );
+		}
+	}
+
+	/**
+	 * Keeps the cache directory from being served as a public uploads URL.
+	 */
+	private function prepare_shot_root(): void {
+		$root = $this->shot_root();
+		if ( ! wp_mkdir_p( $root ) ) {
+			throw new Arc_Api_Exception( __( 'The screenshots could not be stored.', 'pendulum-arc' ), 500 );
+		}
+		$deny = $root . '/.htaccess';
+		if ( ! is_file( $deny ) ) {
+			$rules = "Require all denied\nDeny from all\n";
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Local cache guard.
+			file_put_contents( $deny, $rules );
+		}
+		$index = $root . '/index.php';
+		if ( ! is_file( $index ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents -- Local cache guard.
+			file_put_contents( $index, "<?php\n// Silence is golden.\n" );
+		}
 	}
 
 	/**

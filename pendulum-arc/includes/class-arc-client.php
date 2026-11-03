@@ -164,6 +164,28 @@ final class Arc_Client {
 	}
 
 	/**
+	 * Many stored screenshots. One rate-limit token for the list.
+	 *
+	 * @param string             $env     production or preview.
+	 * @param string             $token   Bearer.
+	 * @param string             $run_id  Run id.
+	 * @param array<int, string> $files   Screenshot file names.
+	 * @return array<string, mixed>
+	 */
+	public function report_media_batch( string $env, string $token, string $run_id, array $files ): array {
+		$this->assert_id( $run_id );
+		$url = Arc_Config::api( $env ) . '/v1/runs/' . rawurlencode( $run_id ) . '/media';
+		return $this->json(
+			'POST',
+			$url,
+			$token,
+			array(
+				'files' => array_values( $files ),
+			)
+		);
+	}
+
+	/**
 	 * Newest runs for the site, used to label queued and running services.
 	 *
 	 * @param string $env     production or preview.
