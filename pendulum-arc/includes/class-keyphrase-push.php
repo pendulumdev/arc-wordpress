@@ -68,6 +68,17 @@ final class Keyphrase_Push {
 	}
 
 	/**
+	 * A replace with no pages and no focus must not be sent. Arc keeps its list.
+	 *
+	 * @param array{mode: string, upserts: array<int, mixed>, focus: string|null} $plan Push plan.
+	 */
+	public static function vacant( array $plan ): bool {
+		return 'replace' === $plan['mode']
+			&& array() === $plan['upserts']
+			&& null === $plan['focus'];
+	}
+
+	/**
 	 * @param array<int, array{path: string, focusKeyphrase: string}> $upserts Upserts.
 	 * @param array<int, string>                                      $deletes Paths to delete.
 	 * @return array<int, array{upserts: array<int, array{path: string, focusKeyphrase: string}>, deletes: array<int, string>}>

@@ -260,6 +260,12 @@ final class Keyphrase_Sync {
 		);
 		$arc_hash = (string) ( $remote['hash'] ?? '' );
 		$plan     = Keyphrase_Push::plan( $state['acked_hash'], $arc_hash, $state['focus'], $state['focus_synced'], $this->list->rows() );
+		if ( Keyphrase_Push::vacant( $plan ) ) {
+			return array(
+				'ok'      => true,
+				'message' => __( 'This site has no keyphrases to send. Arc was left unchanged.', 'pendulum-arc' ),
+			);
+		}
 		if ( '' !== $state['sync_id'] ) {
 			$this->abandon( $state['sync_id'] );
 		}

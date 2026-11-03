@@ -66,7 +66,8 @@ has none, and to connect this install when it is not paired with Arc.
 Those notices do not change the menu count. **Sync with Arc** is shown after the first scan,
 and only when the local list hash differs from `GET /v1/sites/{siteId}/seo-targets`.
 The click sends dirty rows when Arc still matches the last accepted hash,
-or the whole list when Arc has moved. Commit uses `auto_run: true`, which
+or the whole list when Arc has moved. A replace with no page phrases and no
+focus is not sent, so an empty site does not clear the Arc list. Commit uses `auto_run: true`, which
 queues the SEO report. Turning the checkbox off clears the WordPress list
 and leaves the Arc target in place.
 

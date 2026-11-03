@@ -227,6 +227,31 @@ final class KeyphraseTest extends TestCase {
 		self::assertCount( 1, $plan['upserts'] );
 	}
 
+	public function test_an_empty_replace_is_vacant(): void {
+		$plan = Keyphrase_Push::plan( 'old', 'moved', '', '', array() );
+		self::assertSame( 'replace', $plan['mode'] );
+		self::assertSame( array(), $plan['upserts'] );
+		self::assertNull( $plan['focus'] );
+		self::assertTrue( Keyphrase_Push::vacant( $plan ) );
+
+		$pages = Keyphrase_Push::plan(
+			'old',
+			'moved',
+			'',
+			'',
+			array(
+				array(
+					'path'          => '/about',
+					'phrase'        => 'about',
+					'synced_phrase' => '',
+					'deleted'       => false,
+				),
+			)
+		);
+		self::assertFalse( Keyphrase_Push::vacant( $pages ) );
+		self::assertCount( 1, $pages['upserts'] );
+	}
+
 	public function test_only_the_keyphrase_alert_counts(): void {
 		self::assertFalse( Page_Alerts::keyphrase_pending( true, false, true, 'home', '', true, false ) );
 		self::assertFalse( Page_Alerts::keyphrase_pending( true, true, false, 'home', '', true, false ) );

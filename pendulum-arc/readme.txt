@@ -4,7 +4,7 @@ Tags: seo, analytics
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.6.0
+Stable tag: 0.6.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,7 +20,7 @@ An API key pairs the site when Arc already has this address. When it does not, y
 
 On Settings, Invite sends project invites to WordPress administrators who are not already on the Arc project.
 
-Sync keyphrases, on the Settings page, reads focus keyphrases already stored by Yoast, Rank Math, SEOPress, and All in One SEO. When that list differs from Arc, a notice appears at the top of Arc screens and the Arc menu shows a count of 1. Sync with Arc sends that list to Arc and queues the SEO report. Turning the checkbox off clears the list in WordPress and leaves the Arc target as it is.
+Sync keyphrases, on the Settings page, reads focus keyphrases already stored by Yoast, Rank Math, SEOPress, and All in One SEO. When that list differs from Arc, a notice appears at the top of Arc screens and the Arc menu shows a count of 1. Sync with Arc sends that list to Arc and queues the SEO report. An empty list is not sent, so Arc keeps the phrases it already has. Turning the checkbox off clears the list in WordPress and leaves the Arc target as it is.
 
 GDPR Consent, under the Arc menu, is a cookie banner for this site. It does not call Arc, and it is available before the site is paired. Optional cookies, and scripts listed on them, stay off until a visitor accepts them. Decline refuses every optional cookie. Consent logging is off until you turn it on. A static banner is printed at the end of the theme header or footer. A fixed banner is positioned on the screen. Disable, on the Behaviour tab, turns the banner off and leaves script tags unchanged.
 
@@ -68,6 +68,10 @@ Accept allows the optional cookies left checked, and runs the scripts listed on 
 When the GitHub repository is public and a release is newer than this install, WordPress shows the update on the Plugins screen. Update now installs it, and automatic updates install it on their own. Automatic updates are on until you disable them on the Plugins screen. The Arc screens show the same update.
 
 == Changelog ==
+
+= 0.6.1 =
+* Sync keyphrases does not send a replace when this site has no focus phrase and no page phrases. Arc keeps the list it already has.
+* A list that does have page phrases still replaces the Arc target.
 
 = 0.6.0 =
 * The Arc Analytics screen shows the paired site's latest Analytics, SEO, A11Y, AI, Security, and Brand report.
