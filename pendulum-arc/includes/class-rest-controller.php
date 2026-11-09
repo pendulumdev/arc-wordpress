@@ -248,10 +248,18 @@ final class Rest_Controller {
 					'callback'            => array( $this, 'enqueue_run' ),
 					'permission_callback' => array( $this, 'can_manage' ),
 					'args'                => array(
-						'service' => array(
+						'service'  => array(
 							'type'     => 'string',
-							'required' => true,
+							'required' => false,
 							'enum'     => array( 'analytics', 'seo', 'a11y', 'ai', 'security', 'brand' ),
+						),
+						'services' => array(
+							'type'     => 'array',
+							'required' => false,
+							'items'    => array(
+								'type' => 'string',
+								'enum' => array( 'analytics', 'seo', 'a11y', 'ai', 'security', 'brand' ),
+							),
 						),
 					),
 				),
@@ -292,9 +300,13 @@ final class Rest_Controller {
 					'callback'            => array( $this, 'keyphrase_enabled' ),
 					'permission_callback' => array( $this, 'can_manage' ),
 					'args'                => array(
-						'enabled' => array(
+						'enabled'         => array(
 							'type'     => 'boolean',
-							'required' => true,
+							'required' => false,
+						),
+						'recommendSchema' => array(
+							'type'     => 'boolean',
+							'required' => false,
 						),
 					),
 				),
@@ -555,7 +567,15 @@ final class Rest_Controller {
 	public function enqueue_run( \WP_REST_Request $request ) {
 		return $this->respond(
 			function () use ( $request ) {
-				return $this->connect->enqueue_run( (string) $request->get_param( 'service' ) );
+				$services = $request->get_param( 'services' );
+				if ( is_array( $services ) && count( $services ) > 1 ) {
+					return $this->connect->enqueue_runs( $services );
+				}
+				$service = (string) $request->get_param( 'service' );
+				if ( '' === $service && is_array( $services ) && isset( $services[0] ) ) {
+					$service = (string) $services[0];
+				}
+				return $this->connect->enqueue_run( $service );
 			}
 		);
 	}
@@ -574,7 +594,7 @@ final class Rest_Controller {
 	}
 
 	/**
-	 * Turns Sync keyphrases on or off.
+	 * Turns Sync keyphrases or Recommend Schema on or off. Neither call reaches Arc.
 	 *
 	 * @param \WP_REST_Request $request Request.
 	 * @return \WP_REST_Response|\WP_Error
@@ -582,7 +602,19 @@ final class Rest_Controller {
 	public function keyphrase_enabled( \WP_REST_Request $request ) {
 		return $this->respond(
 			function () use ( $request ) {
-				return $this->keyphrases->set_enabled( (bool) $request->get_param( 'enabled' ) );
+				$enabled = $request->has_param( 'enabled' );
+				$schema  = $request->has_param( 'recommendSchema' );
+				if ( ! $enabled && ! $schema ) {
+					// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- The admin UI renders this as text.
+					throw new Arc_Api_Exception( __( 'Choose a setting to save.', 'pendulum-arc' ), 400 );
+				}
+				if ( $schema ) {
+					$this->keyphrases->set_recommend_schema( (bool) $request->get_param( 'recommendSchema' ) );
+				}
+				if ( $enabled ) {
+					return $this->keyphrases->set_enabled( (bool) $request->get_param( 'enabled' ) );
+				}
+				return $this->keyphrases->status();
 			}
 		);
 	}

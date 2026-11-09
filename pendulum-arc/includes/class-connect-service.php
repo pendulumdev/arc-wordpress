@@ -760,6 +760,46 @@ final class Connect_Service {
 	}
 
 	/**
+	 * Queues the selected reports in one call. SEO, accessibility, AI, and
+	 * security share a crawl. Analytics and brand stay separate jobs.
+	 *
+	 * @param array<int, string> $services Service keys.
+	 * @return array{runs: array<int, array{runId: string, service: string}>}
+	 */
+	public function enqueue_runs( array $services ): array {
+		$creds = $this->store->credentials();
+		if ( null === $creds ) {
+			throw new Arc_Api_Exception( __( 'Connect this site to Arc first.', 'pendulum-arc' ), 401 );
+		}
+		try {
+			$payload = $this->bearer_call(
+				$creds,
+				function ( string $token ) use ( $creds, $services ) {
+					return $this->client->enqueue_runs(
+						(string) $creds['env'],
+						$token,
+						(string) $creds['siteId'],
+						$services,
+						wp_generate_uuid4()
+					);
+				}
+			);
+		} catch ( Arc_Api_Exception $error ) {
+			if ( 403 === $error->status_code() ) {
+				throw new Arc_Api_Exception(
+					__( 'Reconnect this site in Arc to allow generating reports.', 'pendulum-arc' ),
+					403
+				);
+			}
+			if ( 404 === $error->status_code() ) {
+				throw new Arc_Api_Exception( self::admin_message( $error ), 404 );
+			}
+			throw $error;
+		}
+		return Pairing::enqueued_runs( $payload );
+	}
+
+	/**
 	 * Mints a Google connect handoff for this site.
 	 *
 	 * An Arc account is sent to the portal URL. An email with no Arc account

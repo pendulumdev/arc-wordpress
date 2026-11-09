@@ -1436,6 +1436,30 @@ final class Pairing {
 	}
 
 	/**
+	 * Reports queued by one run-all call.
+	 *
+	 * @param array<string, mixed> $json Response body.
+	 * @return array{runs: array<int, array{runId: string, service: string}>}
+	 */
+	public static function enqueued_runs( array $json ): array {
+		$runs = array();
+		foreach ( self::rows( $json, array( 'runs' ) ) as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			$service = Site_Origin::field( $row, array( 'service' ) );
+			if ( ! in_array( $service, self::run_services(), true ) ) {
+				continue;
+			}
+			$runs[] = array(
+				'runId'   => Site_Origin::field( $row, array( 'runId', 'run_id' ) ),
+				'service' => $service,
+			);
+		}
+		return array( 'runs' => $runs );
+	}
+
+	/**
 	 * Services the Generate menu can queue.
 	 *
 	 * @return array<int, string>

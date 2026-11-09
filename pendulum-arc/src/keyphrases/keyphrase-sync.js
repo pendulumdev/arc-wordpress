@@ -8,7 +8,12 @@ import { __ } from '@wordpress/i18n';
 /**
  * Internal dependencies
  */
-import { fetchKeyphrases, setKeyphrasesEnabled, syncKeyphrases } from '../api';
+import {
+	fetchKeyphrases,
+	setKeyphrasesEnabled,
+	setRecommendSchema,
+	syncKeyphrases,
+} from '../api';
 import { ArcButton } from '../ui/button';
 
 /**
@@ -75,6 +80,25 @@ export function KeyphraseSync( { connected, arcMark, onStatus } ) {
 		}
 	};
 
+	const onRecommend = async ( enabled ) => {
+		setBusy( true );
+		setMessage( '' );
+		setError( '' );
+		try {
+			apply( await setRecommendSchema( enabled ) );
+		} catch ( failure ) {
+			setError(
+				failure?.message ||
+					__(
+						'Schema recommend could not be updated.',
+						'pendulum-arc'
+					)
+			);
+		} finally {
+			setBusy( false );
+		}
+	};
+
 	const onSync = async () => {
 		setBusy( true );
 		setMessage( '' );
@@ -93,12 +117,11 @@ export function KeyphraseSync( { connected, arcMark, onStatus } ) {
 		}
 	};
 
+	const phrasesDiffer = Boolean(
+		connected && status?.enabled && status?.scanDone && status?.diverged
+	);
 	const showButton = Boolean(
-		connected &&
-		status?.enabled &&
-		status?.scanDone &&
-		status?.diverged &&
-		! busy
+		connected && ! busy && ( phrasesDiffer || status?.recommendChanged )
 	);
 
 	return (
@@ -112,6 +135,16 @@ export function KeyphraseSync( { connected, arcMark, onStatus } ) {
 				checked={ Boolean( status?.enabled ) }
 				disabled={ busy || ! status }
 				onChange={ onToggle }
+			/>
+			<CheckboxControl
+				label={ __( 'Recommend Schema', 'pendulum-arc' ) }
+				help={ __(
+					'When this is on, Sync with Arc asks Arc to fill recommended schema types. The choice is stored here until you sync.',
+					'pendulum-arc'
+				) }
+				checked={ Boolean( status?.recommendSchema ) }
+				disabled={ busy || ! status }
+				onChange={ onRecommend }
 			/>
 			{ status?.notice && ! status?.enabled ? (
 				<div

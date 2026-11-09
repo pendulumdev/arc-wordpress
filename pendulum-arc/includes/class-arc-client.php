@@ -200,6 +200,43 @@ final class Arc_Client {
 	}
 
 	/**
+	 * Queues several reports in one call. SEO, accessibility, AI, and security
+	 * share a crawl. Analytics and brand stay separate jobs. The idempotency
+	 * key is required.
+	 *
+	 * @param string             $env      production or preview.
+	 * @param string             $token    Bearer.
+	 * @param string             $site_id  Site id.
+	 * @param array<int, string> $services Service keys.
+	 * @param string             $key      Idempotency-Key.
+	 * @return array<string, mixed>
+	 */
+	public function enqueue_runs( string $env, string $token, string $site_id, array $services, string $key ): array {
+		$this->assert_id( $site_id );
+		$clean = array();
+		foreach ( $services as $service ) {
+			if ( ! in_array( $service, Pairing::run_services(), true ) || in_array( $service, $clean, true ) ) {
+				continue;
+			}
+			$clean[] = $service;
+		}
+		if ( count( $clean ) < 2 ) {
+			throw new Arc_Api_Exception( __( 'That report is not available.', 'pendulum-arc' ), 400 );
+		}
+		if ( 1 !== preg_match( '/^[A-Za-z0-9_-]{8,200}$/', $key ) ) {
+			throw new Arc_Api_Exception( __( 'Arc refused the request. Try again in a moment.', 'pendulum-arc' ), 400 );
+		}
+		$url = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/runs';
+		return $this->json(
+			'POST',
+			$url,
+			$token,
+			array( 'services' => array_values( $clean ) ),
+			array( 'Idempotency-Key' => $key )
+		);
+	}
+
+	/**
 	 * Queues one service. The idempotency key is required by the public API.
 	 *
 	 * @param string $env     production or preview.

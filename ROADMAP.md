@@ -71,12 +71,26 @@ focus is not sent, so an empty site does not clear the Arc list. Commit uses `au
 queues the SEO report. Turning the checkbox off clears the WordPress list
 and leaves the Arc target in place.
 
+**Recommend Schema** sits under that checkbox. It only stores a flag on
+this site. **Sync with Arc** is also shown when that flag differs from the
+last value sent, even if the keyphrase list matches. The click sends
+`recommendSchema` on the SEO target commit only when the choice differs.
+An unchanged choice is left off later keyphrase syncs, so those do not
+replace schema types Arc already stored. `true` asks Arc to fill expected
+schema types from its local recommendation. Turning the checkbox off sends
+`false` on the next sync and leaves the types Arc already stored. A sync
+that only changes this flag does not queue a report and does not replace
+the keyphrase list.
+
 ### Generate reports
 
 The dashboard notice uses the same confirm-then-queue menu as the portal
-sites page. It calls `POST /pendulum-arc/v1/runs`, which queues one service
-through `POST /v1/sites/{siteId}/runs` with a fresh `Idempotency-Key`.
-Run all queues each service that is not already queued or running.
+sites page. It calls `POST /pendulum-arc/v1/runs`. One report sends
+`service` and queues that report through `POST /v1/sites/{siteId}/runs`
+with a fresh `Idempotency-Key`. Run all sends the services that are not
+already queued or running as `services` on that same Arc route. SEO,
+accessibility, AI, and security share one crawl. Analytics and brand each
+stay their own job.
 
 OAuth connect requests `arc:read arc:enqueue arc:invite`. A site connected
 before enqueue must reconnect before Generate is allowed. A site connected

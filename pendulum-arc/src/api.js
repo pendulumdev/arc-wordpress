@@ -99,6 +99,14 @@ export function enqueueRun( service ) {
 	} );
 }
 
+export function enqueueRuns( services ) {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/runs',
+		method: 'POST',
+		data: { services },
+	} );
+}
+
 export function fetchKeyphrases() {
 	return apiFetch( { path: '/pendulum-arc/v1/keyphrases' } );
 }
@@ -108,6 +116,14 @@ export function setKeyphrasesEnabled( enabled ) {
 		path: '/pendulum-arc/v1/keyphrases',
 		method: 'POST',
 		data: { enabled },
+	} );
+}
+
+export function setRecommendSchema( recommendSchema ) {
+	return apiFetch( {
+		path: '/pendulum-arc/v1/keyphrases',
+		method: 'POST',
+		data: { recommendSchema },
 	} );
 }
 

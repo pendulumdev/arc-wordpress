@@ -8,12 +8,12 @@ import {
 	useRef,
 	useState,
 } from '@wordpress/element';
-import { __, sprintf } from '@wordpress/i18n';
+import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
-import { enqueueRun, errorMessage, fetchRuns } from '../api';
+import { enqueueRun, enqueueRuns, errorMessage, fetchRuns } from '../api';
 import { ArcButton } from '../ui/button';
 import { StrokeMark } from '../ui/column-icon';
 import { ErrorAlert } from '../ui/error-alert';
@@ -297,33 +297,29 @@ export function GenerateReports( { onActivity, onSettled, connectUrl } ) {
 	async function queueAll( services ) {
 		setPendingAll( true );
 		setError( null );
-		const failures = [];
 		try {
-			for ( const service of services ) {
-				try {
-					await enqueueRun( service );
-					markQueued( service );
-				} catch ( failure ) {
-					const label =
-						SERVICES.find( ( row ) => row.key === service )
-							?.label || service;
-					failures.push(
-						errorMessage(
-							failure,
-							sprintf(
-								/* translators: %s is the report name. */
-								__( 'Could not queue %s.', 'pendulum-arc' ),
-								label
-							)
-						)
-					);
-				}
-			}
-			if ( failures.length > 0 ) {
-				setError( failures.join( ' ' ) );
+			const result = await enqueueRuns( services );
+			const queued = Array.isArray( result?.runs ) ? result.runs : [];
+			if ( queued.length === 0 ) {
+				setError(
+					__( 'Could not queue those reports.', 'pendulum-arc' )
+				);
 				return false;
 			}
+			for ( const row of queued ) {
+				if ( row?.service ) {
+					markQueued( row.service );
+				}
+			}
 			return true;
+		} catch ( failure ) {
+			setError(
+				errorMessage(
+					failure,
+					__( 'Could not queue those reports.', 'pendulum-arc' )
+				)
+			);
+			return false;
 		} finally {
 			setPendingAll( false );
 		}

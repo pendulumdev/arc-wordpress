@@ -175,7 +175,7 @@ final class Keyphrase_Sync {
 	/**
 	 * Dashboard view. Opening the screen also reads one page of the scan.
 	 *
-	 * @return array{enabled: bool, scanning: bool, scanDone: bool, diverged: bool, notice: bool, pageCount: int, error: string}
+	 * @return array{enabled: bool, scanning: bool, scanDone: bool, diverged: bool, notice: bool, pageCount: int, error: string, recommendSchema: bool, recommendChanged: bool}
 	 */
 	public function status(): array {
 		$this->pump();
@@ -211,20 +211,22 @@ final class Keyphrase_Sync {
 			}
 		}
 		return array(
-			'enabled'   => $state['enabled'],
-			'scanning'  => $scanning,
-			'scanDone'  => $state['scan_done'],
-			'diverged'  => $diverged,
-			'notice'    => $state['notice'],
-			'pageCount' => $state['enabled'] ? $this->list->page_count() : 0,
-			'error'     => $error,
+			'enabled'          => $state['enabled'],
+			'scanning'         => $scanning,
+			'scanDone'         => $state['scan_done'],
+			'diverged'         => $diverged,
+			'notice'           => $state['notice'],
+			'pageCount'        => $state['enabled'] ? $this->list->page_count() : 0,
+			'error'            => $error,
+			'recommendSchema'  => $state['recommend_schema'],
+			'recommendChanged' => $state['recommend_schema'] !== $state['recommend_schema_synced'],
 		);
 	}
 
 	/**
 	 * Turns the background list on or off. Off does not change the Arc target.
 	 *
-	 * @return array{enabled: bool, scanning: bool, scanDone: bool, diverged: bool, notice: bool, pageCount: int, error: string}
+	 * @return array{enabled: bool, scanning: bool, scanDone: bool, diverged: bool, notice: bool, pageCount: int, error: string, recommendSchema: bool, recommendChanged: bool}
 	 */
 	public function set_enabled( bool $enabled ): array {
 		$state = $this->list->state();
@@ -244,13 +246,26 @@ final class Keyphrase_Sync {
 	}
 
 	/**
+	 * Saves Recommend Schema on this site. Arc hears about it on the next sync.
+	 *
+	 * @return array{enabled: bool, scanning: bool, scanDone: bool, diverged: bool, notice: bool, pageCount: int, error: string, recommendSchema: bool, recommendChanged: bool}
+	 */
+	public function set_recommend_schema( bool $enabled ): array {
+		$this->list->set_recommend_schema( $enabled );
+		return $this->status();
+	}
+
+	/**
 	 * Sends the delta, or the whole list when Arc has moved, then queues the SEO report.
+	 * Recommend Schema is included only when this site's choice differs from the last value sent.
 	 *
 	 * @return array{ok: bool, message: string}
 	 */
 	public function push(): array {
-		$state = $this->list->state();
-		if ( ! $state['enabled'] || ! $state['scan_done'] ) {
+		$state         = $this->list->state();
+		$phrases_ready = $state['enabled'] && $state['scan_done'];
+		$send_schema   = $state['recommend_schema'] !== $state['recommend_schema_synced'];
+		if ( ! $phrases_ready && ! $send_schema ) {
 			throw new Arc_Api_Exception( __( 'Keyphrase sync is still reading this site.', 'pendulum-arc' ), 409 );
 		}
 		$remote   = $this->connect->with_arc(
@@ -259,8 +274,14 @@ final class Keyphrase_Sync {
 			}
 		);
 		$arc_hash = (string) ( $remote['hash'] ?? '' );
-		$plan     = Keyphrase_Push::plan( $state['acked_hash'], $arc_hash, $state['focus'], $state['focus_synced'], $this->list->rows() );
+		if ( ! $phrases_ready ) {
+			return $this->commit_schema( $arc_hash, $state['recommend_schema'] );
+		}
+		$plan = Keyphrase_Push::plan( $state['acked_hash'], $arc_hash, $state['focus'], $state['focus_synced'], $this->list->rows() );
 		if ( Keyphrase_Push::vacant( $plan ) ) {
+			if ( $send_schema ) {
+				return $this->commit_schema( $arc_hash, $state['recommend_schema'] );
+			}
 			return array(
 				'ok'      => true,
 				'message' => __( 'This site has no keyphrases to send. Arc was left unchanged.', 'pendulum-arc' ),
@@ -297,6 +318,9 @@ final class Keyphrase_Sync {
 			if ( $plan['send_focus'] ) {
 				$body['focusKeyphrase'] = $plan['focus'];
 			}
+			if ( $send_schema ) {
+				$body['recommendSchema'] = $state['recommend_schema'];
+			}
 			$committed = $this->connect->with_arc(
 				function ( string $env, string $token, string $site_id ) use ( $sync_id, $body ) {
 					return $this->client->commit_seo_target_sync( $env, $token, $site_id, $sync_id, $body, wp_generate_uuid4() );
@@ -311,9 +335,62 @@ final class Keyphrase_Sync {
 			$focus = '';
 		}
 		$this->list->ack( (string) ( $committed['hash'] ?? '' ), $focus );
+		if ( $send_schema ) {
+			$this->list->ack_recommend_schema();
+		}
 		return array(
 			'ok'      => true,
 			'message' => self::result_message( $committed ),
+		);
+	}
+
+	/**
+	 * Sends only the Recommend Schema flag. Keyphrases are left as they are.
+	 *
+	 * @return array{ok: bool, message: string}
+	 */
+	private function commit_schema( string $arc_hash, bool $enabled ): array {
+		$state = $this->list->state();
+		if ( '' !== $state['sync_id'] ) {
+			$this->abandon( $state['sync_id'] );
+		}
+		$started = $this->connect->with_arc(
+			function ( string $env, string $token, string $site_id ) {
+				return $this->client->start_seo_target_sync( $env, $token, $site_id, wp_generate_uuid4() );
+			}
+		);
+		$sync_id = (string) ( $started['syncId'] ?? '' );
+		if ( '' === $sync_id ) {
+			throw new Arc_Api_Exception( __( 'Arc refused the request. Try again in a moment.', 'pendulum-arc' ), 502 );
+		}
+		$state            = $this->list->state();
+		$state['sync_id'] = $sync_id;
+		$this->list->write( $state );
+		$body = array(
+			'mode'            => 'patch',
+			'baseHash'        => $arc_hash,
+			'auto_run'        => false,
+			'recommendSchema' => $enabled,
+		);
+		try {
+			$this->connect->with_arc(
+				function ( string $env, string $token, string $site_id ) use ( $sync_id, $body ) {
+					return $this->client->commit_seo_target_sync( $env, $token, $site_id, $sync_id, $body, wp_generate_uuid4() );
+				}
+			);
+		} catch ( Arc_Api_Exception $error ) {
+			$this->abandon( $sync_id );
+			throw $error;
+		}
+		$this->list->ack_recommend_schema();
+		if ( $enabled ) {
+			$message = __( 'Arc will use recommended schema types for this site.', 'pendulum-arc' );
+		} else {
+			$message = __( 'Arc will leave schema types unchanged.', 'pendulum-arc' );
+		}
+		return array(
+			'ok'      => true,
+			'message' => $message,
 		);
 	}
 

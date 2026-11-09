@@ -63,7 +63,7 @@ final class Keyphrase_List {
 	}
 
 	/**
-	 * @return array{enabled: bool, acked_hash: string, focus: string, focus_synced: string, cursor: array<string, mixed>, scan_done: bool, sync_id: string, notice: bool, diverged: bool}
+	 * @return array{enabled: bool, acked_hash: string, focus: string, focus_synced: string, cursor: array<string, mixed>, scan_done: bool, sync_id: string, notice: bool, diverged: bool, recommend_schema: bool, recommend_schema_synced: bool}
 	 */
 	public function state(): array {
 		$stored = get_option( self::OPTION, array() );
@@ -75,15 +75,17 @@ final class Keyphrase_List {
 			$cursor = array();
 		}
 		return array(
-			'enabled'      => ! empty( $stored['enabled'] ),
-			'acked_hash'   => (string) ( $stored['acked_hash'] ?? '' ),
-			'focus'        => (string) ( $stored['focus'] ?? '' ),
-			'focus_synced' => (string) ( $stored['focus_synced'] ?? '' ),
-			'cursor'       => $cursor,
-			'scan_done'    => ! empty( $stored['scan_done'] ),
-			'sync_id'      => (string) ( $stored['sync_id'] ?? '' ),
-			'notice'       => ! empty( $stored['notice'] ),
-			'diverged'     => ! empty( $stored['diverged'] ),
+			'enabled'                 => ! empty( $stored['enabled'] ),
+			'acked_hash'              => (string) ( $stored['acked_hash'] ?? '' ),
+			'focus'                   => (string) ( $stored['focus'] ?? '' ),
+			'focus_synced'            => (string) ( $stored['focus_synced'] ?? '' ),
+			'cursor'                  => $cursor,
+			'scan_done'               => ! empty( $stored['scan_done'] ),
+			'sync_id'                 => (string) ( $stored['sync_id'] ?? '' ),
+			'notice'                  => ! empty( $stored['notice'] ),
+			'diverged'                => ! empty( $stored['diverged'] ),
+			'recommend_schema'        => ! empty( $stored['recommend_schema'] ),
+			'recommend_schema_synced' => ! empty( $stored['recommend_schema_synced'] ),
 		);
 	}
 
@@ -91,20 +93,23 @@ final class Keyphrase_List {
 	 * Turns the list on from an empty table, or clears it when turned off.
 	 */
 	public function set_enabled( bool $enabled ): void {
+		$schema = $this->schema_flags();
 		if ( ! $enabled ) {
 			$this->wipe_rows();
 			update_option(
 				self::OPTION,
 				array(
-					'enabled'      => false,
-					'acked_hash'   => '',
-					'focus'        => '',
-					'focus_synced' => '',
-					'cursor'       => array(),
-					'scan_done'    => false,
-					'sync_id'      => '',
-					'notice'       => true,
-					'diverged'     => false,
+					'enabled'                 => false,
+					'acked_hash'              => '',
+					'focus'                   => '',
+					'focus_synced'            => '',
+					'cursor'                  => array(),
+					'scan_done'               => false,
+					'sync_id'                 => '',
+					'notice'                  => true,
+					'diverged'                => false,
+					'recommend_schema'        => $schema['recommend_schema'],
+					'recommend_schema_synced' => $schema['recommend_schema_synced'],
 				),
 				false
 			);
@@ -115,17 +120,51 @@ final class Keyphrase_List {
 		update_option(
 			self::OPTION,
 			array(
-				'enabled'      => true,
-				'acked_hash'   => '',
-				'focus'        => '',
-				'focus_synced' => '',
-				'cursor'       => Keyphrase_Cursor::start( array() ),
-				'scan_done'    => false,
-				'sync_id'      => '',
-				'notice'       => false,
-				'diverged'     => false,
+				'enabled'                 => true,
+				'acked_hash'              => '',
+				'focus'                   => '',
+				'focus_synced'            => '',
+				'cursor'                  => Keyphrase_Cursor::start( array() ),
+				'scan_done'               => false,
+				'sync_id'                 => '',
+				'notice'                  => false,
+				'diverged'                => false,
+				'recommend_schema'        => $schema['recommend_schema'],
+				'recommend_schema_synced' => $schema['recommend_schema_synced'],
 			),
 			false
+		);
+	}
+
+	/**
+	 * Saves Recommend Schema locally. Arc is not called.
+	 */
+	public function set_recommend_schema( bool $enabled ): void {
+		$state                     = $this->state();
+		$state['recommend_schema'] = $enabled;
+		$this->write( $state );
+	}
+
+	/**
+	 * Marks the current Recommend Schema choice as the one last sent to Arc and closes the sync session.
+	 */
+	public function ack_recommend_schema(): void {
+		$state                            = $this->state();
+		$state['recommend_schema_synced'] = $state['recommend_schema'];
+		$state['sync_id']                 = '';
+		$this->write( $state );
+	}
+
+	/**
+	 * Recommend Schema survives turning the keyphrase list on or off.
+	 *
+	 * @return array{recommend_schema: bool, recommend_schema_synced: bool}
+	 */
+	private function schema_flags(): array {
+		$state = $this->state();
+		return array(
+			'recommend_schema'        => $state['recommend_schema'],
+			'recommend_schema_synced' => $state['recommend_schema_synced'],
 		);
 	}
 
@@ -149,7 +188,7 @@ final class Keyphrase_List {
 	}
 
 	/**
-	 * @param array{enabled: bool, acked_hash: string, focus: string, focus_synced: string, cursor: array<string, mixed>, scan_done: bool, sync_id: string, notice: bool, diverged: bool} $state State.
+	 * @param array{enabled: bool, acked_hash: string, focus: string, focus_synced: string, cursor: array<string, mixed>, scan_done: bool, sync_id: string, notice: bool, diverged: bool, recommend_schema: bool, recommend_schema_synced: bool} $state State.
 	 */
 	public function write( array $state ): void {
 		update_option( self::OPTION, $state, false );

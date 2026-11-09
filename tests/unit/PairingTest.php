@@ -543,6 +543,51 @@ final class PairingTest extends TestCase {
 		self::assertSame( 'disallow', $view['blocks'][1]['rows'][0]['bot']['status'] );
 	}
 
+	public function test_run_all_keeps_known_services_and_drops_the_rest(): void {
+		$parsed = Pairing::enqueued_runs(
+			array(
+				'siteId' => 'site_abc',
+				'runs'   => array(
+					array(
+						'runId'   => 'run_seo',
+						'service' => 'seo',
+						'siteId'  => 'site_abc',
+					),
+					array(
+						'runId'   => 'run_a11y',
+						'service' => 'a11y',
+					),
+					array(
+						'run_id'  => 'run_brand',
+						'service' => 'brand',
+					),
+					array(
+						'runId'   => 'run_nope',
+						'service' => 'billing',
+					),
+					'skip',
+				),
+			)
+		);
+		self::assertSame(
+			array(
+				array(
+					'runId'   => 'run_seo',
+					'service' => 'seo',
+				),
+				array(
+					'runId'   => 'run_a11y',
+					'service' => 'a11y',
+				),
+				array(
+					'runId'   => 'run_brand',
+					'service' => 'brand',
+				),
+			),
+			$parsed['runs']
+		);
+	}
+
 	public function test_report_keeps_security_surfaces(): void {
 		$view = Pairing::report(
 			array(
