@@ -4,7 +4,7 @@ Tags: seo, analytics
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.8.0
+Stable tag: 0.9.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -70,6 +70,12 @@ Accept allows the optional cookies left checked, and runs the scripts listed on 
 When the GitHub repository is public and a release is newer than this install, WordPress shows the update on the Plugins screen. Update now installs it, and automatic updates install it on their own. Automatic updates are on until you disable them on the Plugins screen. The Arc screens show the same update.
 
 == Changelog ==
+
+= 0.9.0 =
+* Page analysis, social links, and forms show previous and next when the list has more than 50 rows.
+* Each control loads the next 50 rows. The header shows the page as numbers, such as 1 / 6.
+* A list of 50 rows or fewer stays without those controls.
+* Search still filters the list and returns to the first page.
 
 = 0.8.0 =
 * Settings has Recommend Schema. Sync with Arc sends that choice when it has changed.
