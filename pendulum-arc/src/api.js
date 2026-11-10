@@ -87,6 +87,30 @@ export function fetchReport( service ) {
 	} );
 }
 
+export function fetchReportTable(
+	service,
+	table,
+	{ page = 0, q = '', viewport = '', run = '' } = {}
+) {
+	const params = new URLSearchParams();
+	if ( page > 0 ) {
+		params.set( 'page', String( page ) );
+	}
+	if ( q ) {
+		params.set( 'q', q );
+	}
+	if ( viewport ) {
+		params.set( 'viewport', viewport );
+	}
+	if ( run ) {
+		params.set( 'run', run );
+	}
+	const query = params.toString();
+	return apiFetch( {
+		path: `/pendulum-arc/v1/reports/${ encodeURIComponent( service ) }/tables/${ encodeURIComponent( table ) }${ query ? `?${ query }` : '' }`,
+	} );
+}
+
 export function fetchRuns() {
 	return apiFetch( { path: '/pendulum-arc/v1/runs' } );
 }

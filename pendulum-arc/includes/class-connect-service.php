@@ -441,6 +441,80 @@ final class Connect_Service {
 	}
 
 	/**
+	 * One window of page analysis, social platforms, or forms.
+	 *
+	 * @param string $service  seo, a11y, or ai.
+	 * @param string $table    pages, socials, or forms.
+	 * @param int    $page     0-based window.
+	 * @param string $query    Search.
+	 * @param string $viewport Exact accessibility viewport.
+	 * @param string $run_id   Run id, used to store accessibility screenshots.
+	 * @return array<string, mixed>
+	 */
+	public function report_table( string $service, string $table, int $page, string $query, string $viewport, string $run_id ): array {
+		$pages = in_array( $service, array( 'seo', 'a11y', 'ai' ), true ) && 'pages' === $table;
+		$seo   = 'seo' === $service && in_array( $table, array( 'socials', 'forms' ), true );
+		if ( ! $pages && ! $seo ) {
+			return array(
+				'error' => __( 'That report is not available.', 'pendulum-arc' ),
+			);
+		}
+		$creds = $this->store->credentials();
+		if ( null === $creds ) {
+			return array(
+				'error' => __( 'Connect this site to Arc first.', 'pendulum-arc' ),
+			);
+		}
+		try {
+			$payload = $this->bearer_call(
+				$creds,
+				function ( string $token ) use ( $creds, $service, $table, $page, $query, $viewport ) {
+					return $this->client->report_table(
+						(string) $creds['env'],
+						$token,
+						(string) $creds['siteId'],
+						$service,
+						$table,
+						$page,
+						$query,
+						$viewport
+					);
+				}
+			);
+		} catch ( Arc_Api_Exception $error ) {
+			return array(
+				'error' => self::admin_message( $error ),
+			);
+		}
+		$view   = Pairing::report(
+			array(
+				'service' => $service,
+				'runId'   => $run_id,
+				'blocks'  => array( $payload ),
+			)
+		);
+		$blocks = $this->link_report_blocks( $view['blocks'] );
+		if ( 'a11y' === $service && 'pages' === $table && '' !== $run_id ) {
+			try {
+				$this->store_shots( $run_id, $this->shot_names( $blocks ) );
+			} catch ( Arc_Api_Exception $error ) {
+				return array(
+					'error' => self::admin_message( $error ),
+				);
+			}
+			$blocks = $this->attach_page_shots( $blocks, $run_id );
+		}
+		$block = $blocks[0] ?? array();
+		if ( ! is_array( $block ) || array() === $block ) {
+			return array(
+				'error' => __( 'That report is not available.', 'pendulum-arc' ),
+			);
+		}
+		$block['error'] = null;
+		return $block;
+	}
+
+	/**
 	 * One screenshot for the page-analysis preview. Null when Arc has none.
 	 *
 	 * @param string $run_id Run id.

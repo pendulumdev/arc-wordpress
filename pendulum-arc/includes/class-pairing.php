@@ -741,6 +741,27 @@ final class Pairing {
 			'columns' => $columns,
 			'rows'    => $rows,
 		);
+		if ( array_key_exists( 'pageIndex', $block ) ) {
+			$table['pageIndex'] = self::report_count( $block['pageIndex'] );
+		}
+		if ( array_key_exists( 'pageCount', $block ) ) {
+			$table['pageCount'] = max( 1, self::report_count( $block['pageCount'] ) );
+		}
+		if ( array_key_exists( 'total', $block ) ) {
+			$table['total'] = self::report_count( $block['total'] );
+		}
+		$viewports = array();
+		if ( is_array( $block['viewports'] ?? null ) ) {
+			foreach ( array_slice( $block['viewports'], 0, 12 ) as $viewport ) {
+				$text = self::report_text( $viewport, 40 );
+				if ( '' !== $text ) {
+					$viewports[] = $text;
+				}
+			}
+		}
+		if ( count( $viewports ) > 0 ) {
+			$table['viewports'] = $viewports;
+		}
 		$file  = self::http_url( Site_Origin::field( $block, array( 'fileHref' ) ) );
 		if ( null !== $file ) {
 			$table['fileHref'] = $file;

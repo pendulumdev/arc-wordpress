@@ -148,6 +148,48 @@ final class Arc_Client {
 	}
 
 	/**
+	 * One 50-row window of page analysis, social platforms, or forms.
+	 *
+	 * @param string $env      production or preview.
+	 * @param string $token    Bearer.
+	 * @param string $site_id  Site id.
+	 * @param string $service  seo, a11y, or ai.
+	 * @param string $table    pages, socials, or forms.
+	 * @param int    $page     0-based window.
+	 * @param string $query    Search, at most 200 characters.
+	 * @param string $viewport Exact accessibility viewport.
+	 * @return array<string, mixed>
+	 */
+	public function report_table( string $env, string $token, string $site_id, string $service, string $table, int $page, string $query, string $viewport ): array {
+		$this->assert_id( $site_id );
+		if ( ! in_array( $service, array( 'seo', 'a11y', 'ai' ), true ) ) {
+			throw new Arc_Api_Exception( __( 'That report is not available.', 'pendulum-arc' ), 400 );
+		}
+		if ( ! in_array( $table, array( 'pages', 'socials', 'forms' ), true ) ) {
+			throw new Arc_Api_Exception( __( 'That report is not available.', 'pendulum-arc' ), 400 );
+		}
+		$url  = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/reports/' . rawurlencode( $service ) . '/tables/' . rawurlencode( $table );
+		$args = array(
+			'page' => max( 0, $page ),
+		);
+		$query = trim( $query );
+		if ( strlen( $query ) > 200 ) {
+			$query = substr( $query, 0, 200 );
+		}
+		if ( '' !== $query ) {
+			$args['q'] = $query;
+		}
+		$viewport = trim( $viewport );
+		if ( strlen( $viewport ) > 40 ) {
+			$viewport = substr( $viewport, 0, 40 );
+		}
+		if ( '' !== $viewport ) {
+			$args['viewport'] = $viewport;
+		}
+		return $this->json( 'GET', $url . '?' . http_build_query( $args, '', '&', PHP_QUERY_RFC3986 ), $token );
+	}
+
+	/**
 	 * One stored screenshot. Bytes stay out of the JSON report.
 	 *
 	 * @param string $env    production or preview.

@@ -226,6 +226,34 @@ final class Rest_Controller {
 
 		register_rest_route(
 			'pendulum-arc/v1',
+			'/reports/(?P<service>seo|a11y|ai)/tables/(?P<table>pages|socials|forms)',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'report_table' ),
+				'permission_callback' => array( $this, 'can_manage' ),
+				'args'                => array(
+					'page'     => array(
+						'type'    => 'integer',
+						'default' => 0,
+					),
+					'q'        => array(
+						'type'    => 'string',
+						'default' => '',
+					),
+					'viewport' => array(
+						'type'    => 'string',
+						'default' => '',
+					),
+					'run'      => array(
+						'type'    => 'string',
+						'default' => '',
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			'pendulum-arc/v1',
 			'/reports/(?P<service>seo|a11y|ai|security|brand)',
 			array(
 				'methods'             => 'GET',
@@ -501,6 +529,25 @@ final class Rest_Controller {
 	 */
 	public function report( \WP_REST_Request $request ) {
 		return rest_ensure_response( $this->connect->report( (string) $request->get_param( 'service' ) ) );
+	}
+
+	/**
+	 * One window of a report table.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function report_table( \WP_REST_Request $request ) {
+		return rest_ensure_response(
+			$this->connect->report_table(
+				(string) $request->get_param( 'service' ),
+				(string) $request->get_param( 'table' ),
+				max( 0, (int) $request->get_param( 'page' ) ),
+				(string) $request->get_param( 'q' ),
+				(string) $request->get_param( 'viewport' ),
+				(string) $request->get_param( 'run' )
+			)
+		);
 	}
 
 	/**

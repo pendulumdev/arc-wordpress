@@ -2294,7 +2294,7 @@ function AiLlmsTable( { block } ) {
 	);
 }
 
-function AiReport( { blocks } ) {
+function AiReport( { blocks, runId = '' } ) {
 	const agents = [];
 	const rest = [];
 	blocks.forEach( ( block ) => {
@@ -2331,7 +2331,7 @@ function AiReport( { blocks } ) {
 	return (
 		<div className="arc-agents">
 			{ rest.length ? (
-				<ReportBlocks blocks={ rest } service="ai" />
+				<ReportBlocks blocks={ rest } service="ai" runId={ runId } />
 			) : null }
 			{ pair(
 				origin ? <AiOriginCard block={ origin } /> : null,
@@ -2348,11 +2348,11 @@ function AiReport( { blocks } ) {
 	);
 }
 
-function ReportBlocks( { blocks, service } ) {
+function ReportBlocks( { blocks, service, runId = '' } ) {
 	return (
 		<div className="arc-report-blocks">
 			{ blocks.map( ( block ) => {
-				const section = renderSection( block, service );
+				const section = renderSection( block, service, runId );
 				if ( section ) {
 					return section;
 				}
@@ -2562,8 +2562,9 @@ function headerMetrics( report, hero ) {
  * @param {Array}                 blocks
  */
 function reportBody( report, blocks ) {
+	const runId = report && report.runId ? report.runId : '';
 	if ( report && report.service === 'ai' ) {
-		return <AiReport blocks={ blocks } />;
+		return <AiReport blocks={ blocks } runId={ runId } />;
 	}
 	if ( report && report.service === 'security' ) {
 		return <SecurityReport blocks={ blocks } />;
@@ -2572,7 +2573,11 @@ function reportBody( report, blocks ) {
 		return <BrandReport blocks={ blocks } />;
 	}
 	return (
-		<ReportBlocks blocks={ blocks } service={ report && report.service } />
+		<ReportBlocks
+			blocks={ blocks }
+			service={ report && report.service }
+			runId={ runId }
+		/>
 	);
 }
 

@@ -23,6 +23,7 @@ import {
 	focusPageRow,
 } from './report-chrome';
 import { IssueRow } from './issue-menu';
+import { fetchReportTable } from '../api';
 
 const MOOD_ACCENT = {
 	great: 'emerald',
@@ -330,6 +331,219 @@ function seoPageOf( block, row ) {
 	};
 }
 
+const TABLE_PAGE_SIZE = 50;
+
+function asCount( value, fallback ) {
+	const number = Number( value );
+	return Number.isFinite( number ) && number >= 0 ? number : fallback;
+}
+
+/**
+ * Windows are 50 rows. A crawl total wins when the reported page count
+ * only describes the rows already on screen.
+ *
+ * @param {number|undefined|null} pageCount Reported page count.
+ * @param {number|undefined|null} total     Rows in the crawl, or this search.
+ */
+function tablePageCount( pageCount, total ) {
+	const reported = Math.max( 1, asCount( pageCount, 1 ) );
+	if ( total === undefined || total === null ) {
+		return reported;
+	}
+	const fromTotal = Math.max(
+		1,
+		Math.ceil( asCount( total, 0 ) / TABLE_PAGE_SIZE )
+	);
+	return Math.max( reported, fromTotal );
+}
+
+function listStamp( block ) {
+	const rows = block.rows || [];
+	const first = rows[ 0 ] && rows[ 0 ].id ? rows[ 0 ].id : '';
+	const last =
+		rows.length > 0 && rows[ rows.length - 1 ].id
+			? rows[ rows.length - 1 ].id
+			: '';
+	return `${ block.pageIndex ?? 0 }|${ block.total ?? '' }|${ rows.length }|${ first }|${ last }`;
+}
+
+function useReportTable( block, service, table, runId = '' ) {
+	const [ query, setQuery ] = useState( '' );
+	const [ request, setRequest ] = useState( () => ( {
+		page: asCount( block.pageIndex, 0 ),
+		query: '',
+		viewport: '',
+	} ) );
+	const [ loaded, setLoaded ] = useState( null );
+	const [ pending, setPending ] = useState( false );
+	const requestId = useRef( 0 );
+	const stamp = listStamp( block );
+
+	useEffect( () => {
+		setQuery( '' );
+		setRequest( {
+			page: asCount( block.pageIndex, 0 ),
+			query: '',
+			viewport: '',
+		} );
+		setLoaded( null );
+		setPending( false );
+	}, [ stamp ] ); // eslint-disable-line react-hooks/exhaustive-deps
+
+	useEffect( () => {
+		const handle = window.setTimeout( () => {
+			const next = query.trim();
+			setRequest( ( current ) =>
+				current.query === next
+					? current
+					: { ...current, query: next, page: 0 }
+			);
+		}, 250 );
+		return () => window.clearTimeout( handle );
+	}, [ query ] );
+
+	const idle =
+		request.page === asCount( block.pageIndex, 0 ) &&
+		request.query === '' &&
+		request.viewport === '';
+
+	useEffect( () => {
+		if ( idle ) {
+			return undefined;
+		}
+		const token = ++requestId.current;
+		setPending( true );
+		let cancelled = false;
+		fetchReportTable( service, table, {
+			page: request.page,
+			q: request.query,
+			viewport: request.viewport,
+			run: runId || '',
+		} )
+			.then( ( result ) => {
+				if (
+					cancelled ||
+					token !== requestId.current ||
+					! result ||
+					result.error ||
+					result.kind !== 'table'
+				) {
+					return;
+				}
+				setLoaded( result );
+			} )
+			.catch( () => {} )
+			.finally( () => {
+				if ( ! cancelled && token === requestId.current ) {
+					setPending( false );
+				}
+			} );
+		return () => {
+			cancelled = true;
+		};
+	}, [
+		idle,
+		service,
+		table,
+		runId,
+		request.page,
+		request.query,
+		request.viewport,
+	] );
+
+	const current = idle || ! loaded ? block : loaded;
+	const total =
+		current.total === undefined || current.total === null
+			? ( current.rows || [] ).length
+			: asCount( current.total, 0 );
+	function goToPage( page ) {
+		setRequest( ( currentRequest ) => ( { ...currentRequest, page } ) );
+	}
+	function setViewport( viewport ) {
+		setRequest( ( currentRequest ) =>
+			currentRequest.viewport === viewport
+				? currentRequest
+				: { ...currentRequest, viewport, page: 0 }
+		);
+	}
+
+	return {
+		rows: current.rows || [],
+		columns: current.columns || block.columns || [],
+		source: current,
+		pageIndex: asCount( current.pageIndex, request.page ),
+		pageCount: tablePageCount(
+			current.pageCount,
+			current.total === undefined || current.total === null
+				? undefined
+				: total
+		),
+		total,
+		query,
+		setQuery,
+		viewport: request.viewport,
+		setViewport,
+		viewports: current.viewports || block.viewports || [],
+		pending,
+		remote: ! idle,
+		goToPage,
+	};
+}
+
+function TablePager( { pageIndex, pageCount, pending, onPage } ) {
+	if ( pageCount <= 1 ) {
+		return null;
+	}
+	const atStart = pageIndex <= 0;
+	const atEnd = pageIndex + 1 >= pageCount;
+	return (
+		<nav
+			className="arc-table-pager"
+			aria-label={ __( 'Pagination', 'pendulum-arc' ) }
+		>
+			<button
+				type="button"
+				disabled={ pending || atStart }
+				aria-label={ __( 'Previous', 'pendulum-arc' ) }
+				title={ __( 'Previous', 'pendulum-arc' ) }
+				onClick={ () => onPage( pageIndex - 1 ) }
+			>
+				<Icon size={ 12 } strokeWidth={ 2.25 }>
+					<path d="m15 18-6-6 6-6" />
+				</Icon>
+			</button>
+			<span
+				className="arc-table-pager__count"
+				aria-live="polite"
+				aria-label={ sprintf(
+					/* translators: 1: current page, 2: page count. */
+					__( 'Page %1$d of %2$d', 'pendulum-arc' ),
+					pageIndex + 1,
+					pageCount
+				) }
+			>
+				{ sprintf(
+					/* translators: 1: current page, 2: page count. */
+					__( '%1$d / %2$d', 'pendulum-arc' ),
+					pageIndex + 1,
+					pageCount
+				) }
+			</span>
+			<button
+				type="button"
+				disabled={ pending || atEnd }
+				aria-label={ __( 'Next', 'pendulum-arc' ) }
+				title={ __( 'Next', 'pendulum-arc' ) }
+				onClick={ () => onPage( pageIndex + 1 ) }
+			>
+				<Icon size={ 12 } strokeWidth={ 2.25 }>
+					<path d="m9 18 6-6-6-6" />
+				</Icon>
+			</button>
+		</nav>
+	);
+}
+
 function TableCard( {
 	block,
 	columns,
@@ -344,9 +558,17 @@ function TableCard( {
 	onToggleHeight,
 	emptySearch,
 	filters,
+	pageIndex = 0,
+	pager = null,
 } ) {
 	const searchable = typeof onQuery === 'function';
 	const sortable = typeof onSort === 'function';
+	const scrollRef = useRef( null );
+	useEffect( () => {
+		if ( scrollRef.current ) {
+			scrollRef.current.scrollTop = 0;
+		}
+	}, [ pageIndex ] );
 	return (
 		<section
 			className="arc-report-block arc-table-card"
@@ -364,32 +586,44 @@ function TableCard( {
 				{ tip ? (
 					<InfoTip title={ block.heading } body={ tip } />
 				) : null }
-				{ typeof onToggleHeight === 'function' ? (
-					<button
-						type="button"
-						className="arc-table-card__expand"
-						aria-label={
-							expanded
-								? __( 'Constrain list height', 'pendulum-arc' )
-								: __( 'Show full list', 'pendulum-arc' )
-						}
-						aria-pressed={ expanded }
-						onClick={ onToggleHeight }
-					>
-						<Icon size={ 14 } strokeWidth={ 1.75 }>
-							{ expanded ? (
-								<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-							) : (
-								<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-							) }
-						</Icon>
-					</button>
+				{ pager || typeof onToggleHeight === 'function' ? (
+					<div className="arc-table-card__tools">
+						{ pager }
+						{ typeof onToggleHeight === 'function' ? (
+							<button
+								type="button"
+								className="arc-table-card__expand"
+								aria-label={
+									expanded
+										? __(
+												'Constrain list height',
+												'pendulum-arc'
+										  )
+										: __(
+												'Show full list',
+												'pendulum-arc'
+										  )
+								}
+								aria-pressed={ expanded }
+								onClick={ onToggleHeight }
+							>
+								<Icon size={ 14 } strokeWidth={ 1.75 }>
+									{ expanded ? (
+										<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+									) : (
+										<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+									) }
+								</Icon>
+							</button>
+						) : null }
+					</div>
 				) : null }
 			</div>
 			{ count === 0 && ! searchable ? (
 				<p className="arc-table-card__empty">{ block.empty }</p>
 			) : (
 				<div
+					ref={ scrollRef }
 					className="arc-table-card__scroll"
 					data-constrain={
 						typeof onToggleHeight === 'function' && ! expanded
@@ -477,8 +711,16 @@ function InventoryCard( {
 	search,
 	filtering,
 	hasContent,
+	pageIndex = 0,
+	pager = null,
 } ) {
 	const show = hasContent ?? count > 0;
+	const bodyRef = useRef( null );
+	useEffect( () => {
+		if ( bodyRef.current ) {
+			bodyRef.current.scrollTop = 0;
+		}
+	}, [ pageIndex ] );
 	return (
 		<section
 			className="arc-report-block arc-security-panel arc-inventory"
@@ -496,8 +738,9 @@ function InventoryCard( {
 				{ tip ? (
 					<InfoTip title={ block.heading } body={ tip } />
 				) : null }
+				{ pager }
 			</div>
-			<div className="arc-inventory__body">
+			<div ref={ bodyRef } className="arc-inventory__body">
 				{ show ? (
 					children
 				) : (
@@ -670,23 +913,6 @@ function LinkCount( { page } ) {
 	return <IssueCount value={ page.brokenLinkCount } />;
 }
 
-function pageSearchBlob( page ) {
-	const cell = page.preview || {};
-	return [
-		page.title,
-		page.path,
-		page.url,
-		page.siteName,
-		hostOf( page.url ),
-		cell.text,
-		cell.caption,
-		...( page.keyphrases || [] ),
-	]
-		.filter( Boolean )
-		.join( ' ' )
-		.toLowerCase();
-}
-
 function scoreNumber( page ) {
 	if ( page.error || page.score === 'Load failed' ) {
 		return null;
@@ -721,30 +947,27 @@ function readExpanded( key ) {
 	}
 }
 
-function SeoPagesTable( { block } ) {
-	const columns = ( block.columns || [] ).filter(
+function SeoPagesTable( { block, runId = '' } ) {
+	const list = useReportTable( block, 'seo', 'pages', runId );
+	const listRef = useRef( list );
+	listRef.current = list;
+	const columns = ( list.columns || [] ).filter(
 		( column ) => column.id !== 'viewport'
 	);
-	const rows = block.rows || [];
-	const [ query, setQuery ] = useState( '' );
+	const rows = list.rows;
+	const query = list.query;
 	const [ sort, setSort ] = useState( { key: 'score', dir: 'asc' } );
 	const [ expanded, setExpanded ] = useState( () =>
 		readExpanded( PAGE_HEIGHT_KEY )
 	);
 	const [ pendingUrl, setPendingUrl ] = useState( '' );
-	const needle = query.trim().toLowerCase();
 	const prepared = rows.map( ( row, index ) => ( {
 		row,
 		index,
-		page: seoPageOf( block, row ),
+		page: seoPageOf( list.source, row ),
 	} ) );
-	const filtered = needle
-		? prepared.filter( ( item ) =>
-				pageSearchBlob( item.page ).includes( needle )
-			)
-		: prepared;
 	const dir = sort.dir === 'asc' ? 1 : -1;
-	const visible = [ ...filtered ].sort( ( left, right ) => {
+	const visible = [ ...prepared ].sort( ( left, right ) => {
 		let primary = 0;
 		if ( sort.key === 'url' ) {
 			primary = String( left.page.path || '' ).localeCompare(
@@ -780,7 +1003,7 @@ function SeoPagesTable( { block } ) {
 			if ( ! url ) {
 				return;
 			}
-			setQuery( '' );
+			listRef.current.setQuery( '' );
 			setPendingUrl( url );
 		}
 		window.addEventListener( PAGE_FOCUS_EVENT, onFocus );
@@ -822,14 +1045,23 @@ function SeoPagesTable( { block } ) {
 		<TableCard
 			block={ block }
 			columns={ columns }
-			count={ visible.length }
+			count={ list.total }
 			tip={ SEO_PAGES_TIP }
 			query={ query }
-			onQuery={ setQuery }
+			onQuery={ list.setQuery }
 			sort={ sort }
 			onSort={ toggleSort }
 			expanded={ expanded }
 			onToggleHeight={ toggleHeight }
+			pageIndex={ list.pageIndex }
+			pager={
+				<TablePager
+					pageIndex={ list.pageIndex }
+					pageCount={ list.pageCount }
+					pending={ list.pending }
+					onPage={ list.goToPage }
+				/>
+			}
 			emptySearch={
 				query.trim()
 					? __( 'No rows match this search.', 'pendulum-arc' )
@@ -1117,31 +1349,34 @@ function RssMark() {
 }
 
 function SeoSocialCard( { block } ) {
-	const rows = socialRows( block );
-	const [ query, setQuery ] = useState( '' );
-	const needle = query.trim().toLowerCase();
-	const visible = needle
-		? rows.filter( ( row ) =>
-				`${ row.display } ${ row.note }`
-					.toLowerCase()
-					.includes( needle )
-			)
-		: rows;
+	const list = useReportTable( block, 'seo', 'socials' );
+	const rows = socialRows( list.source );
+	const query = list.query;
 	return (
 		<InventoryCard
 			block={ block }
 			icon="share"
-			count={ visible.length }
+			count={ list.total }
 			tip={ SOCIAL_TIP }
 			search={
-				rows.length > 0 ? (
-					<SearchField value={ query } onChange={ setQuery } />
+				list.total > 0 || query ? (
+					<SearchField value={ query } onChange={ list.setQuery } />
 				) : null
 			}
-			filtering={ needle.length > 0 }
+			filtering={ list.remote && query.trim().length > 0 }
+			hasContent={ list.total > 0 }
+			pageIndex={ list.pageIndex }
+			pager={
+				<TablePager
+					pageIndex={ list.pageIndex }
+					pageCount={ list.pageCount }
+					pending={ list.pending }
+					onPage={ list.goToPage }
+				/>
+			}
 		>
 			<ul className="arc-social-list">
-				{ visible.map( ( row ) => (
+				{ rows.map( ( row ) => (
 					<li key={ row.id } className="arc-social-row">
 						<SocialMark
 							platform={ row.platform }
@@ -1222,25 +1457,6 @@ function ProtectionMarks( { variant } ) {
 	);
 }
 
-function formSearchBlob( form ) {
-	const parts = [
-		form.label,
-		PRESENCE_LABEL[ form.presence ] || form.presence,
-	];
-	( form.variants || [] ).forEach( ( variant ) => {
-		parts.push( variant.method );
-		( variant.protections || [] ).forEach( ( protection ) => {
-			parts.push( PROTECTION_LABEL[ protection ] || protection );
-		} );
-		parts.push(
-			variant.protectionCheck === 'skipped' ? 'Skipped' : 'Unprotected'
-		);
-		( variant.fields || [] ).forEach( ( field ) => parts.push( field ) );
-		( variant.pages || [] ).forEach( ( page ) => parts.push( page ) );
-	} );
-	return parts.filter( Boolean ).join( ' ' ).toLowerCase();
-}
-
 function fieldCountLabel( count ) {
 	const value = Number( count ) || 0;
 	if ( value === 1 ) {
@@ -1258,22 +1474,31 @@ function pageCountLabel( count ) {
 }
 
 function SeoFormsCard( { block } ) {
-	const rows = formRows( block );
-	const [ query, setQuery ] = useState( '' );
-	const needle = query.trim().toLowerCase();
-	const visible = needle
-		? rows.filter( ( form ) => formSearchBlob( form ).includes( needle ) )
-		: rows;
+	const list = useReportTable( block, 'seo', 'forms' );
+	const rows = formRows( list.source );
+	const query = list.query;
 	return (
 		<InventoryCard
 			block={ block }
 			icon="layers"
-			count={ visible.length }
+			count={ list.total }
 			tip={ FORMS_TIP }
-			search={ <SearchField value={ query } onChange={ setQuery } /> }
-			filtering={ needle.length > 0 }
+			search={
+				<SearchField value={ query } onChange={ list.setQuery } />
+			}
+			filtering={ list.remote && query.trim().length > 0 }
+			hasContent={ list.total > 0 }
+			pageIndex={ list.pageIndex }
+			pager={
+				<TablePager
+					pageIndex={ list.pageIndex }
+					pageCount={ list.pageCount }
+					pending={ list.pending }
+					onPage={ list.goToPage }
+				/>
+			}
 		>
-			<FormList forms={ visible } query={ query } />
+			<FormList forms={ rows } query={ query } />
 		</InventoryCard>
 	);
 }
@@ -1387,13 +1612,6 @@ function PageShot( { cell } ) {
 	);
 }
 
-function a11ySearchBlob( page ) {
-	return [ page.title, page.path, page.url ]
-		.filter( Boolean )
-		.join( ' ' )
-		.toLowerCase();
-}
-
 function a11yPageOf( block, row ) {
 	const urlCell = columnCell( block, row, 'url' ) || {};
 	const scoreCell = columnCell( block, row, 'score' ) || {};
@@ -1442,10 +1660,10 @@ function viewportGroup( viewport ) {
 	return 'other';
 }
 
-function ViewportTabs( { value, onChange } ) {
+function ViewportTabs( { value, onChange, items } ) {
 	const listRef = useRef( null );
 	const [ indicator, setIndicator ] = useState( { left: 0, width: 0 } );
-	const items = [
+	const tabs = items || [
 		{ value: 'all', label: __( 'All', 'pendulum-arc' ) },
 		{ value: 'mobile', label: __( 'Mobile', 'pendulum-arc' ) },
 		{ value: 'desktop', label: __( 'Desktop', 'pendulum-arc' ) },
@@ -1465,7 +1683,7 @@ function ViewportTabs( { value, onChange } ) {
 			left: active.offsetLeft,
 			width: active.offsetWidth,
 		} );
-	}, [ value ] );
+	}, [ value, tabs.length ] );
 
 	return (
 		<div
@@ -1484,7 +1702,7 @@ function ViewportTabs( { value, onChange } ) {
 					width: indicator.width,
 				} }
 			/>
-			{ items.map( ( item ) => (
+			{ tabs.map( ( item ) => (
 				<button
 					key={ item.value }
 					type="button"
@@ -1499,35 +1717,39 @@ function ViewportTabs( { value, onChange } ) {
 	);
 }
 
-function A11yPagesTable( { block } ) {
-	const columns = block.columns || [];
-	const rows = block.rows || [];
-	const [ query, setQuery ] = useState( '' );
-	const [ viewport, setViewport ] = useState( 'all' );
+function A11yPagesTable( { block, runId = '' } ) {
+	const list = useReportTable( block, 'a11y', 'pages', runId );
+	const listRef = useRef( list );
+	listRef.current = list;
+	const columns = list.columns;
+	const rows = list.rows;
+	const query = list.query;
+	const exactViewports = ( list.viewports || [] ).length > 0;
+	const [ group, setGroup ] = useState( 'all' );
 	const [ sort, setSort ] = useState( { key: 'score', dir: 'asc' } );
 	const [ expanded, setExpanded ] = useState( () =>
 		readExpanded( A11Y_PAGE_HEIGHT_KEY )
 	);
 	const [ pendingUrl, setPendingUrl ] = useState( '' );
-	const needle = query.trim().toLowerCase();
 	const prepared = rows.map( ( row, index ) => ( {
 		row,
 		index,
-		page: a11yPageOf( block, row ),
+		page: a11yPageOf( list.source, row ),
 	} ) );
 	const groups = new Set(
 		prepared.map( ( item ) => viewportGroup( item.page.viewport ) )
 	);
-	const showTabs = groups.has( 'mobile' ) && groups.has( 'desktop' );
+	const legacyTabs =
+		! exactViewports &&
+		list.pageCount <= 1 &&
+		groups.has( 'mobile' ) &&
+		groups.has( 'desktop' );
 	const filtered = prepared.filter( ( item ) => {
 		if (
-			showTabs &&
-			viewport !== 'all' &&
-			viewportGroup( item.page.viewport ) !== viewport
+			legacyTabs &&
+			group !== 'all' &&
+			viewportGroup( item.page.viewport ) !== group
 		) {
-			return false;
-		}
-		if ( needle && ! a11ySearchBlob( item.page ).includes( needle ) ) {
 			return false;
 		}
 		return true;
@@ -1580,8 +1802,9 @@ function A11yPagesTable( { block } ) {
 			if ( ! url ) {
 				return;
 			}
-			setQuery( '' );
-			setViewport( 'all' );
+			listRef.current.setQuery( '' );
+			listRef.current.setViewport( '' );
+			setGroup( 'all' );
 			setPendingUrl( url );
 		}
 		window.addEventListener( PAGE_FOCUS_EVENT, onFocus );
@@ -1619,32 +1842,62 @@ function A11yPagesTable( { block } ) {
 		} );
 	}
 
-	const filtering = showTabs && viewport !== 'all';
+	const filtering =
+		( legacyTabs && group !== 'all' ) ||
+		( exactViewports && list.viewport !== '' );
 	let emptySearch = block.empty;
 	if ( query.trim() ) {
 		emptySearch = __( 'No rows match this search.', 'pendulum-arc' );
 	} else if ( filtering ) {
 		emptySearch = __( 'No pages match these filters.', 'pendulum-arc' );
 	}
+	const exactItems = [
+		{ value: 'all', label: __( 'All', 'pendulum-arc' ) },
+		...( list.viewports || [] ).map( ( value ) => ( {
+			value,
+			label: value,
+		} ) ),
+	];
+	let viewportTabs = null;
+	if ( exactViewports ) {
+		viewportTabs = (
+			<ViewportTabs
+				value={ list.viewport || 'all' }
+				onChange={ ( value ) =>
+					list.setViewport( value === 'all' ? '' : value )
+				}
+				items={ exactItems }
+			/>
+		);
+	} else if ( legacyTabs ) {
+		viewportTabs = <ViewportTabs value={ group } onChange={ setGroup } />;
+	}
 
 	return (
 		<TableCard
 			block={ block }
 			columns={ columns }
-			count={ visible.length }
+			count={
+				legacyTabs && group !== 'all' ? visible.length : list.total
+			}
 			tip={ A11Y_PAGES_TIP }
 			query={ query }
-			onQuery={ setQuery }
+			onQuery={ list.setQuery }
 			sort={ sort }
 			onSort={ toggleSort }
 			expanded={ expanded }
 			onToggleHeight={ toggleHeight }
-			emptySearch={ emptySearch }
-			filters={
-				showTabs ? (
-					<ViewportTabs value={ viewport } onChange={ setViewport } />
-				) : null
+			pageIndex={ list.pageIndex }
+			pager={
+				<TablePager
+					pageIndex={ list.pageIndex }
+					pageCount={ list.pageCount }
+					pending={ list.pending }
+					onPage={ list.goToPage }
+				/>
 			}
+			emptySearch={ emptySearch }
+			filters={ viewportTabs }
 		>
 			{ visible.map( ( item ) => {
 				const page = item.page;
@@ -1792,35 +2045,25 @@ function aiPageOf( block, row ) {
 	};
 }
 
-function aiSearchBlob( page ) {
-	return [ page.title, page.path, page.url ]
-		.filter( Boolean )
-		.join( ' ' )
-		.toLowerCase();
-}
-
-function AiPagesTable( { block } ) {
-	const columns = block.columns || [];
-	const rows = block.rows || [];
-	const [ query, setQuery ] = useState( '' );
+function AiPagesTable( { block, runId = '' } ) {
+	const list = useReportTable( block, 'ai', 'pages', runId );
+	const listRef = useRef( list );
+	listRef.current = list;
+	const columns = list.columns;
+	const rows = list.rows;
+	const query = list.query;
 	const [ sort, setSort ] = useState( { key: 'issues', dir: 'desc' } );
 	const [ expanded, setExpanded ] = useState( () =>
 		readExpanded( AI_PAGE_HEIGHT_KEY )
 	);
 	const [ pendingUrl, setPendingUrl ] = useState( '' );
-	const needle = query.trim().toLowerCase();
 	const prepared = rows.map( ( row, index ) => ( {
 		row,
 		index,
-		page: aiPageOf( block, row ),
+		page: aiPageOf( list.source, row ),
 	} ) );
-	const filtered = needle
-		? prepared.filter( ( item ) =>
-				aiSearchBlob( item.page ).includes( needle )
-			)
-		: prepared;
 	const dir = sort.dir === 'asc' ? 1 : -1;
-	const visible = [ ...filtered ].sort( ( left, right ) => {
+	const visible = [ ...prepared ].sort( ( left, right ) => {
 		let primary = 0;
 		if ( sort.key === 'url' ) {
 			primary = String( left.page.path || '' ).localeCompare(
@@ -1872,7 +2115,7 @@ function AiPagesTable( { block } ) {
 			if ( ! url ) {
 				return;
 			}
-			setQuery( '' );
+			listRef.current.setQuery( '' );
 			setPendingUrl( url );
 		}
 		window.addEventListener( PAGE_FOCUS_EVENT, onFocus );
@@ -1914,14 +2157,23 @@ function AiPagesTable( { block } ) {
 		<TableCard
 			block={ block }
 			columns={ columns }
-			count={ visible.length }
+			count={ list.total }
 			tip={ AI_PAGES_TIP }
 			query={ query }
-			onQuery={ setQuery }
+			onQuery={ list.setQuery }
 			sort={ sort }
 			onSort={ toggleSort }
 			expanded={ expanded }
 			onToggleHeight={ toggleHeight }
+			pageIndex={ list.pageIndex }
+			pager={
+				<TablePager
+					pageIndex={ list.pageIndex }
+					pageCount={ list.pageCount }
+					pending={ list.pending }
+					onPage={ list.goToPage }
+				/>
+			}
 			emptySearch={
 				query.trim()
 					? __( 'No rows match this search.', 'pendulum-arc' )
@@ -2709,11 +2961,12 @@ export function SecuritySurfaces( { block } ) {
  *
  * @param {Object}      block
  * @param {string|null} service
+ * @param {string}      runId
  */
-export function renderSection( block, service ) {
+export function renderSection( block, service, runId = '' ) {
 	const key = block.id || block.heading;
 	if ( service === 'seo' && block.kind === 'table' && block.id === 'pages' ) {
-		return <SeoPagesTable key={ key } block={ block } />;
+		return <SeoPagesTable key={ key } block={ block } runId={ runId } />;
 	}
 	if (
 		service === 'seo' &&
@@ -2734,10 +2987,10 @@ export function renderSection( block, service ) {
 		block.kind === 'table' &&
 		block.id === 'pages'
 	) {
-		return <A11yPagesTable key={ key } block={ block } />;
+		return <A11yPagesTable key={ key } block={ block } runId={ runId } />;
 	}
 	if ( service === 'ai' && block.kind === 'table' && block.id === 'pages' ) {
-		return <AiPagesTable key={ key } block={ block } />;
+		return <AiPagesTable key={ key } block={ block } runId={ runId } />;
 	}
 	if (
 		service === 'brand' &&

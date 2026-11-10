@@ -1840,6 +1840,85 @@
 	line-height: 1.4;
 }
 
+.arc-table-card__bar > .arc-table-pager,
+.arc-table-card__tools,
+.arc-inventory > .arc-security-panel__bar > .arc-table-pager {
+	margin-left: auto;
+}
+
+.arc-table-card__tools {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.arc-table-card__tools > .arc-table-pager,
+.arc-table-card__tools > .arc-table-card__expand,
+.wp-core-ui .arc-table-card__tools > .arc-table-card__expand {
+	margin-left: 0;
+}
+
+.arc-inventory > .arc-security-panel__bar {
+	flex-wrap: wrap;
+}
+
+.arc-table-pager {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.35rem;
+	margin: 0;
+	padding: 0;
+	color: var(--arc-fg-secondary);
+	font-size: 11px;
+}
+
+.arc-table-pager__count {
+	line-height: 1.75rem;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.arc-table-pager button,
+.wp-core-ui .arc-table-pager button,
+.wp-core-ui .arc-table-pager button:hover,
+.wp-core-ui .arc-table-pager button:focus {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	width: 1.75rem;
+	height: 1.75rem;
+	min-width: 1.75rem;
+	min-height: 1.75rem;
+	max-height: 1.75rem;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: var(--arc-radius-tiny);
+	background: var(--arc-button-secondary-bg);
+	box-shadow: none;
+	color: var(--arc-button-secondary-fg);
+	line-height: 0;
+	cursor: pointer;
+}
+
+.wp-core-ui .arc-table-pager button:hover,
+.wp-core-ui .arc-table-pager button:focus {
+	background: var(--arc-button-secondary-bg-hover);
+	color: var(--arc-button-secondary-fg);
+}
+
+.arc-table-pager button:disabled,
+.wp-core-ui .arc-table-pager button:disabled {
+	cursor: default;
+	opacity: 0.45;
+	background: var(--arc-button-secondary-bg);
+	color: var(--arc-button-secondary-fg);
+}
+
 .arc-table-card__scroll {
 	overflow-x: auto;
 	border-bottom-right-radius: inherit;
@@ -3672,30 +3751,48 @@
 }
 
 .arc-table-card__expand,
-.wp-core-ui .arc-table-card__expand {
+.wp-core-ui .arc-table-card__expand,
+.wp-core-ui .arc-table-card__expand:hover,
+.wp-core-ui .arc-table-card__expand:focus {
+	box-sizing: border-box;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	width: 1.75rem;
 	height: 1.75rem;
+	min-width: 1.75rem;
+	min-height: 1.75rem;
+	max-height: 1.75rem;
 	margin: 0 0 0 auto;
 	padding: 0;
 	border: 1px solid var(--arc-border-subtle);
 	border-radius: var(--arc-radius-tiny);
 	background: var(--arc-bg-secondary);
+	box-shadow: none;
 	color: var(--arc-fg-secondary);
-	line-height: 1;
+	line-height: 0;
 	cursor: pointer;
+}
+
+.arc-table-card__tools > .arc-table-card__expand,
+.wp-core-ui .arc-table-card__tools > .arc-table-card__expand,
+.wp-core-ui .arc-table-card__tools > .arc-table-card__expand:hover,
+.wp-core-ui .arc-table-card__tools > .arc-table-card__expand:focus {
+	margin: 0;
 }
 
 .arc-table-search,
 .wp-core-ui input.arc-table-search,
 .wp-core-ui input.arc-table-search:hover,
-.wp-core-ui input.arc-table-search:focus {
+.wp-core-ui input.arc-table-search:focus,
+.wp-core-ui .arc-table-card__bar input.arc-table-search,
+.wp-core-ui .arc-security-panel__bar input.arc-table-search {
+	box-sizing: border-box;
 	flex: 0 0 auto;
 	width: 9rem;
 	height: 1.75rem;
 	min-height: 1.75rem;
+	max-height: 1.75rem;
 	margin: 0;
 	padding: 0 0.5rem;
 	border: 0;
@@ -3704,7 +3801,17 @@
 	box-shadow: none;
 	color: var(--arc-fg-primary);
 	font-size: 11px;
-	line-height: 1;
+	line-height: 1.75rem;
+	-webkit-appearance: none;
+	appearance: none;
+}
+
+.arc-table-search::-webkit-search-decoration,
+.arc-table-search::-webkit-search-cancel-button,
+.arc-table-search::-webkit-search-results-button,
+.arc-table-search::-webkit-search-results-decoration {
+	-webkit-appearance: none;
+	appearance: none;
 }
 
 .arc-table-search::placeholder {
@@ -3714,6 +3821,22 @@
 .wp-core-ui input.arc-table-search:focus {
 	outline: none;
 	box-shadow: 0 0 0 1px var(--arc-accent-cyan);
+}
+
+.arc-table-card__bar > .arc-pill[data-size="xs"],
+.wp-admin #wpbody-content .arc-table-card__bar > .arc-pill,
+.wp-admin #wpbody-content .arc-table-card__bar > input.arc-table-search,
+.wp-admin #wpbody-content .arc-table-card__bar > .arc-info > .arc-info__button,
+.wp-admin #wpbody-content .arc-table-card__bar .arc-table-pager > button,
+.wp-admin #wpbody-content .arc-table-card__bar .arc-table-card__expand,
+.wp-admin #wpbody-content .arc-inventory > .arc-security-panel__bar > .arc-pill,
+.wp-admin #wpbody-content .arc-inventory > .arc-security-panel__bar > input.arc-table-search,
+.wp-admin #wpbody-content .arc-inventory > .arc-security-panel__bar > .arc-info > .arc-info__button,
+.wp-admin #wpbody-content .arc-inventory > .arc-security-panel__bar .arc-table-pager > button {
+	box-sizing: border-box;
+	height: 1.75rem;
+	min-height: 1.75rem;
+	max-height: 1.75rem;
 }
 
 .arc-segment-tabs {

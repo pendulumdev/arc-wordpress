@@ -670,4 +670,42 @@ final class PairingTest extends TestCase {
 		self::assertArrayNotHasKey( 'surface', $block['rows'][1] );
 		self::assertSame( 'contact', $block['rows'][2]['form']['label'] );
 	}
+
+	public function test_report_keeps_table_paging_fields(): void {
+		$view = Pairing::report(
+			array(
+				'service' => 'a11y',
+				'blocks'  => array(
+					array(
+						'kind'      => 'table',
+						'id'        => 'pages',
+						'heading'   => 'Page analysis',
+						'pageIndex' => 1,
+						'pageCount' => 4,
+						'total'     => 180,
+						'viewports' => array( 'desktop', 'mobile<script>', '' ),
+						'columns'   => array(
+							array(
+								'id'    => 'url',
+								'label' => 'URL',
+							),
+						),
+						'rows'      => array(
+							array(
+								'id'    => 'page-1',
+								'cells' => array(
+									array( 'text' => '/about' ),
+								),
+							),
+						),
+					),
+				),
+			)
+		);
+		$block = $view['blocks'][0];
+		self::assertSame( 1, $block['pageIndex'] );
+		self::assertSame( 4, $block['pageCount'] );
+		self::assertSame( 180, $block['total'] );
+		self::assertSame( array( 'desktop', 'mobile' ), $block['viewports'] );
+	}
 }
