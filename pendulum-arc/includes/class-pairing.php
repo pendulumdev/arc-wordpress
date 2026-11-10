@@ -762,7 +762,7 @@ final class Pairing {
 		if ( count( $viewports ) > 0 ) {
 			$table['viewports'] = $viewports;
 		}
-		$file  = self::http_url( Site_Origin::field( $block, array( 'fileHref' ) ) );
+		$file = self::http_url( Site_Origin::field( $block, array( 'fileHref' ) ) );
 		if ( null !== $file ) {
 			$table['fileHref'] = $file;
 		}

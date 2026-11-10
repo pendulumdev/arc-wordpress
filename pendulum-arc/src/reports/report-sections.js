@@ -598,11 +598,8 @@ function TableCard( {
 										? __(
 												'Constrain list height',
 												'pendulum-arc'
-										  )
-										: __(
-												'Show full list',
-												'pendulum-arc'
-										  )
+											)
+										: __( 'Show full list', 'pendulum-arc' )
 								}
 								aria-pressed={ expanded }
 								onClick={ onToggleHeight }

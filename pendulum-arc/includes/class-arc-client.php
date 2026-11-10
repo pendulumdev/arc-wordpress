@@ -168,8 +168,8 @@ final class Arc_Client {
 		if ( ! in_array( $table, array( 'pages', 'socials', 'forms' ), true ) ) {
 			throw new Arc_Api_Exception( __( 'That report is not available.', 'pendulum-arc' ), 400 );
 		}
-		$url  = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/reports/' . rawurlencode( $service ) . '/tables/' . rawurlencode( $table );
-		$args = array(
+		$url   = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/reports/' . rawurlencode( $service ) . '/tables/' . rawurlencode( $table );
+		$args  = array(
 			'page' => max( 0, $page ),
 		);
 		$query = trim( $query );
