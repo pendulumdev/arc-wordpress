@@ -229,7 +229,13 @@ export function ValueTip( { lines, children } ) {
 	);
 }
 
-export function SearchField( { value, onChange } ) {
+/**
+ * @param {Object}   props
+ * @param {string}   props.value
+ * @param {(value: string) => void} props.onChange
+ * @param {boolean}  [props.disabled]
+ */
+export function SearchField( { value, onChange, disabled = false } ) {
 	const label = __( 'Search', 'pendulum-arc' );
 	return (
 		<input
@@ -240,6 +246,8 @@ export function SearchField( { value, onChange } ) {
 			placeholder={ label }
 			autoComplete="off"
 			spellCheck={ false }
+			disabled={ disabled || undefined }
+			aria-busy={ disabled || undefined }
 			onChange={ ( event ) => onChange( event.target.value ) }
 			onKeyDown={ ( event ) => {
 				if ( event.key === 'Enter' ) {

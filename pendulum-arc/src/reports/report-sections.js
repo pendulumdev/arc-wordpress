@@ -375,9 +375,16 @@ function useReportTable( block, service, table, runId = '' ) {
 		viewport: '',
 	} ) );
 	const [ loaded, setLoaded ] = useState( null );
-	const [ pending, setPending ] = useState( false );
 	const requestId = useRef( 0 );
 	const stamp = listStamp( block );
+	const seedRows = ( block.rows || [] ).length;
+	const seedTotal =
+		block.total === undefined || block.total === null
+			? seedRows
+			: asCount( block.total, 0 );
+	const [ pending, setPending ] = useState(
+		() => seedRows === 0 && seedTotal > 0
+	);
 
 	useEffect( () => {
 		setQuery( '' );
@@ -398,11 +405,14 @@ function useReportTable( block, service, table, runId = '' ) {
 					? current
 					: { ...current, query: next, page: 0 }
 			);
-		}, 250 );
+		}, 300 );
 		return () => window.clearTimeout( handle );
 	}, [ query ] );
 
+	// Embedded rows (or a truly empty list) skip the first fetch. Deferred
+	// shells ship rows [] with total > 0 and cold-fetch page 0 after paint.
 	const idle =
+		( seedRows > 0 || seedTotal === 0 ) &&
 		request.page === asCount( block.pageIndex, 0 ) &&
 		request.query === '' &&
 		request.viewport === '';
@@ -452,9 +462,10 @@ function useReportTable( block, service, table, runId = '' ) {
 	] );
 
 	const current = idle || ! loaded ? block : loaded;
+	const rows = current.rows || [];
 	const total =
 		current.total === undefined || current.total === null
-			? ( current.rows || [] ).length
+			? rows.length
 			: asCount( current.total, 0 );
 	function goToPage( page ) {
 		setRequest( ( currentRequest ) => ( { ...currentRequest, page } ) );
@@ -468,7 +479,7 @@ function useReportTable( block, service, table, runId = '' ) {
 	}
 
 	return {
-		rows: current.rows || [],
+		rows,
 		columns: current.columns || block.columns || [],
 		source: current,
 		pageIndex: asCount( current.pageIndex, request.page ),
@@ -488,6 +499,57 @@ function useReportTable( block, service, table, runId = '' ) {
 		remote: ! idle,
 		goToPage,
 	};
+}
+
+/** Quiet-busy mode: veil prior rows, skeleton when the window is empty. */
+function tablePendingMode( pending, rowCount ) {
+	if ( ! pending ) {
+		return 'idle';
+	}
+	return rowCount > 0 ? 'veil' : 'skeleton';
+}
+
+function TablePendingHairline() {
+	return (
+		<div className="arc-table-pending-hairline" aria-hidden="true">
+			<span className="arc-table-pending-hairline__bar" />
+		</div>
+	);
+}
+
+function TableSkeletonRows( { columns, rows = 8 } ) {
+	const cells = Math.max( 1, columns );
+	return Array.from( { length: rows }, ( _, rowIndex ) => (
+		<tr key={ `skel-${ rowIndex }` } className="arc-table-skeleton-row">
+			{ Array.from( { length: cells }, ( __, cellIndex ) => (
+				<td key={ `skel-${ rowIndex }-${ cellIndex }` }>
+					<span
+						className="arc-table-skeleton-bar"
+						style={ {
+							width: `${ 42 + ( ( rowIndex + cellIndex ) % 5 ) * 10 }%`,
+						} }
+					/>
+				</td>
+			) ) }
+		</tr>
+	) );
+}
+
+function InventorySkeleton( { rows = 6 } ) {
+	return (
+		<ul className="arc-inventory-skeleton" aria-hidden="true">
+			{ Array.from( { length: rows }, ( _, index ) => (
+				<li key={ `inv-skel-${ index }` }>
+					<span
+						className="arc-table-skeleton-bar"
+						style={ {
+							width: `${ 55 + ( index % 4 ) * 10 }%`,
+						} }
+					/>
+				</li>
+			) ) }
+		</ul>
+	);
 }
 
 function TablePager( { pageIndex, pageCount, pending, onPage } ) {
@@ -560,10 +622,14 @@ function TableCard( {
 	filters,
 	pageIndex = 0,
 	pager = null,
+	pending = false,
+	rowCount = 0,
 } ) {
 	const searchable = typeof onQuery === 'function';
 	const sortable = typeof onSort === 'function';
 	const scrollRef = useRef( null );
+	const pendingMode = tablePendingMode( pending, rowCount );
+	const busy = pendingMode !== 'idle';
 	useEffect( () => {
 		if ( scrollRef.current ) {
 			scrollRef.current.scrollTop = 0;
@@ -580,7 +646,11 @@ function TableCard( {
 					<span className="arc-pill__label">{ count }</span>
 				</span>
 				{ searchable ? (
-					<SearchField value={ query } onChange={ onQuery } />
+					<SearchField
+						value={ query }
+						onChange={ onQuery }
+						disabled={ pending }
+					/>
 				) : null }
 				{ filters }
 				{ tip ? (
@@ -616,7 +686,7 @@ function TableCard( {
 					</div>
 				) : null }
 			</div>
-			{ count === 0 && ! searchable ? (
+			{ count === 0 && ! searchable && ! busy ? (
 				<p className="arc-table-card__empty">{ block.empty }</p>
 			) : (
 				<div
@@ -627,8 +697,15 @@ function TableCard( {
 							? 'true'
 							: undefined
 					}
+					aria-busy={ busy || undefined }
 				>
-					<table className="arc-report-table">
+					{ busy ? <TablePendingHairline /> : null }
+					<table
+						className="arc-report-table"
+						data-pending={
+							pendingMode === 'veil' ? 'veil' : undefined
+						}
+					>
 						<thead>
 							<tr>
 								{ columns.map( ( column ) => (
@@ -641,6 +718,7 @@ function TableCard( {
 											<button
 												type="button"
 												className="arc-sort"
+												disabled={ pending || undefined }
 												data-active={
 													sort &&
 													sort.key === column.id
@@ -678,7 +756,11 @@ function TableCard( {
 							</tr>
 						</thead>
 						<tbody>
-							{ count === 0 ? (
+							{ pendingMode === 'skeleton' ? (
+								<TableSkeletonRows
+									columns={ columns.length }
+								/>
+							) : count === 0 ? (
 								<tr>
 									<td
 										className="arc-table-card__miss"
@@ -710,9 +792,13 @@ function InventoryCard( {
 	hasContent,
 	pageIndex = 0,
 	pager = null,
+	pending = false,
+	rowCount = 0,
 } ) {
 	const show = hasContent ?? count > 0;
 	const bodyRef = useRef( null );
+	const pendingMode = tablePendingMode( pending, rowCount );
+	const busy = pendingMode !== 'idle';
 	useEffect( () => {
 		if ( bodyRef.current ) {
 			bodyRef.current.scrollTop = 0;
@@ -737,16 +823,33 @@ function InventoryCard( {
 				) : null }
 				{ pager }
 			</div>
-			<div ref={ bodyRef } className="arc-inventory__body">
-				{ show ? (
-					children
-				) : (
-					<p className="arc-security-panel__empty">
-						{ filtering
-							? __( 'No rows match this search.', 'pendulum-arc' )
-							: block.empty }
-					</p>
-				) }
+			<div
+				ref={ bodyRef }
+				className="arc-inventory__body"
+				aria-busy={ busy || undefined }
+			>
+				{ busy ? <TablePendingHairline /> : null }
+				<div
+					className="arc-inventory__content"
+					data-pending={
+						pendingMode === 'veil' ? 'veil' : undefined
+					}
+				>
+					{ pendingMode === 'skeleton' ? (
+						<InventorySkeleton />
+					) : show ? (
+						children
+					) : (
+						<p className="arc-security-panel__empty">
+							{ filtering
+								? __(
+										'No rows match this search.',
+										'pendulum-arc'
+								  )
+								: block.empty }
+						</p>
+					) }
+				</div>
 			</div>
 		</section>
 	);
@@ -1051,6 +1154,8 @@ function SeoPagesTable( { block, runId = '' } ) {
 			expanded={ expanded }
 			onToggleHeight={ toggleHeight }
 			pageIndex={ list.pageIndex }
+			pending={ list.pending }
+			rowCount={ visible.length }
 			pager={
 				<TablePager
 					pageIndex={ list.pageIndex }
@@ -1356,13 +1461,19 @@ function SeoSocialCard( { block } ) {
 			count={ list.total }
 			tip={ SOCIAL_TIP }
 			search={
-				list.total > 0 || query ? (
-					<SearchField value={ query } onChange={ list.setQuery } />
+				list.total > 0 || query || list.pending ? (
+					<SearchField
+						value={ query }
+						onChange={ list.setQuery }
+						disabled={ list.pending }
+					/>
 				) : null
 			}
 			filtering={ list.remote && query.trim().length > 0 }
 			hasContent={ list.total > 0 }
 			pageIndex={ list.pageIndex }
+			pending={ list.pending }
+			rowCount={ rows.length }
 			pager={
 				<TablePager
 					pageIndex={ list.pageIndex }
@@ -1481,11 +1592,17 @@ function SeoFormsCard( { block } ) {
 			count={ list.total }
 			tip={ FORMS_TIP }
 			search={
-				<SearchField value={ query } onChange={ list.setQuery } />
+				<SearchField
+					value={ query }
+					onChange={ list.setQuery }
+					disabled={ list.pending }
+				/>
 			}
 			filtering={ list.remote && query.trim().length > 0 }
 			hasContent={ list.total > 0 }
 			pageIndex={ list.pageIndex }
+			pending={ list.pending }
+			rowCount={ rows.length }
 			pager={
 				<TablePager
 					pageIndex={ list.pageIndex }
@@ -1657,7 +1774,7 @@ function viewportGroup( viewport ) {
 	return 'other';
 }
 
-function ViewportTabs( { value, onChange, items } ) {
+function ViewportTabs( { value, onChange, items, disabled = false } ) {
 	const listRef = useRef( null );
 	const [ indicator, setIndicator ] = useState( { left: 0, width: 0 } );
 	const tabs = items || [
@@ -1690,6 +1807,7 @@ function ViewportTabs( { value, onChange, items } ) {
 			aria-label={ __( 'Viewport', 'pendulum-arc' ) }
 			data-size="sm"
 			data-track-radius="tiny"
+			aria-disabled={ disabled || undefined }
 		>
 			<span
 				className="arc-segment-tabs__indicator"
@@ -1705,6 +1823,7 @@ function ViewportTabs( { value, onChange, items } ) {
 					type="button"
 					role="tab"
 					aria-selected={ value === item.value }
+					disabled={ disabled || undefined }
 					onClick={ () => onChange( item.value ) }
 				>
 					{ item.label }
@@ -1864,10 +1983,17 @@ function A11yPagesTable( { block, runId = '' } ) {
 					list.setViewport( value === 'all' ? '' : value )
 				}
 				items={ exactItems }
+				disabled={ list.pending }
 			/>
 		);
 	} else if ( legacyTabs ) {
-		viewportTabs = <ViewportTabs value={ group } onChange={ setGroup } />;
+		viewportTabs = (
+			<ViewportTabs
+				value={ group }
+				onChange={ setGroup }
+				disabled={ list.pending }
+			/>
+		);
 	}
 
 	return (
@@ -1885,6 +2011,8 @@ function A11yPagesTable( { block, runId = '' } ) {
 			expanded={ expanded }
 			onToggleHeight={ toggleHeight }
 			pageIndex={ list.pageIndex }
+			pending={ list.pending }
+			rowCount={ visible.length }
 			pager={
 				<TablePager
 					pageIndex={ list.pageIndex }
@@ -2163,6 +2291,8 @@ function AiPagesTable( { block, runId = '' } ) {
 			expanded={ expanded }
 			onToggleHeight={ toggleHeight }
 			pageIndex={ list.pageIndex }
+			pending={ list.pending }
+			rowCount={ visible.length }
 			pager={
 				<TablePager
 					pageIndex={ list.pageIndex }

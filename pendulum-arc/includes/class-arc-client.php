@@ -130,7 +130,8 @@ final class Arc_Client {
 	}
 
 	/**
-	 * Header and first section for one crawl report.
+	 * Crawl report shell. Header and Issues first; page / social / forms
+	 * windows load via report_table after paint (`tables=defer`).
 	 *
 	 * @param string $env     production or preview.
 	 * @param string $token   Bearer.
@@ -143,7 +144,7 @@ final class Arc_Client {
 		if ( ! in_array( $service, array( 'seo', 'a11y', 'ai', 'security', 'brand' ), true ) ) {
 			throw new Arc_Api_Exception( __( 'That report is not available.', 'pendulum-arc' ), 400 );
 		}
-		$url = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/reports/' . rawurlencode( $service );
+		$url = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/reports/' . rawurlencode( $service ) . '?tables=defer';
 		return $this->json( 'GET', $url, $token );
 	}
 

@@ -555,7 +555,8 @@ final class Pairing {
 	}
 
 	/**
-	 * Crawl report preview. Header, first-section tables, and cards.
+	 * Crawl report shell and cards. Paged table rows may arrive empty when
+	 * the API deferred them; the admin UI loads windows separately.
 	 * Inspector fields are dropped.
 	 *
 	 * @param array<string, mixed> $json Report response.
