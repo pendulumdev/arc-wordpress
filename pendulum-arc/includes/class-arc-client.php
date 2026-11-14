@@ -159,9 +159,11 @@ final class Arc_Client {
 	 * @param int    $page     0-based window.
 	 * @param string $query    Search, at most 200 characters.
 	 * @param string $viewport Exact accessibility viewport.
+	 * @param string $sort     Page-analysis sort key.
+	 * @param string $dir      asc or desc.
 	 * @return array<string, mixed>
 	 */
-	public function report_table( string $env, string $token, string $site_id, string $service, string $table, int $page, string $query, string $viewport ): array {
+	public function report_table( string $env, string $token, string $site_id, string $service, string $table, int $page, string $query, string $viewport, string $sort = '', string $dir = '' ): array {
 		$this->assert_id( $site_id );
 		if ( ! in_array( $service, array( 'seo', 'a11y', 'ai' ), true ) ) {
 			throw new Arc_Api_Exception( __( 'That report is not available.', 'pendulum-arc' ), 400 );
@@ -186,6 +188,12 @@ final class Arc_Client {
 		}
 		if ( '' !== $viewport ) {
 			$args['viewport'] = $viewport;
+		}
+		$sort = trim( $sort );
+		$dir  = trim( $dir );
+		if ( 'pages' === $table && 1 === preg_match( '/^[A-Za-z]{1,32}$/', $sort ) && in_array( $dir, array( 'asc', 'desc' ), true ) ) {
+			$args['sort'] = $sort;
+			$args['dir']  = $dir;
 		}
 		return $this->json( 'GET', $url . '?' . http_build_query( $args, '', '&', PHP_QUERY_RFC3986 ), $token );
 	}
@@ -303,6 +311,54 @@ final class Arc_Client {
 			$url,
 			$token,
 			array( 'service' => $service ),
+			array( 'Idempotency-Key' => $key )
+		);
+	}
+
+	/**
+	 * Recrawls pages already on the latest report. The idempotency key is required.
+	 *
+	 * @param string             $env     production or preview.
+	 * @param string             $token   Bearer.
+	 * @param string             $site_id Site id.
+	 * @param string             $service seo, a11y, or ai.
+	 * @param array<int, string> $urls    Page URLs.
+	 * @param string             $key     Idempotency-Key.
+	 * @return array<string, mixed>
+	 */
+	public function recrawl_pages( string $env, string $token, string $site_id, string $service, array $urls, string $key ): array {
+		$this->assert_id( $site_id );
+		if ( ! in_array( $service, array( 'seo', 'a11y', 'ai' ), true ) ) {
+			throw new Arc_Api_Exception( __( 'That report is not available.', 'pendulum-arc' ), 400 );
+		}
+		if ( 1 !== preg_match( '/^[A-Za-z0-9_-]{8,200}$/', $key ) ) {
+			throw new Arc_Api_Exception( __( 'Arc refused the request. Try again in a moment.', 'pendulum-arc' ), 400 );
+		}
+		$clean = array();
+		foreach ( $urls as $url ) {
+			if ( ! is_string( $url ) ) {
+				continue;
+			}
+			$url = trim( $url );
+			if ( '' === $url || in_array( $url, $clean, true ) ) {
+				continue;
+			}
+			$parts  = wp_parse_url( $url );
+			$scheme = isset( $parts['scheme'] ) ? strtolower( (string) $parts['scheme'] ) : '';
+			if ( 'http' !== $scheme && 'https' !== $scheme ) {
+				continue;
+			}
+			$clean[] = $url;
+		}
+		if ( count( $clean ) < 1 ) {
+			throw new Arc_Api_Exception( __( 'Choose pages to recrawl.', 'pendulum-arc' ), 400 );
+		}
+		$endpoint = Arc_Config::api( $env ) . '/v1/sites/' . rawurlencode( $site_id ) . '/reports/' . rawurlencode( $service ) . '/recrawl';
+		return $this->json(
+			'POST',
+			$endpoint,
+			$token,
+			array( 'urls' => array_values( $clean ) ),
 			array( 'Idempotency-Key' => $key )
 		);
 	}

@@ -17,12 +17,14 @@ import { VisitorAnalytics } from './visitor-analytics';
 /**
  * Category pills and the selected report preview.
  *
- * @param {Object}                    props
- * @param {string}                    [props.portalUrl]
- * @param {string}                    [props.connectUrl]
- * @param {string}                    [props.service]
- * @param {(service: string) => void} [props.onService]
- * @param {number}                    [props.refreshKey] Bumps when a run leaves in-flight.
+ * @param {Object}                                             props
+ * @param {string}                                             [props.portalUrl]
+ * @param {string}                                             [props.connectUrl]
+ * @param {string}                                             [props.service]
+ * @param {(service: string) => void}                          [props.onService]
+ * @param {number}                                             [props.refreshKey]   Bumps when a run leaves in-flight.
+ * @param {(service: string, generation: string|null) => void} [props.onGeneration]
+ * @param {() => void}                                         [props.onSettled]    Called when an open recrawl finishes.
  */
 export function ReportSummary( {
 	portalUrl,
@@ -30,6 +32,8 @@ export function ReportSummary( {
 	service,
 	onService,
 	refreshKey = 0,
+	onGeneration,
+	onSettled,
 } ) {
 	const [ ownService, setOwnService ] = useState( 'analytics' );
 	const selected = service || ownService;
@@ -123,6 +127,64 @@ export function ReportSummary( {
 			? report
 			: reports[ selected ] || { loading: true };
 	const issues = Array.isArray( preview.issues ) ? preview.issues : [];
+	const onGenerationRef = useRef( onGeneration );
+	const onSettledRef = useRef( onSettled );
+	onGenerationRef.current = onGeneration;
+	onSettledRef.current = onSettled;
+
+	useEffect( () => {
+		if ( ! onGenerationRef.current ) {
+			return;
+		}
+		const crawl =
+			selected === 'seo' || selected === 'a11y' || selected === 'ai';
+		const status =
+			crawl &&
+			( preview.generation === 'queued' ||
+				preview.generation === 'running' )
+				? preview.generation
+				: null;
+		onGenerationRef.current( selected, status );
+	}, [ selected, preview.generation ] );
+
+	useEffect( () => {
+		const crawl =
+			selected === 'seo' || selected === 'a11y' || selected === 'ai';
+		if (
+			! crawl ||
+			( preview.generation !== 'queued' &&
+				preview.generation !== 'running' )
+		) {
+			return undefined;
+		}
+		let cancelled = false;
+		const timer = window.setInterval( () => {
+			fetchReport( selected )
+				.then( ( result ) => {
+					if ( cancelled ) {
+						return;
+					}
+					const next = { ...result, loading: false, error: '' };
+					reportCache.current[ selected ] = next;
+					setReports( ( current ) => ( {
+						...current,
+						[ selected ]: next,
+					} ) );
+					if (
+						next.generation !== 'queued' &&
+						next.generation !== 'running' &&
+						onSettledRef.current
+					) {
+						onSettledRef.current();
+					}
+				} )
+				.catch( () => {} );
+		}, 15000 );
+		return () => {
+			cancelled = true;
+			window.clearInterval( timer );
+		};
+	}, [ selected, preview.generation ] );
 
 	useEffect( () => {
 		if ( ! refreshKey ) {

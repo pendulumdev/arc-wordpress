@@ -17,6 +17,7 @@ export function SiteScoreSummary( {
 	portalUrl = '',
 	onGoogleConnect,
 	googlePending = false,
+	activity = null,
 	selected,
 	onSelect,
 } ) {
@@ -54,13 +55,21 @@ export function SiteScoreSummary( {
 							: null;
 					const googleSetup =
 						setup === 'connect_google' || setup === 'assign_site';
+					const flight = activity ? activity[ service.key ] : null;
+					const pending = flight === 'queued' || flight === 'running';
+					const hasKeyphrase =
+						found &&
+						found.keyphraseScore !== null &&
+						found.keyphraseScore !== undefined;
 					const hasScore =
 						! loading &&
 						! setup &&
 						! hasVisitors &&
 						score !== null &&
 						score !== undefined;
-					const mood = hasScore ? scoreMood( score ) : null;
+					const scored = hasScore || hasKeyphrase;
+					const mood =
+						! pending && hasScore ? scoreMood( score ) : null;
 					let state = 'empty';
 					if ( loading ) {
 						state = 'loading';
@@ -68,7 +77,7 @@ export function SiteScoreSummary( {
 						state = 'setup';
 					} else if ( hasVisitors ) {
 						state = 'visitors';
-					} else if ( hasScore ) {
+					} else if ( pending || scored ) {
 						state = 'score';
 					}
 					return (
@@ -78,12 +87,20 @@ export function SiteScoreSummary( {
 							accent={ service.accent }
 							label={ service.label }
 							state={ state }
-							score={ hasScore ? score : null }
-							band={ hasScore ? found.band : null }
+							score={
+								! loading && ! pending && hasScore
+									? score
+									: null
+							}
+							band={
+								! loading && ! pending && hasScore
+									? found.band
+									: null
+							}
 							mood={ mood }
 							visitors={ hasVisitors ? visitors : null }
 							issues={
-								hasScore || hasVisitors
+								! loading && ( scored || hasVisitors )
 									? {
 											issueCount: found.issueCount || 0,
 											manualCount: found.manualCount || 0,
@@ -101,15 +118,25 @@ export function SiteScoreSummary( {
 							}
 							actionPending={ googleSetup && googlePending }
 							keyphrase={
-								hasScore &&
-								found.keyphraseScore !== null &&
-								found.keyphraseScore !== undefined
+								service.key === 'seo'
 									? {
-											score: found.keyphraseScore,
-											band: found.keyphraseBand,
+											score:
+												! loading &&
+												! pending &&
+												hasKeyphrase
+													? found.keyphraseScore
+													: null,
+											band:
+												! loading &&
+												! pending &&
+												hasKeyphrase
+													? found.keyphraseBand
+													: null,
+											placeholder: true,
 										}
 									: null
 							}
+							pending={ pending && state !== 'setup' }
 							selected={ selected === service.key }
 							onSelect={ onSelect }
 						/>

@@ -1,7 +1,13 @@
 /**
  * WordPress dependencies
  */
-import { Fragment, useEffect, useRef, useState } from '@wordpress/element';
+import {
+	Fragment,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from '@wordpress/element';
 import { __, _n, sprintf } from '@wordpress/i18n';
 
 /**
@@ -17,13 +23,12 @@ import {
 	PAGE_FOCUS_EVENT,
 	SearchField,
 	SortArrows,
-	compareNumber,
-	compareViewport,
 	defaultDirForSortKey,
 	focusPageRow,
 } from './report-chrome';
 import { IssueRow } from './issue-menu';
 import { fetchReportTable } from '../api';
+import { usePageSelection } from './page-selection';
 
 const MOOD_ACCENT = {
 	great: 'emerald',
@@ -95,7 +100,7 @@ const SEVERITY_ACCENT = {
 };
 
 const SEO_PAGES_TIP = __(
-	'Per-page SEO signals from this crawl. Open a row for scores, readability, page metrics, keyphrase checks, and issues. The social card and search result are on the Preview tab. The URL column shows a keyphrase tag under the path when a phrase is set. Search matches the page title, URL, keyphrase, and preview text (title, description, site, and host).',
+	'Per-page SEO signals from this crawl. Open a row for scores, readability, page metrics, keyphrase checks, and issues. The social card and search result are on the Preview tab. The URL column shows a keyphrase tag under the path, and a red tag when no phrase is set. Search matches the page title, URL, keyphrase, and preview text (title, description, site, and host).',
 	'pendulum-arc'
 );
 
@@ -367,12 +372,36 @@ function listStamp( block ) {
 	return `${ block.pageIndex ?? 0 }|${ block.total ?? '' }|${ rows.length }|${ first }|${ last }`;
 }
 
-function useReportTable( block, service, table, runId = '' ) {
+function defaultPageSort( service ) {
+	if ( service === 'ai' ) {
+		return { key: 'issues', dir: 'desc' };
+	}
+	if ( service === 'seo' || service === 'a11y' ) {
+		return { key: 'score', dir: 'asc' };
+	}
+	return null;
+}
+
+function isDefaultPageSort( service, key, dir ) {
+	const fallback = defaultPageSort( service );
+	if ( ! fallback ) {
+		return true;
+	}
+	return fallback.key === key && fallback.dir === dir;
+}
+
+function useReportTable( block, service, table, runId = '', sort = null ) {
+	const sortKey = sort && sort.key ? String( sort.key ) : '';
+	const sortDir = sort && sort.dir ? String( sort.dir ) : '';
+	const sortRef = useRef( { sortKey, sortDir } );
+	sortRef.current = { sortKey, sortDir };
 	const [ query, setQuery ] = useState( '' );
 	const [ request, setRequest ] = useState( () => ( {
 		page: asCount( block.pageIndex, 0 ),
 		query: '',
 		viewport: '',
+		sortKey,
+		sortDir,
 	} ) );
 	const [ loaded, setLoaded ] = useState( null );
 	const requestId = useRef( 0 );
@@ -392,10 +421,20 @@ function useReportTable( block, service, table, runId = '' ) {
 			page: asCount( block.pageIndex, 0 ),
 			query: '',
 			viewport: '',
+			sortKey: sortRef.current.sortKey,
+			sortDir: sortRef.current.sortDir,
 		} );
 		setLoaded( null );
 		setPending( false );
 	}, [ stamp ] ); // eslint-disable-line react-hooks/exhaustive-deps
+
+	useEffect( () => {
+		setRequest( ( current ) =>
+			current.sortKey === sortKey && current.sortDir === sortDir
+				? current
+				: { ...current, sortKey, sortDir, page: 0 }
+		);
+	}, [ sortKey, sortDir ] );
 
 	useEffect( () => {
 		const handle = window.setTimeout( () => {
@@ -411,11 +450,15 @@ function useReportTable( block, service, table, runId = '' ) {
 
 	// Embedded rows (or a truly empty list) skip the first fetch. Deferred
 	// shells ship rows [] with total > 0 and cold-fetch page 0 after paint.
+	const sortIsDefault =
+		table !== 'pages' ||
+		isDefaultPageSort( service, request.sortKey, request.sortDir );
 	const idle =
 		( seedRows > 0 || seedTotal === 0 ) &&
 		request.page === asCount( block.pageIndex, 0 ) &&
 		request.query === '' &&
-		request.viewport === '';
+		request.viewport === '' &&
+		sortIsDefault;
 
 	useEffect( () => {
 		if ( idle ) {
@@ -428,6 +471,8 @@ function useReportTable( block, service, table, runId = '' ) {
 			page: request.page,
 			q: request.query,
 			viewport: request.viewport,
+			sort: table === 'pages' ? request.sortKey : '',
+			dir: table === 'pages' ? request.sortDir : '',
 			run: runId || '',
 		} )
 			.then( ( result ) => {
@@ -459,6 +504,8 @@ function useReportTable( block, service, table, runId = '' ) {
 		request.page,
 		request.query,
 		request.viewport,
+		request.sortKey,
+		request.sortDir,
 	] );
 
 	const current = idle || ! loaded ? block : loaded;
@@ -501,7 +548,12 @@ function useReportTable( block, service, table, runId = '' ) {
 	};
 }
 
-/** Quiet-busy mode: veil prior rows, skeleton when the window is empty. */
+/**
+ * Quiet-busy mode: veil prior rows, skeleton when the window is empty.
+ *
+ * @param {boolean} pending
+ * @param {number}  rowCount
+ */
 function tablePendingMode( pending, rowCount ) {
 	if ( ! pending ) {
 		return 'idle';
@@ -521,7 +573,7 @@ function TableSkeletonRows( { columns, rows = 8 } ) {
 	const cells = Math.max( 1, columns );
 	return Array.from( { length: rows }, ( _, rowIndex ) => (
 		<tr key={ `skel-${ rowIndex }` } className="arc-table-skeleton-row">
-			{ Array.from( { length: cells }, ( __, cellIndex ) => (
+			{ Array.from( { length: cells }, ( _item, cellIndex ) => (
 				<td key={ `skel-${ rowIndex }-${ cellIndex }` }>
 					<span
 						className="arc-table-skeleton-bar"
@@ -624,159 +676,305 @@ function TableCard( {
 	pager = null,
 	pending = false,
 	rowCount = 0,
+	selectItems = null,
+	onSelectToggle,
 } ) {
 	const searchable = typeof onQuery === 'function';
 	const sortable = typeof onSort === 'function';
 	const scrollRef = useRef( null );
 	const pendingMode = tablePendingMode( pending, rowCount );
 	const busy = pendingMode !== 'idle';
+	let tableBody = children;
+	if ( pendingMode === 'skeleton' ) {
+		tableBody = <TableSkeletonRows columns={ columns.length } />;
+	} else if ( count === 0 ) {
+		tableBody = (
+			<tr>
+				<td className="arc-table-card__miss" colSpan={ columns.length }>
+					{ emptySearch || block.empty }
+				</td>
+			</tr>
+		);
+	}
 	useEffect( () => {
 		if ( scrollRef.current ) {
 			scrollRef.current.scrollTop = 0;
 		}
 	}, [ pageIndex ] );
+	const selectable = Boolean(
+		selectItems && selectItems.length && onSelectToggle
+	);
 	return (
 		<section
-			className="arc-report-block arc-table-card"
+			className="arc-report-block"
 			data-span={ block.span || 'full' }
+			data-selectable={ selectable ? 'true' : undefined }
 		>
-			<div className="arc-table-card__bar">
-				<h3>{ block.heading }</h3>
-				<span className="arc-pill" data-accent="muted" data-size="xs">
-					<span className="arc-pill__label">{ count }</span>
-				</span>
-				{ searchable ? (
-					<SearchField
-						value={ query }
-						onChange={ onQuery }
-						disabled={ pending }
-					/>
-				) : null }
-				{ filters }
-				{ tip ? (
-					<InfoTip title={ block.heading } body={ tip } />
-				) : null }
-				{ pager || typeof onToggleHeight === 'function' ? (
-					<div className="arc-table-card__tools">
-						{ pager }
-						{ typeof onToggleHeight === 'function' ? (
-							<button
-								type="button"
-								className="arc-table-card__expand"
-								aria-label={
-									expanded
-										? __(
-												'Constrain list height',
-												'pendulum-arc'
-											)
-										: __( 'Show full list', 'pendulum-arc' )
-								}
-								aria-pressed={ expanded }
-								onClick={ onToggleHeight }
-							>
-								<Icon size={ 14 } strokeWidth={ 1.75 }>
-									{ expanded ? (
-										<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-									) : (
-										<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-									) }
-								</Icon>
-							</button>
-						) : null }
-					</div>
-				) : null }
-			</div>
-			{ count === 0 && ! searchable && ! busy ? (
-				<p className="arc-table-card__empty">{ block.empty }</p>
-			) : (
-				<div
-					ref={ scrollRef }
-					className="arc-table-card__scroll"
-					data-constrain={
-						typeof onToggleHeight === 'function' && ! expanded
-							? 'true'
-							: undefined
-					}
-					aria-busy={ busy || undefined }
-				>
-					{ busy ? <TablePendingHairline /> : null }
-					<table
-						className="arc-report-table"
-						data-pending={
-							pendingMode === 'veil' ? 'veil' : undefined
-						}
+			<div className="arc-table-card">
+				<div className="arc-table-card__bar">
+					<h3>{ block.heading }</h3>
+					{ tip ? (
+						<InfoTip title={ block.heading } body={ tip } />
+					) : null }
+					<span
+						className="arc-pill"
+						data-accent="muted"
+						data-size="md"
 					>
-						<thead>
-							<tr>
-								{ columns.map( ( column ) => (
-									<th
-										key={ column.id }
-										data-align={ column.align || 'start' }
-									>
-										{ sortable &&
-										column.id !== 'preview' ? (
-											<button
-												type="button"
-												className="arc-sort"
-												disabled={ pending || undefined }
-												data-active={
-													sort &&
-													sort.key === column.id
-														? 'true'
-														: undefined
-												}
-												onClick={ () =>
-													onSort( column.id )
+						<span className="arc-pill__label">{ count }</span>
+					</span>
+					{ searchable ? (
+						<SearchField
+							value={ query }
+							onChange={ onQuery }
+							disabled={ pending }
+						/>
+					) : null }
+					{ filters }
+					{ pager || typeof onToggleHeight === 'function' ? (
+						<div className="arc-table-card__tools">
+							{ pager }
+							{ typeof onToggleHeight === 'function' ? (
+								<button
+									type="button"
+									className="arc-table-card__expand"
+									aria-label={
+										expanded
+											? __(
+													'Constrain list height',
+													'pendulum-arc'
+												)
+											: __(
+													'Show full list',
+													'pendulum-arc'
+												)
+									}
+									aria-pressed={ expanded }
+									onClick={ onToggleHeight }
+								>
+									<Icon size={ 14 } strokeWidth={ 1.75 }>
+										{ expanded ? (
+											<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+										) : (
+											<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+										) }
+									</Icon>
+								</button>
+							) : null }
+						</div>
+					) : null }
+				</div>
+				{ count === 0 && ! searchable && ! busy ? (
+					<p className="arc-table-card__empty">{ block.empty }</p>
+				) : (
+					<div className="arc-table-card__frame">
+						<div
+							ref={ scrollRef }
+							className="arc-table-card__scroll"
+							data-constrain={
+								typeof onToggleHeight === 'function' &&
+								! expanded
+									? 'true'
+									: undefined
+							}
+							aria-busy={ busy || undefined }
+						>
+							{ busy ? <TablePendingHairline /> : null }
+							<table
+								className="arc-report-table"
+								data-pending={
+									pendingMode === 'veil' ? 'veil' : undefined
+								}
+							>
+								<thead>
+									<tr>
+										{ columns.map( ( column ) => (
+											<th
+												key={ column.id }
+												data-align={
+													column.align || 'start'
 												}
 											>
-												<span className="arc-report-table__label">
-													<ColumnMark
-														id={ column.id }
-													/>
-													{ column.label }
-												</span>
-												<SortArrows
-													active={
-														sort &&
-														sort.key === column.id
-													}
-													dir={
-														sort ? sort.dir : 'asc'
-													}
-												/>
-											</button>
-										) : (
-											<span className="arc-report-table__label">
-												<ColumnMark id={ column.id } />
-												{ column.label }
-											</span>
-										) }
-									</th>
-								) ) }
-							</tr>
-						</thead>
-						<tbody>
-							{ pendingMode === 'skeleton' ? (
-								<TableSkeletonRows
-									columns={ columns.length }
-								/>
-							) : count === 0 ? (
-								<tr>
-									<td
-										className="arc-table-card__miss"
-										colSpan={ columns.length }
-									>
-										{ emptySearch || block.empty }
-									</td>
-								</tr>
-							) : (
-								children
-							) }
-						</tbody>
-					</table>
-				</div>
-			) }
+												{ sortable &&
+												column.id !== 'preview' ? (
+													<button
+														type="button"
+														className="arc-sort"
+														disabled={
+															pending || undefined
+														}
+														data-active={
+															sort &&
+															sort.key ===
+																column.id
+																? 'true'
+																: undefined
+														}
+														onClick={ () =>
+															onSort( column.id )
+														}
+													>
+														<span className="arc-report-table__label">
+															<ColumnMark
+																id={ column.id }
+															/>
+															{ column.label }
+														</span>
+														<SortArrows
+															active={
+																sort &&
+																sort.key ===
+																	column.id
+															}
+															dir={
+																sort
+																	? sort.dir
+																	: 'asc'
+															}
+														/>
+													</button>
+												) : (
+													<span className="arc-report-table__label">
+														<ColumnMark
+															id={ column.id }
+														/>
+														{ column.label }
+													</span>
+												) }
+											</th>
+										) ) }
+									</tr>
+								</thead>
+								<tbody>{ tableBody }</tbody>
+							</table>
+						</div>
+					</div>
+				) }
+			</div>
+			{ selectable ? (
+				<RowSelectRail
+					scrollRef={ scrollRef }
+					items={ selectItems }
+					onToggle={ onSelectToggle }
+				/>
+			) : null }
 		</section>
+	);
+}
+
+function pageSelectItems( service, visible, pending, selection ) {
+	return visible.map( ( item ) => {
+		const url = item.page.url || '';
+		const selected = selection ? selection.urlsFor( service ) : [];
+		return {
+			key: item.row.id || url || String( item.index ),
+			url,
+			checked: Boolean( url ) && selected.includes( url ),
+			disabled: pending || ! url,
+			label: item.page.path || url || __( 'Page', 'pendulum-arc' ),
+		};
+	} );
+}
+
+function RowSelectRail( { scrollRef, items, onToggle } ) {
+	const railRef = useRef( null );
+	const tabs = useRef( new Map() );
+	const keySig = items.map( ( item ) => item.key ).join( '\n' );
+
+	useLayoutEffect( () => {
+		const scroll = scrollRef.current;
+		const rail = railRef.current;
+		if ( ! scroll || ! rail ) {
+			return undefined;
+		}
+		function place() {
+			const wrap = rail.parentElement;
+			if ( ! wrap ) {
+				return;
+			}
+			const scrollBox = scroll.getBoundingClientRect();
+			const wrapBox = wrap.getBoundingClientRect();
+			const thead = scroll.querySelector( 'thead' );
+			const theadBottom = thead
+				? thead.getBoundingClientRect().bottom
+				: scrollBox.top;
+			const cover = Math.max(
+				0,
+				Math.min( scrollBox.height, theadBottom - scrollBox.top )
+			);
+			const sample = rail.querySelector( '[data-select-tab]' );
+			const tabWidth = sample ? sample.getBoundingClientRect().width : 28;
+			rail.style.width = `${ tabWidth }px`;
+			rail.style.left = `${ scrollBox.left - wrapBox.left - tabWidth }px`;
+			rail.style.top = `${ scrollBox.top - wrapBox.top + cover }px`;
+			rail.style.height = `${ Math.max( 0, scrollBox.height - cover ) }px`;
+			scroll
+				.querySelectorAll( '[data-select-key]' )
+				.forEach( ( anchor ) => {
+					const key = anchor.getAttribute( 'data-select-key' ) || '';
+					const tab = tabs.current.get( key );
+					const row = anchor.closest( 'tr' );
+					if ( ! tab || ! row ) {
+						return;
+					}
+					const top =
+						row.getBoundingClientRect().top - scrollBox.top - cover;
+					tab.style.transform = `translateY(${ top }px)`;
+				} );
+		}
+		place();
+		scroll.addEventListener( 'scroll', place, { passive: true } );
+		const Observer = window.ResizeObserver;
+		const observed =
+			typeof Observer === 'function' ? new Observer( place ) : null;
+		if ( observed ) {
+			observed.observe( scroll );
+			const table = scroll.querySelector( 'table' );
+			if ( table ) {
+				observed.observe( table );
+			}
+		}
+		return () => {
+			scroll.removeEventListener( 'scroll', place );
+			if ( observed ) {
+				observed.disconnect();
+			}
+		};
+	}, [ scrollRef, keySig ] );
+
+	return (
+		<div ref={ railRef } className="arc-select-rail">
+			{ items.map( ( item, index ) => (
+				<div
+					key={ item.key }
+					data-select-tab=""
+					className="arc-select-tab"
+					ref={ ( node ) => {
+						if ( node ) {
+							tabs.current.set( item.key, node );
+						} else {
+							tabs.current.delete( item.key );
+						}
+					} }
+				>
+					<label
+						className="arc-select-tab__box"
+						htmlFor={ `arc-page-select-${ index }` }
+					>
+						<input
+							id={ `arc-page-select-${ index }` }
+							type="checkbox"
+							checked={ item.checked }
+							disabled={ item.disabled || undefined }
+							aria-label={ item.label }
+							onChange={ ( event ) =>
+								onToggle( item.key, event.target.checked )
+							}
+						/>
+					</label>
+				</div>
+			) ) }
+		</div>
 	);
 }
 
@@ -799,6 +997,18 @@ function InventoryCard( {
 	const bodyRef = useRef( null );
 	const pendingMode = tablePendingMode( pending, rowCount );
 	const busy = pendingMode !== 'idle';
+	let inventoryBody = (
+		<p className="arc-security-panel__empty">
+			{ filtering
+				? __( 'No rows match this search.', 'pendulum-arc' )
+				: block.empty }
+		</p>
+	);
+	if ( pendingMode === 'skeleton' ) {
+		inventoryBody = <InventorySkeleton />;
+	} else if ( show ) {
+		inventoryBody = children;
+	}
 	useEffect( () => {
 		if ( bodyRef.current ) {
 			bodyRef.current.scrollTop = 0;
@@ -814,13 +1024,13 @@ function InventoryCard( {
 					<StrokeMark name={ icon } />
 				</span>
 				<h3>{ block.heading }</h3>
+				{ tip ? (
+					<InfoTip title={ block.heading } body={ tip } />
+				) : null }
 				<span className="arc-pill" data-accent="muted" data-size="md">
 					<span className="arc-pill__label">{ count }</span>
 				</span>
 				{ search }
-				{ tip ? (
-					<InfoTip title={ block.heading } body={ tip } />
-				) : null }
 				{ pager }
 			</div>
 			<div
@@ -831,24 +1041,9 @@ function InventoryCard( {
 				{ busy ? <TablePendingHairline /> : null }
 				<div
 					className="arc-inventory__content"
-					data-pending={
-						pendingMode === 'veil' ? 'veil' : undefined
-					}
+					data-pending={ pendingMode === 'veil' ? 'veil' : undefined }
 				>
-					{ pendingMode === 'skeleton' ? (
-						<InventorySkeleton />
-					) : show ? (
-						children
-					) : (
-						<p className="arc-security-panel__empty">
-							{ filtering
-								? __(
-										'No rows match this search.',
-										'pendulum-arc'
-								  )
-								: block.empty }
-						</p>
-					) }
+					{ inventoryBody }
 				</div>
 			</div>
 		</section>
@@ -937,7 +1132,17 @@ function KeyphraseTags( { phrases, query } ) {
 		.map( ( phrase ) => String( phrase || '' ).trim() )
 		.filter( Boolean );
 	if ( list.length === 0 ) {
-		return null;
+		return (
+			<span className="arc-keyphrases">
+				<span className="arc-keyphrase" data-rank="none">
+					<Icon size={ 12 } strokeWidth={ 2 }>
+						<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
+						<circle cx="7.5" cy="7.5" r=".5" fill="currentColor" />
+					</Icon>
+					{ __( 'No keyphrase', 'pendulum-arc' ) }
+				</span>
+			</span>
+		);
 	}
 	return (
 		<span className="arc-keyphrases">
@@ -954,6 +1159,84 @@ function KeyphraseTags( { phrases, query } ) {
 					<Highlight text={ phrase } query={ query } />
 				</span>
 			) ) }
+		</span>
+	);
+}
+
+function ratingCounts( ratings ) {
+	if ( ! ratings || typeof ratings !== 'object' ) {
+		return null;
+	}
+	const green = Number( ratings.green );
+	const orange = Number( ratings.orange );
+	const red = Number( ratings.red );
+	if (
+		! Number.isFinite( green ) ||
+		! Number.isFinite( orange ) ||
+		! Number.isFinite( red )
+	) {
+		return null;
+	}
+	return { green, orange, red };
+}
+
+function KeyphraseScore( { page, mood } ) {
+	const ratings = ratingCounts( page.keyphraseRatings );
+	const phrases = ( page.keyphrases || [] ).some(
+		( phrase ) => String( phrase || '' ).trim() !== ''
+	);
+	if ( ! page.keyphraseScore && ! ratings && ! phrases ) {
+		return (
+			<span className="arc-issue-count" data-heat="idle">
+				-
+			</span>
+		);
+	}
+	return (
+		<span className="arc-keyphrase-score">
+			{ page.keyphraseScore ? (
+				<ScorePill mood={ mood } value={ page.keyphraseScore } />
+			) : (
+				<span className="arc-issue-count" data-heat="idle">
+					-
+				</span>
+			) }
+			{ ratings ? (
+				<span className="arc-rating-segs">
+					<span data-tone="green">{ ratings.green }</span>
+					<span data-tone="orange">{ ratings.orange }</span>
+					<span data-tone="red">{ ratings.red }</span>
+				</span>
+			) : null }
+		</span>
+	);
+}
+
+function pageHasPhrase( page ) {
+	return ( page.keyphrases || [] ).some(
+		( phrase ) => String( phrase || '' ).trim() !== ''
+	);
+}
+
+function PresenceMark( { present, label } ) {
+	return (
+		<span
+			className="arc-presence"
+			data-present={ present ? 'true' : 'false' }
+			title={ label }
+		>
+			<Icon size={ 16 } strokeWidth={ 2.25 }>
+				<circle cx="12" cy="12" r="10" />
+				{ present ? (
+					<path d="m9 12 2 2 4-4" />
+				) : (
+					<>
+						<path d="m15 9-6 6" />
+						<path d="m9 9 6 6" />
+					</>
+				) }
+			</Icon>
+			<span className="screen-reader-text">{ label }</span>
 		</span>
 	);
 }
@@ -983,16 +1266,7 @@ function SeoScore( { page } ) {
 				<span className="arc-score-stack__label">
 					{ __( 'Keyphrase score', 'pendulum-arc' ) }
 				</span>
-				{ page.keyphraseScore ? (
-					<ScorePill
-						mood={ phraseMood }
-						value={ page.keyphraseScore }
-					/>
-				) : (
-					<span className="arc-issue-count" data-heat="idle">
-						-
-					</span>
-				) }
+				<KeyphraseScore page={ page } mood={ phraseMood } />
 			</span>
 		</span>
 	);
@@ -1011,14 +1285,6 @@ function LinkCount( { page } ) {
 		);
 	}
 	return <IssueCount value={ page.brokenLinkCount } />;
-}
-
-function scoreNumber( page ) {
-	if ( page.error || page.score === 'Load failed' ) {
-		return null;
-	}
-	const value = Number( page.score );
-	return Number.isFinite( value ) ? value : null;
 }
 
 function worstIssueAccent( issues, count ) {
@@ -1048,7 +1314,8 @@ function readExpanded( key ) {
 }
 
 function SeoPagesTable( { block, runId = '' } ) {
-	const list = useReportTable( block, 'seo', 'pages', runId );
+	const [ sort, setSort ] = useState( { key: 'score', dir: 'asc' } );
+	const list = useReportTable( block, 'seo', 'pages', runId, sort );
 	const listRef = useRef( list );
 	listRef.current = list;
 	const columns = ( list.columns || [] ).filter(
@@ -1056,46 +1323,15 @@ function SeoPagesTable( { block, runId = '' } ) {
 	);
 	const rows = list.rows;
 	const query = list.query;
-	const [ sort, setSort ] = useState( { key: 'score', dir: 'asc' } );
 	const [ expanded, setExpanded ] = useState( () =>
 		readExpanded( PAGE_HEIGHT_KEY )
 	);
 	const [ pendingUrl, setPendingUrl ] = useState( '' );
-	const prepared = rows.map( ( row, index ) => ( {
+	const visible = rows.map( ( row, index ) => ( {
 		row,
 		index,
 		page: seoPageOf( list.source, row ),
 	} ) );
-	const dir = sort.dir === 'asc' ? 1 : -1;
-	const visible = [ ...prepared ].sort( ( left, right ) => {
-		let primary = 0;
-		if ( sort.key === 'url' ) {
-			primary = String( left.page.path || '' ).localeCompare(
-				String( right.page.path || '' ),
-				undefined,
-				{ sensitivity: 'base' }
-			);
-		} else if ( sort.key === 'links' ) {
-			primary = compareNumber(
-				left.page.brokenLinkCount,
-				right.page.brokenLinkCount
-			);
-		} else if ( sort.key === 'issues' ) {
-			primary = compareNumber(
-				left.page.issueCount,
-				right.page.issueCount
-			);
-		} else {
-			primary = compareNumber(
-				scoreNumber( left.page ),
-				scoreNumber( right.page )
-			);
-		}
-		if ( primary !== 0 ) {
-			return primary * dir;
-		}
-		return compareViewport( left.page.viewport, right.page.viewport );
-	} );
 
 	useEffect( () => {
 		function onFocus( event ) {
@@ -1141,6 +1377,14 @@ function SeoPagesTable( { block, runId = '' } ) {
 		} );
 	}
 
+	const selection = usePageSelection();
+	const selectItems = pageSelectItems(
+		'seo',
+		visible,
+		list.pending,
+		selection
+	);
+
 	return (
 		<TableCard
 			block={ block }
@@ -1156,6 +1400,13 @@ function SeoPagesTable( { block, runId = '' } ) {
 			pageIndex={ list.pageIndex }
 			pending={ list.pending }
 			rowCount={ visible.length }
+			selectItems={ selection ? selectItems : null }
+			onSelectToggle={
+				selection
+					? ( key, checked ) =>
+							selection.toggle( 'seo', selectItems, key, checked )
+					: undefined
+			}
 			pager={
 				<TablePager
 					pageIndex={ list.pageIndex }
@@ -1180,6 +1431,9 @@ function SeoPagesTable( { block, runId = '' } ) {
 					<tr
 						key={ item.row.id || item.index }
 						data-page-url={ page.url || undefined }
+						data-select-key={
+							item.row.id || page.url || String( item.index )
+						}
 					>
 						{ columns.map( ( column ) => (
 							<td
@@ -1235,6 +1489,54 @@ function SeoPagesTable( { block, runId = '' } ) {
 								) : null }
 								{ column.id === 'score' ? (
 									<SeoScore page={ page } />
+								) : null }
+								{ column.id === 'title' ? (
+									<PresenceMark
+										present={ page.hasTitle === true }
+										label={
+											page.hasTitle
+												? __(
+														'Title set',
+														'pendulum-arc'
+													)
+												: __(
+														'Title empty',
+														'pendulum-arc'
+													)
+										}
+									/>
+								) : null }
+								{ column.id === 'description' ? (
+									<PresenceMark
+										present={ page.hasDescription === true }
+										label={
+											page.hasDescription
+												? __(
+														'Description set',
+														'pendulum-arc'
+													)
+												: __(
+														'Description empty',
+														'pendulum-arc'
+													)
+										}
+									/>
+								) : null }
+								{ column.id === 'keyphrase' ? (
+									<PresenceMark
+										present={ pageHasPhrase( page ) }
+										label={
+											pageHasPhrase( page )
+												? __(
+														'Keyphrase set',
+														'pendulum-arc'
+													)
+												: __(
+														'Keyphrase empty',
+														'pendulum-arc'
+													)
+										}
+									/>
 								) : null }
 								{ column.id === 'links' ? (
 									<LinkCount page={ page } />
@@ -1834,7 +2136,8 @@ function ViewportTabs( { value, onChange, items, disabled = false } ) {
 }
 
 function A11yPagesTable( { block, runId = '' } ) {
-	const list = useReportTable( block, 'a11y', 'pages', runId );
+	const [ sort, setSort ] = useState( { key: 'score', dir: 'asc' } );
+	const list = useReportTable( block, 'a11y', 'pages', runId, sort );
 	const listRef = useRef( list );
 	listRef.current = list;
 	const columns = list.columns;
@@ -1842,7 +2145,6 @@ function A11yPagesTable( { block, runId = '' } ) {
 	const query = list.query;
 	const exactViewports = ( list.viewports || [] ).length > 0;
 	const [ group, setGroup ] = useState( 'all' );
-	const [ sort, setSort ] = useState( { key: 'score', dir: 'asc' } );
 	const [ expanded, setExpanded ] = useState( () =>
 		readExpanded( A11Y_PAGE_HEIGHT_KEY )
 	);
@@ -1870,47 +2172,7 @@ function A11yPagesTable( { block, runId = '' } ) {
 		}
 		return true;
 	} );
-	const dir = sort.dir === 'asc' ? 1 : -1;
-	const visible = [ ...filtered ].sort( ( left, right ) => {
-		let primary = 0;
-		if ( sort.key === 'url' ) {
-			primary = String( left.page.path || '' ).localeCompare(
-				String( right.page.path || '' ),
-				undefined,
-				{ sensitivity: 'base' }
-			);
-		} else if ( sort.key === 'viewport' ) {
-			primary = compareViewport(
-				left.page.viewport,
-				right.page.viewport
-			);
-		} else if ( sort.key === 'theme' ) {
-			primary = String( left.page.theme || '' ).localeCompare(
-				String( right.page.theme || '' ),
-				undefined,
-				{ sensitivity: 'base' }
-			);
-		} else if ( sort.key === 'issues' ) {
-			primary = compareNumber(
-				left.page.issueCount,
-				right.page.issueCount
-			);
-		} else if ( sort.key === 'incomplete' ) {
-			primary = compareNumber(
-				Number( ( left.page.incomplete || {} ).text ) || 0,
-				Number( ( right.page.incomplete || {} ).text ) || 0
-			);
-		} else {
-			primary = compareNumber(
-				scoreNumber( left.page ),
-				scoreNumber( right.page )
-			);
-		}
-		if ( primary !== 0 ) {
-			return primary * dir;
-		}
-		return compareViewport( left.page.viewport, right.page.viewport );
-	} );
+	const visible = filtered;
 
 	useEffect( () => {
 		function onFocus( event ) {
@@ -1996,6 +2258,14 @@ function A11yPagesTable( { block, runId = '' } ) {
 		);
 	}
 
+	const selection = usePageSelection();
+	const selectItems = pageSelectItems(
+		'a11y',
+		visible,
+		list.pending,
+		selection
+	);
+
 	return (
 		<TableCard
 			block={ block }
@@ -2013,6 +2283,18 @@ function A11yPagesTable( { block, runId = '' } ) {
 			pageIndex={ list.pageIndex }
 			pending={ list.pending }
 			rowCount={ visible.length }
+			selectItems={ selection ? selectItems : null }
+			onSelectToggle={
+				selection
+					? ( key, checked ) =>
+							selection.toggle(
+								'a11y',
+								selectItems,
+								key,
+								checked
+							)
+					: undefined
+			}
 			pager={
 				<TablePager
 					pageIndex={ list.pageIndex }
@@ -2034,6 +2316,9 @@ function A11yPagesTable( { block, runId = '' } ) {
 					<tr
 						key={ item.row.id || item.index }
 						data-page-url={ page.url || undefined }
+						data-select-key={
+							item.row.id || page.url || String( item.index )
+						}
 					>
 						{ columns.map( ( column ) => (
 							<td
@@ -2118,24 +2403,6 @@ function A11yPagesTable( { block, runId = '' } ) {
 	);
 }
 
-function gapNumber( text ) {
-	const match = String( text || '' ).match( /-?\d+(?:\.\d+)?/ );
-	if ( ! match || text === '-' ) {
-		return null;
-	}
-	const value = Number( match[ 0 ] );
-	return Number.isFinite( value ) ? value : null;
-}
-
-function renderedWordCount( text ) {
-	const parts = String( text || '' ).split( '/' );
-	if ( parts.length < 2 ) {
-		return null;
-	}
-	const value = Number( parts[ 1 ].trim() );
-	return Number.isFinite( value ) ? value : null;
-}
-
 function aiPageOf( block, row ) {
 	const urlCell = columnCell( block, row, 'url' ) || {};
 	const scoreCell = columnCell( block, row, 'score' ) || {};
@@ -2171,68 +2438,22 @@ function aiPageOf( block, row ) {
 }
 
 function AiPagesTable( { block, runId = '' } ) {
-	const list = useReportTable( block, 'ai', 'pages', runId );
+	const [ sort, setSort ] = useState( { key: 'issues', dir: 'desc' } );
+	const list = useReportTable( block, 'ai', 'pages', runId, sort );
 	const listRef = useRef( list );
 	listRef.current = list;
 	const columns = list.columns;
 	const rows = list.rows;
 	const query = list.query;
-	const [ sort, setSort ] = useState( { key: 'issues', dir: 'desc' } );
 	const [ expanded, setExpanded ] = useState( () =>
 		readExpanded( AI_PAGE_HEIGHT_KEY )
 	);
 	const [ pendingUrl, setPendingUrl ] = useState( '' );
-	const prepared = rows.map( ( row, index ) => ( {
+	const visible = rows.map( ( row, index ) => ( {
 		row,
 		index,
 		page: aiPageOf( list.source, row ),
 	} ) );
-	const dir = sort.dir === 'asc' ? 1 : -1;
-	const visible = [ ...prepared ].sort( ( left, right ) => {
-		let primary = 0;
-		if ( sort.key === 'url' ) {
-			primary = String( left.page.path || '' ).localeCompare(
-				String( right.page.path || '' ),
-				undefined,
-				{ sensitivity: 'base' }
-			);
-		} else if ( sort.key === 'gap' ) {
-			primary = compareNumber(
-				gapNumber( left.page.gap && left.page.gap.text ),
-				gapNumber( right.page.gap && right.page.gap.text )
-			);
-		} else if ( sort.key === 'words' ) {
-			primary = compareNumber(
-				renderedWordCount( left.page.words && left.page.words.text ),
-				renderedWordCount( right.page.words && right.page.words.text )
-			);
-		} else if ( sort.key === 'aiMeta' ) {
-			const meta = ( page ) => {
-				const text = ( page.meta && page.meta.text ) || '';
-				return text === '-' ? '' : text;
-			};
-			primary = meta( left.page ).localeCompare(
-				meta( right.page ),
-				undefined,
-				{ sensitivity: 'base' }
-			);
-		} else if ( sort.key === 'issues' ) {
-			const count = ( page ) =>
-				page.error ? Number.MAX_SAFE_INTEGER : page.issueCount;
-			primary = compareNumber( count( left.page ), count( right.page ) );
-		} else {
-			primary = compareNumber(
-				scoreNumber( left.page ),
-				scoreNumber( right.page )
-			);
-		}
-		if ( primary !== 0 ) {
-			return primary * dir;
-		}
-		return String( left.page.path || '' ).localeCompare(
-			String( right.page.path || '' )
-		);
-	} );
 
 	useEffect( () => {
 		function onFocus( event ) {
@@ -2278,6 +2499,14 @@ function AiPagesTable( { block, runId = '' } ) {
 		} );
 	}
 
+	const selection = usePageSelection();
+	const selectItems = pageSelectItems(
+		'ai',
+		visible,
+		list.pending,
+		selection
+	);
+
 	return (
 		<TableCard
 			block={ block }
@@ -2293,6 +2522,13 @@ function AiPagesTable( { block, runId = '' } ) {
 			pageIndex={ list.pageIndex }
 			pending={ list.pending }
 			rowCount={ visible.length }
+			selectItems={ selection ? selectItems : null }
+			onSelectToggle={
+				selection
+					? ( key, checked ) =>
+							selection.toggle( 'ai', selectItems, key, checked )
+					: undefined
+			}
 			pager={
 				<TablePager
 					pageIndex={ list.pageIndex }
@@ -2317,6 +2553,9 @@ function AiPagesTable( { block, runId = '' } ) {
 					<tr
 						key={ item.row.id || item.index }
 						data-page-url={ page.url || undefined }
+						data-select-key={
+							item.row.id || page.url || String( item.index )
+						}
 					>
 						{ columns.map( ( column ) => (
 							<td

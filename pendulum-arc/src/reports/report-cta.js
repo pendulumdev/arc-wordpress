@@ -2,35 +2,102 @@
  * WordPress dependencies
  */
 import { useState } from '@wordpress/element';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
+import { errorMessage, recrawlPages } from '../api';
 import { GenerateReports } from './generate-menu';
+import { usePageSelection } from './page-selection';
 import { ArcButton } from '../ui/button';
+import { ErrorAlert } from '../ui/error-alert';
 import { Icon } from '../ui/icon';
+
+const CRAWL_SERVICES = [ 'seo', 'a11y', 'ai' ];
+
+function RecrawlSpinner() {
+	return (
+		<span className="arc-generate__spin">
+			<Icon size={ 16 } strokeWidth={ 2.25 }>
+				<path d="M21 12a9 9 0 1 1-6.219-8.56" />
+			</Icon>
+		</span>
+	);
+}
 
 /**
  * Permanent dashboard notice. Idle until a run is queued or running.
  *
- * @param {Object}     props
- * @param {string}     [props.connectUrl] WordPress Connect settings page.
- * @param {boolean}    [props.complete]   Every service already has a report.
- * @param {() => void} [props.onSettled]  Called when a service leaves in-flight.
+ * @param {Object}                                     props
+ * @param {string}                                     [props.connectUrl]  WordPress Connect settings page.
+ * @param {boolean}                                    [props.complete]    Every service already has a report.
+ * @param {() => void}                                 [props.onSettled]   Called when a service leaves in-flight.
+ * @param {(activity: Object<string, string>) => void} [props.onBusy]      Per-service queued or running.
+ * @param {string}                                     [props.service]     Open report.
+ * @param {string|null}                                [props.generation]  queued or running for that report.
+ * @param {() => void}                                 [props.onRecrawled] Called after a recrawl is accepted.
  */
 export function GenerationNotice( {
 	connectUrl,
 	complete = false,
 	onSettled,
+	onBusy,
+	service = '',
+	generation = null,
+	onRecrawled,
 } ) {
+	const selection = usePageSelection();
 	const [ active, setActive ] = useState( false );
+	const [ submitting, setSubmitting ] = useState( false );
+	const [ pending, setPending ] = useState( false );
+	const [ error, setError ] = useState( null );
+	const crawl = CRAWL_SERVICES.includes( service );
+	const urls = crawl && selection ? selection.urlsFor( service ) : [];
+	const count = urls.length;
+	const held =
+		generation === 'queued' ||
+		generation === 'running' ||
+		submitting ||
+		pending;
 	let message = __( 'Reports need generating.', 'pendulum-arc' );
 	if ( active ) {
 		message = __( 'Reports are currently generating.', 'pendulum-arc' );
 	} else if ( complete ) {
 		message = __( 'View your latest data below.', 'pendulum-arc' );
 	}
+
+	function recrawl() {
+		if ( ! crawl || count < 1 || held ) {
+			return;
+		}
+		setPending( true );
+		setError( null );
+		recrawlPages( service, urls )
+			.then( () => {
+				if ( selection ) {
+					selection.clear( service );
+				}
+				if ( onRecrawled ) {
+					onRecrawled();
+				}
+			} )
+			.catch( ( failure ) => {
+				setError(
+					errorMessage(
+						failure,
+						__(
+							'Those pages could not be recrawled.',
+							'pendulum-arc'
+						)
+					)
+				);
+			} )
+			.finally( () => {
+				setPending( false );
+			} );
+	}
+
 	return (
 		<div className="arc-report-alert arc-report-alert--info" role="status">
 			<p>
@@ -41,11 +108,39 @@ export function GenerationNotice( {
 				</Icon>
 				<span>{ message }</span>
 			</p>
-			<GenerateReports
-				onActivity={ setActive }
-				onSettled={ onSettled }
-				connectUrl={ connectUrl }
-			/>
+			<div className="arc-report-alert__actions">
+				{ count > 0 ? (
+					<ArcButton
+						variant="primary"
+						busy={ pending }
+						disabled={ held }
+						icon={ pending ? <RecrawlSpinner /> : undefined }
+						title={ __(
+							'Recrawl the selected pages',
+							'pendulum-arc'
+						) }
+						onClick={ recrawl }
+					>
+						{ sprintf(
+							/* translators: %d: number of selected pages */
+							__( 'Recrawl %d', 'pendulum-arc' ),
+							count
+						) }
+					</ArcButton>
+				) : null }
+				<GenerateReports
+					onActivity={ setActive }
+					onSettled={ onSettled }
+					onBusy={ onBusy }
+					onSubmitting={ setSubmitting }
+					connectUrl={ connectUrl }
+				/>
+			</div>
+			{ error ? (
+				<div className="arc-report-alert__error">
+					<ErrorAlert message={ error } connectUrl={ connectUrl } />
+				</div>
+			) : null }
 		</div>
 	);
 }

@@ -248,6 +248,33 @@ final class Rest_Controller {
 						'type'    => 'string',
 						'default' => '',
 					),
+					'sort'     => array(
+						'type'    => 'string',
+						'default' => '',
+					),
+					'dir'      => array(
+						'type'    => 'string',
+						'default' => '',
+					),
+				),
+			)
+		);
+
+		register_rest_route(
+			'pendulum-arc/v1',
+			'/reports/(?P<service>seo|a11y|ai)/recrawl',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'recrawl_pages' ),
+				'permission_callback' => array( $this, 'can_manage' ),
+				'args'                => array(
+					'urls' => array(
+						'type'     => 'array',
+						'required' => true,
+						'items'    => array(
+							'type' => 'string',
+						),
+					),
 				),
 			)
 		);
@@ -545,6 +572,8 @@ final class Rest_Controller {
 				max( 0, (int) $request->get_param( 'page' ) ),
 				(string) $request->get_param( 'q' ),
 				(string) $request->get_param( 'viewport' ),
+				(string) $request->get_param( 'sort' ),
+				(string) $request->get_param( 'dir' ),
 				(string) $request->get_param( 'run' )
 			)
 		);
@@ -603,6 +632,24 @@ final class Rest_Controller {
 	 */
 	public function runs() {
 		return rest_ensure_response( $this->connect->runs() );
+	}
+
+	/**
+	 * Recrawls the selected pages on the open SEO, accessibility, or AI report.
+	 *
+	 * @param \WP_REST_Request $request Request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function recrawl_pages( \WP_REST_Request $request ) {
+		return $this->respond(
+			function () use ( $request ) {
+				$urls = $request->get_param( 'urls' );
+				return $this->connect->recrawl_pages(
+					(string) $request->get_param( 'service' ),
+					is_array( $urls ) ? $urls : array()
+				);
+			}
+		);
 	}
 
 	/**

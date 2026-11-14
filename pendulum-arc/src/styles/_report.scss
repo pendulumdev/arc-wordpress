@@ -512,6 +512,14 @@
 	margin-bottom: 0;
 }
 
+/* Stay below the WordPress toolbar, with a gap so the bar does not
+   sit against it. The toolbar is 32px, or 46px under 782px. */
+.pendulum-arc-screen > .arc-report-alert--info {
+	position: sticky;
+	top: calc(var(--wp-admin--admin-bar--height, 32px) + 1rem);
+	z-index: 20;
+}
+
 .arc-report-alert--error .arc-generate svg {
 	margin-top: 0;
 	color: inherit;
@@ -1919,6 +1927,68 @@
 	color: var(--arc-button-secondary-fg);
 }
 
+.arc-report-alert__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.arc-report-alert__error {
+	flex: 1 0 100%;
+}
+
+.arc-report-alert__error .arc-report-alert {
+	width: 100%;
+}
+
+.arc-report-block[data-selectable='true'] {
+	position: relative;
+	overflow: visible;
+}
+
+.arc-table-card__frame {
+	position: relative;
+}
+
+.arc-select-rail {
+	position: absolute;
+	z-index: 2;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.arc-select-tab {
+	position: absolute;
+	top: 0;
+	right: 0;
+	pointer-events: auto;
+}
+
+.arc-select-tab__box {
+	display: flex;
+	align-items: center;
+	padding: 0.125rem 0.2rem;
+	border: 1px solid var(--arc-border-subtle);
+	border-right: 0;
+	border-radius: var(--arc-radius-tiny) 0 0 var(--arc-radius-tiny);
+	background: var(--arc-report-glass);
+}
+
+.arc-select-tab__box input {
+	width: 1rem;
+	height: 1rem;
+	margin: 0;
+}
+
+.arc-select-tab__box:has(input:disabled) {
+	opacity: 0.5;
+}
+
+.arc-select-tab__box:has(input:checked) {
+	background: color-mix(in srgb, var(--arc-bg-tertiary) 40%, var(--arc-report-glass));
+}
+
 .arc-table-card__scroll {
 	position: relative;
 	overflow-x: auto;
@@ -3201,6 +3271,60 @@
 .arc-keyphrase[data-rank="secondary"] {
 	background: color-mix(in srgb, var(--arc-fg-tertiary) 15%, transparent);
 	color: var(--arc-fg-tertiary);
+}
+
+.arc-keyphrase[data-rank="none"] {
+	background: color-mix(in srgb, var(--arc-accent-red) 15%, transparent);
+	color: var(--arc-accent-red);
+}
+
+.arc-presence {
+	display: inline-flex;
+	color: var(--arc-accent-red);
+}
+
+.arc-presence[data-present="true"] {
+	color: var(--arc-accent-emerald);
+}
+
+.arc-keyphrase-score {
+	display: inline-flex;
+	align-items: stretch;
+	gap: 0.375rem;
+}
+
+.arc-rating-segs {
+	display: inline-flex;
+	overflow: hidden;
+	border-radius: var(--arc-radius-tiny);
+	background: var(--arc-bg-secondary);
+	font-size: 12px;
+	font-weight: 900;
+	line-height: 1;
+	font-variant-numeric: tabular-nums;
+}
+
+.arc-rating-segs span {
+	display: inline-flex;
+	min-width: 1.75rem;
+	align-items: center;
+	justify-content: center;
+	padding: 0.25rem 0.5rem;
+}
+
+.arc-rating-segs span[data-tone="green"] {
+	background: color-mix(in srgb, var(--arc-accent-lime) 15%, transparent);
+	color: var(--arc-accent-lime);
+}
+
+.arc-rating-segs span[data-tone="orange"] {
+	background: color-mix(in srgb, var(--arc-accent-amber) 15%, transparent);
+	color: var(--arc-accent-amber);
+}
+
+.arc-rating-segs span[data-tone="red"] {
+	background: color-mix(in srgb, var(--arc-accent-red) 15%, transparent);
+	color: var(--arc-accent-red);
 }
 
 .arc-preview-card__site,

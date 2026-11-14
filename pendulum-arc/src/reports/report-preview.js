@@ -830,8 +830,8 @@ function SecurityPanelBar( {
 				<StrokeMark name={ icon } />
 			</span>
 			<h3>{ heading }</h3>
-			{ after }
 			{ tip ? <InfoTip title={ heading } body={ tip } /> : null }
+			{ after }
 			{ end ? (
 				<span className="arc-security-panel__end">{ end }</span>
 			) : null }
@@ -1899,10 +1899,10 @@ function AgentTableBar( { heading, count, tip, filters, end } ) {
 	return (
 		<div className="arc-agents-toolbar">
 			<span className="arc-agents-toolbar__label">{ heading }</span>
+			{ tip ? <InfoTip title={ heading } body={ tip } /> : null }
 			<span className="arc-pill" data-accent="muted" data-size="xs">
 				<span className="arc-pill__label">{ count }</span>
 			</span>
-			{ tip ? <InfoTip title={ heading } body={ tip } /> : null }
 			{ filters }
 			{ end ? (
 				<span className="arc-agents-toolbar__end">{ end }</span>

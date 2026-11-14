@@ -123,12 +123,20 @@ function Spinner() {
  * Portal Generate bloom: confirm, then queue one service or every idle one.
  * Runs are read on load, then once a minute while any service is in flight.
  *
- * @param {Object}     props
- * @param {() => void} [props.onActivity] Called when any service is queued or running.
- * @param {() => void} [props.onSettled]  Called when a service leaves in-flight.
- * @param {string}     [props.connectUrl] WordPress Connect settings page.
+ * @param {Object}                                     props
+ * @param {() => void}                                 [props.onActivity]   Called when any service is queued or running.
+ * @param {() => void}                                 [props.onSettled]    Called when a service leaves in-flight.
+ * @param {(activity: Object<string, string>) => void} [props.onBusy]       Per-service queued or running.
+ * @param {(submitting: boolean) => void}              [props.onSubmitting] True while a Run request is in flight.
+ * @param {string}                                     [props.connectUrl]   WordPress Connect settings page.
  */
-export function GenerateReports( { onActivity, onSettled, connectUrl } ) {
+export function GenerateReports( {
+	onActivity,
+	onSettled,
+	onBusy,
+	onSubmitting,
+	connectUrl,
+} ) {
 	const [ open, setOpen ] = useState( false );
 	const [ confirm, setConfirm ] = useState( null );
 	const [ busy, setBusy ] = useState( {} );
@@ -231,6 +239,29 @@ export function GenerateReports( { onActivity, onSettled, connectUrl } ) {
 			onActivity( anyBusy || submitting );
 		}
 	}, [ anyBusy, submitting, onActivity ] );
+
+	useEffect( () => {
+		if ( ! onBusy ) {
+			return;
+		}
+		const next = {};
+		for ( const service of SERVICES ) {
+			const status = busyStatus(
+				busy[ service.key ],
+				pending === service.key || pendingAll
+			);
+			if ( status ) {
+				next[ service.key ] = status;
+			}
+		}
+		onBusy( next );
+	}, [ busy, pending, pendingAll, onBusy ] );
+
+	useEffect( () => {
+		if ( onSubmitting ) {
+			onSubmitting( submitting );
+		}
+	}, [ submitting, onSubmitting ] );
 
 	useEffect( () => {
 		if ( ! open ) {

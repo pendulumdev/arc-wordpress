@@ -73,7 +73,7 @@ final class PairingTest extends TestCase {
 				$seo = $row;
 			}
 		}
-		self::assertSame( 82, $seo['score'] );
+		self::assertSame( 82.0, $seo['score'] );
 		self::assertSame( 'Good', $seo['band'] );
 		self::assertSame( 0, $seo['issueCount'] );
 		self::assertSame( 0, $seo['manualCount'] );
@@ -89,6 +89,26 @@ final class PairingTest extends TestCase {
 		self::assertNull( $brand['score'] );
 		self::assertSame( 0, $brand['issueCount'] );
 		self::assertNull( $brand['setup'] );
+	}
+
+	public function test_scores_keep_a_tenth(): void {
+		$scores = Pairing::scores(
+			array(
+				'scores' => array(
+					array(
+						'service' => 'seo',
+						'score'   => 63.4,
+					),
+				),
+			)
+		);
+		$seo = null;
+		foreach ( $scores as $row ) {
+			if ( 'seo' === $row['service'] ) {
+				$seo = $row;
+			}
+		}
+		self::assertSame( 63.4, $seo['score'] );
 	}
 
 	public function test_scores_keep_an_analytics_google_gap(): void {
@@ -286,8 +306,15 @@ final class PairingTest extends TestCase {
 									'path'            => '/about',
 									'url'             => 'javascript:alert(1)',
 									'viewport'        => 'desktop',
-									'keyphrases'      => array( 'widgets', '<b>sale</b>' ),
-									'keyphraseScore'  => '70',
+									'keyphrases'       => array( 'widgets', '<b>sale</b>' ),
+									'keyphraseScore'   => '70',
+									'hasTitle'         => true,
+									'hasDescription'   => false,
+									'keyphraseRatings' => array(
+										'green'  => 1,
+										'orange' => 2,
+										'red'    => 0,
+									),
 									'score'           => '88',
 									'siteName'        => 'Example',
 									'brokenLinkCount' => 0,
@@ -409,6 +436,16 @@ final class PairingTest extends TestCase {
 		self::assertSame( 'About', $view['blocks'][0]['rows'][0]['page']['title'] );
 		self::assertSame( '', $view['blocks'][0]['rows'][0]['page']['url'] );
 		self::assertSame( array( 'widgets', 'sale' ), $view['blocks'][0]['rows'][0]['page']['keyphrases'] );
+		self::assertTrue( $view['blocks'][0]['rows'][0]['page']['hasTitle'] );
+		self::assertFalse( $view['blocks'][0]['rows'][0]['page']['hasDescription'] );
+		self::assertSame(
+			array(
+				'green'  => 1,
+				'orange' => 2,
+				'red'    => 0,
+			),
+			$view['blocks'][0]['rows'][0]['page']['keyphraseRatings']
+		);
 		self::assertArrayNotHasKey( 'social', $view['blocks'][0]['rows'][0] );
 		self::assertSame( 'contact', $view['blocks'][0]['rows'][0]['form']['label'] );
 		self::assertSame( 'sitewide', $view['blocks'][0]['rows'][0]['form']['presence'] );
@@ -585,6 +622,35 @@ final class PairingTest extends TestCase {
 				),
 			),
 			$parsed['runs']
+		);
+	}
+
+	public function test_recrawl_keeps_http_urls_and_drops_the_rest(): void {
+		$parsed = Pairing::recrawled_pages(
+			array(
+				'runId'         => 'run_seo',
+				'siteId'        => 'site_abc',
+				'service'       => 'seo',
+				'reservedPages' => 2,
+				'urls'          => array(
+					'https://example.com/about',
+					'javascript:alert(1)',
+					'https://example.com/about',
+					'https://example.com/contact',
+				),
+			)
+		);
+		self::assertSame(
+			array(
+				'runId'         => 'run_seo',
+				'service'       => 'seo',
+				'reservedPages' => 2,
+				'urls'          => array(
+					'https://example.com/about',
+					'https://example.com/contact',
+				),
+			),
+			$parsed
 		);
 	}
 

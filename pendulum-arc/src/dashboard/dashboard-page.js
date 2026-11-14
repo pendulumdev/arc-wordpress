@@ -16,18 +16,57 @@ import {
 import { useGoogleConnect } from '../google/use-google-connect';
 import { SiteScoreSummary, useSiteScores } from '../meta';
 import { GenerationNotice } from '../reports/report-cta';
+import { PageSelectionProvider } from '../reports/page-selection';
 import { reportsAreComplete } from '../reports/reports-ready';
 import { ReportSummary } from '../reports/report-summary';
 import { isSiteMissingError } from '../ui/error-alert';
 import { OpenInArc } from '../ui/open-in-arc';
 
 export function DashboardPage( { bootstrap } ) {
+	return (
+		<PageSelectionProvider>
+			<DashboardScreen bootstrap={ bootstrap } />
+		</PageSelectionProvider>
+	);
+}
+
+function DashboardScreen( { bootstrap } ) {
 	const { scores: scoreRows, error, loading, reload } = useSiteScores();
 	const connection = bootstrap.connection || {};
 	const portalUrl = connection.portalUrl || bootstrap.urls.portal;
 	const [ service, setService ] = useState( 'analytics' );
 	const [ refreshKey, setRefreshKey ] = useState( 0 );
+	const [ activity, setActivity ] = useState( {} );
+	const [ reportActivity, setReportActivity ] = useState( null );
 	const google = useGoogleConnect();
+	const onGeneration = useCallback( ( key, status ) => {
+		setReportActivity( ( current ) => {
+			const next =
+				status === 'queued' || status === 'running'
+					? { service: key, status }
+					: null;
+			if ( ! current && ! next ) {
+				return current;
+			}
+			if (
+				current &&
+				next &&
+				current.service === next.service &&
+				current.status === next.status
+			) {
+				return current;
+			}
+			return next;
+		} );
+	}, [] );
+	const cardActivity = { ...activity };
+	if ( reportActivity ) {
+		cardActivity[ reportActivity.service ] = reportActivity.status;
+	}
+	const openGeneration =
+		reportActivity && reportActivity.service === service
+			? reportActivity.status
+			: activity[ service ] || null;
 	const onSettled = useCallback( () => {
 		reload();
 		setRefreshKey( ( current ) => current + 1 );
@@ -56,6 +95,10 @@ export function DashboardPage( { bootstrap } ) {
 					connectUrl={ bootstrap.urls.connect }
 					complete={ ! loading && reportsAreComplete( scoreRows ) }
 					onSettled={ onSettled }
+					onBusy={ setActivity }
+					service={ service }
+					generation={ openGeneration }
+					onRecrawled={ onSettled }
 				/>
 			) }
 			<SiteScoreSummary
@@ -66,6 +109,7 @@ export function DashboardPage( { bootstrap } ) {
 				portalUrl={ portalUrl }
 				onGoogleConnect={ google.start }
 				googlePending={ google.pending }
+				activity={ cardActivity }
 				selected={ service }
 				onSelect={ setService }
 			/>
@@ -75,6 +119,8 @@ export function DashboardPage( { bootstrap } ) {
 				service={ service }
 				onService={ setService }
 				refreshKey={ refreshKey }
+				onGeneration={ onGeneration }
+				onSettled={ onSettled }
 			/>
 		</div>
 	);

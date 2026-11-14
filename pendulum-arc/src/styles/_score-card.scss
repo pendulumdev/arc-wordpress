@@ -136,9 +136,22 @@ button.arc-score-card {
 	min-height: 2rem;
 	max-height: 2rem;
 	margin: 0;
-	padding: 0 1rem;
+	padding: 0 0.75rem 0 1rem;
 	background: color-mix(in srgb, var(--arc-score-accent) 22%, transparent);
 	color: var(--arc-score-accent);
+}
+
+.arc-score-card__spin {
+	display: inline-flex;
+	flex: 0 0 auto;
+	margin-left: auto;
+	animation: arc-score-spin 0.7s linear infinite;
+}
+
+@keyframes arc-score-spin {
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .arc-score-card__title svg {
@@ -160,9 +173,8 @@ button.arc-score-card {
 
 .arc-score-card__body {
 	position: relative;
-	flex: 1;
-	min-height: 0;
-	overflow: hidden;
+	flex: 1 1 auto;
+	min-height: 8.5rem;
 }
 
 .arc-score-card__hue {
@@ -187,13 +199,11 @@ button.arc-score-card {
 .arc-score-card__content {
 	position: relative;
 	z-index: 1;
-	height: 100%;
-	padding: 0.75rem 1.25rem;
+	padding: 0.75rem 1.25rem 2rem;
 }
 
 .arc-score-card[data-state="score"] .arc-score-card__content {
 	padding-right: 4.5rem;
-	padding-bottom: 1.75rem;
 }
 
 .arc-score-card[data-state="visitors"] .arc-score-card__content {
@@ -278,6 +288,10 @@ button.arc-score-card {
 	font-variant-numeric: tabular-nums;
 }
 
+.arc-score-card__value[data-empty="true"] {
+	color: var(--arc-fg-tertiary);
+}
+
 .arc-score-card__hint {
 	margin: 0;
 	min-height: 1rem;
@@ -357,8 +371,8 @@ button.arc-score-card {
 }
 
 .arc-score-card__keyphrase {
-	margin-top: 0.25rem;
-	min-height: 2.25rem;
+	margin-top: 0.35rem;
+	min-height: 2.75rem;
 }
 
 .arc-score-card__keyphrase-value {
@@ -372,6 +386,10 @@ button.arc-score-card {
 	letter-spacing: -0.025em;
 	line-height: 1.1;
 	font-variant-numeric: tabular-nums;
+}
+
+.arc-score-card__keyphrase-value[data-empty="true"] {
+	color: var(--arc-fg-tertiary);
 }
 
 .arc-score-card__keyphrase[data-mood="great"] {

@@ -262,6 +262,16 @@ function KeyMark() {
 	);
 }
 
+function CardSpinner() {
+	return (
+		<span className="arc-score-card__spin" aria-hidden="true">
+			<Icon size={ 14 } strokeWidth={ 2.25 }>
+				<path d="M21 12a9 9 0 1 1-6.219-8.56" />
+			</Icon>
+		</span>
+	);
+}
+
 function IssuePill( { issueCount, manualCount, severity } ) {
 	const issues = Number( issueCount ) || 0;
 	const manual = Number( manualCount ) || 0;
@@ -304,8 +314,10 @@ function IssuePill( { issueCount, manualCount, severity } ) {
 
 /**
  * One service card. `empty` is no report. `score` shows the number, band,
- * issue pill, and the SEO keyphrase when Arc sent one. The keyphrase row is
- * reserved on every card so the faces stay one height.
+ * issue pill, and the SEO keyphrase when Arc sent one. A missing page score
+ * is a dash, so the keyphrase can show on its own. The keyphrase row is
+ * reserved on every card so the faces stay one height. `pending` blanks the
+ * numbers while that service is queued or running.
  *
  * @param {Object}                                                                   props
  * @param {string}                                                                   props.service
@@ -317,11 +329,12 @@ function IssuePill( { issueCount, manualCount, severity } ) {
  * @param {string|null}                                                              [props.mood]
  * @param {Object|null}                                                              [props.visitors]
  * @param {{issueCount?: number, manualCount?: number, severity?: string|null}|null} [props.issues]
- * @param {{score?: number|null, band?: string|null}|null}                           [props.keyphrase]
+ * @param {{score?: number|null, band?: string|null, placeholder?: boolean}|null}    [props.keyphrase]
  * @param {'connect_google'|'assign_site'|'not_enabled'|null}                        [props.setup]
  * @param {string}                                                                   [props.actionHref]
  * @param {() => void}                                                               [props.onAction]
  * @param {boolean}                                                                  [props.actionPending]
+ * @param {boolean}                                                                  [props.pending]
  * @param {boolean}                                                                  [props.selected]
  * @param {(service: string) => void}                                                [props.onSelect]
  */
@@ -340,6 +353,7 @@ export function ScoreCard( {
 	actionHref = '',
 	onAction,
 	actionPending = false,
+	pending = false,
 	selected = false,
 	onSelect,
 } ) {
@@ -350,9 +364,10 @@ export function ScoreCard( {
 		poor: __( 'Critical gaps', 'pendulum-arc' ),
 		bad: __( 'Critical gaps', 'pendulum-arc' ),
 	}[ mood ];
+	const blank = state === 'loading' || pending;
 	let hint = __( 'No report yet', 'pendulum-arc' );
 	let actionLabel = '';
-	if ( state === 'loading' ) {
+	if ( blank ) {
 		hint = __( 'Loading scores…', 'pendulum-arc' );
 	} else if ( state === 'setup' && setup === 'connect_google' ) {
 		hint = __( 'No Google connection', 'pendulum-arc' );
@@ -377,9 +392,23 @@ export function ScoreCard( {
 			? keyphrase.score
 			: null;
 	const keyphraseMood =
-		keyphraseScore === null ? null : scoreMood( keyphraseScore );
+		! blank && keyphraseScore !== null ? scoreMood( keyphraseScore ) : null;
+	const showKeyphraseDash = Boolean(
+		keyphrase && keyphrase.placeholder && blank
+	);
+	const showScoreNumber =
+		state === 'score' && ! blank && score !== null && score !== undefined;
+	const showScoreDash =
+		blank ||
+		( state === 'score' && ( score === null || score === undefined ) );
 	const interactive = Boolean( onSelect ) && state !== 'setup';
 	const Tag = interactive ? 'button' : 'article';
+	let dataState = 'empty';
+	if ( state === 'visitors' || state === 'setup' ) {
+		dataState = state;
+	} else if ( state === 'score' || state === 'loading' ) {
+		dataState = 'score';
+	}
 
 	return (
 		<Tag
@@ -387,13 +416,11 @@ export function ScoreCard( {
 			type={ interactive ? 'button' : undefined }
 			data-service={ service }
 			data-accent={ accent }
-			data-state={
-				state === 'score' || state === 'visitors' || state === 'setup'
-					? state
-					: 'empty'
-			}
-			data-mood={ mood || undefined }
+			data-state={ dataState }
+			data-mood={ ! blank && mood ? mood : undefined }
+			data-pending={ blank ? 'true' : undefined }
 			data-selected={ selected ? 'true' : undefined }
+			aria-busy={ blank ? 'true' : undefined }
 			aria-pressed={ interactive ? selected : undefined }
 			onClick={ interactive ? () => onSelect( service ) : undefined }
 		>
@@ -401,10 +428,11 @@ export function ScoreCard( {
 				<div className="arc-score-card__title">
 					<ServiceMark service={ service } />
 					<span className="arc-score-card__name">{ label }</span>
+					{ blank ? <CardSpinner /> : null }
 				</div>
 				<div className="arc-score-card__body">
 					<span className="arc-score-card__hue" aria-hidden="true" />
-					{ state === 'score' && mood ? (
+					{ state === 'score' && ! blank && mood ? (
 						<span className="arc-score-card__mood">
 							<MoodMark mood={ mood } />
 						</span>
@@ -412,7 +440,9 @@ export function ScoreCard( {
 					<div className="arc-score-card__content">
 						{ state === 'visitors' && visitors ? (
 							<>
-								<Sparkline values={ visitors.series } />
+								{ blank ? null : (
+									<Sparkline values={ visitors.series } />
+								) }
 								<div className="arc-score-card__visitors">
 									{ [
 										{
@@ -432,16 +462,27 @@ export function ScoreCard( {
 												visitors.previousReturningUsers,
 										},
 									].map( ( item ) => {
-										const delta = visitorDelta(
-											item.value,
-											item.previous
-										);
+										const delta = blank
+											? null
+											: visitorDelta(
+													item.value,
+													item.previous
+												);
 										return (
 											<div key={ item.key }>
-												<p className="arc-score-card__value">
-													{ formatVisitorCount(
-														item.value
-													) }
+												<p
+													className="arc-score-card__value"
+													data-empty={
+														blank
+															? 'true'
+															: undefined
+													}
+												>
+													{ blank
+														? '-'
+														: formatVisitorCount(
+																item.value
+															) }
 												</p>
 												<p className="arc-score-card__hint">
 													<span>{ item.label }</span>
@@ -462,14 +503,20 @@ export function ScoreCard( {
 								</div>
 							</>
 						) : null }
-						{ state === 'score' &&
-						score !== null &&
-						score !== undefined ? (
+						{ showScoreNumber ? (
 							<p className="arc-score-card__value">
 								{ formatScore( score ) }
 							</p>
 						) : null }
-						{ state === 'visitors' ? null : (
+						{ showScoreDash && state !== 'visitors' ? (
+							<p
+								className="arc-score-card__value"
+								data-empty="true"
+							>
+								-
+							</p>
+						) : null }
+						{ state === 'visitors' && ! blank ? null : (
 							<p className="arc-score-card__hint">{ hint }</p>
 						) }
 						{ state === 'setup' && onAction && actionLabel ? (
@@ -500,10 +547,21 @@ export function ScoreCard( {
 								className="arc-score-card__keyphrase"
 								data-mood={ keyphraseMood || undefined }
 								aria-hidden={
-									keyphraseScore === null ? true : undefined
+									showKeyphraseDash || keyphraseScore !== null
+										? undefined
+										: true
 								}
 							>
-								{ keyphraseScore !== null ? (
+								{ showKeyphraseDash ? (
+									<p
+										className="arc-score-card__keyphrase-value"
+										data-empty="true"
+									>
+										-
+										<KeyMark />
+									</p>
+								) : null }
+								{ keyphraseScore !== null && ! blank ? (
 									<>
 										<p className="arc-score-card__keyphrase-value">
 											{ formatScore( keyphraseScore ) }

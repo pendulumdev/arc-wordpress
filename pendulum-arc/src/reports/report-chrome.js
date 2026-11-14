@@ -565,7 +565,13 @@ export function compareNumber( left, right ) {
  * @param {string} key
  */
 export function defaultDirForSortKey( key ) {
-	if ( key === 'url' ) {
+	if (
+		key === 'url' ||
+		key === 'theme' ||
+		key === 'title' ||
+		key === 'description' ||
+		key === 'keyphrase'
+	) {
 		return 'asc';
 	}
 	return 'desc';

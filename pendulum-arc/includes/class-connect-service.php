@@ -448,10 +448,12 @@ final class Connect_Service {
 	 * @param int    $page     0-based window.
 	 * @param string $query    Search.
 	 * @param string $viewport Exact accessibility viewport.
+	 * @param string $sort     Page-analysis sort key.
+	 * @param string $dir      asc or desc.
 	 * @param string $run_id   Run id, used to store accessibility screenshots.
 	 * @return array<string, mixed>
 	 */
-	public function report_table( string $service, string $table, int $page, string $query, string $viewport, string $run_id ): array {
+	public function report_table( string $service, string $table, int $page, string $query, string $viewport, string $sort, string $dir, string $run_id ): array {
 		$pages = in_array( $service, array( 'seo', 'a11y', 'ai' ), true ) && 'pages' === $table;
 		$seo   = 'seo' === $service && in_array( $table, array( 'socials', 'forms' ), true );
 		if ( ! $pages && ! $seo ) {
@@ -468,7 +470,7 @@ final class Connect_Service {
 		try {
 			$payload = $this->bearer_call(
 				$creds,
-				function ( string $token ) use ( $creds, $service, $table, $page, $query, $viewport ) {
+				function ( string $token ) use ( $creds, $service, $table, $page, $query, $viewport, $sort, $dir ) {
 					return $this->client->report_table(
 						(string) $creds['env'],
 						$token,
@@ -477,7 +479,9 @@ final class Connect_Service {
 						$table,
 						$page,
 						$query,
-						$viewport
+						$viewport,
+						$sort,
+						$dir
 					);
 				}
 			);
@@ -831,6 +835,50 @@ final class Connect_Service {
 			throw $error;
 		}
 		return Pairing::enqueued_run( $payload );
+	}
+
+	/**
+	 * Recrawls selected pages on the latest SEO, accessibility, or AI report.
+	 *
+	 * @param string             $service seo, a11y, or ai.
+	 * @param array<int, string> $urls    Page URLs.
+	 * @return array{runId: string, service: string, reservedPages: int, urls: array<int, string>}
+	 */
+	public function recrawl_pages( string $service, array $urls ): array {
+		if ( ! in_array( $service, array( 'seo', 'a11y', 'ai' ), true ) ) {
+			throw new Arc_Api_Exception( __( 'That report is not available.', 'pendulum-arc' ), 400 );
+		}
+		$creds = $this->store->credentials();
+		if ( null === $creds ) {
+			throw new Arc_Api_Exception( __( 'Connect this site to Arc first.', 'pendulum-arc' ), 401 );
+		}
+		try {
+			$payload = $this->bearer_call(
+				$creds,
+				function ( string $token ) use ( $creds, $service, $urls ) {
+					return $this->client->recrawl_pages(
+						(string) $creds['env'],
+						$token,
+						(string) $creds['siteId'],
+						$service,
+						$urls,
+						wp_generate_uuid4()
+					);
+				}
+			);
+		} catch ( Arc_Api_Exception $error ) {
+			if ( 403 === $error->status_code() ) {
+				throw new Arc_Api_Exception(
+					__( 'Reconnect this site in Arc to allow generating reports.', 'pendulum-arc' ),
+					403
+				);
+			}
+			if ( 404 === $error->status_code() ) {
+				throw new Arc_Api_Exception( self::admin_message( $error ), 404 );
+			}
+			throw $error;
+		}
+		return Pairing::recrawled_pages( $payload );
 	}
 
 	/**

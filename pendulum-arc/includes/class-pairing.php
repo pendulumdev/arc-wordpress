@@ -237,7 +237,7 @@ final class Pairing {
 			$row   = $indexed[ $service ] ?? array();
 			$out[] = array(
 				'service'        => $service,
-				'score'          => self::score_value( $row ),
+				'score'          => self::decimal_score( $row, 'score' ),
 				'band'           => self::band_value( $row ),
 				'issueCount'     => self::count_value( $row, 'issueCount' ),
 				'manualCount'    => self::count_value( $row, 'manualCount' ),
@@ -453,16 +453,6 @@ final class Pairing {
 			return $value;
 		}
 		return null;
-	}
-
-	/**
-	 * Whole-number score from 0 to 100, or null.
-	 *
-	 * @param array<string, mixed> $row Score row.
-	 */
-	private static function score_value( array $row ): ?int {
-		$number = self::decimal_score( $row, 'score' );
-		return null === $number ? null : (int) round( $number );
 	}
 
 	/**
@@ -1000,18 +990,21 @@ final class Pairing {
 			}
 		}
 		$page = array(
-			'title'           => self::report_text( $raw['title'] ?? '', 180 ),
-			'path'            => self::report_text( $raw['path'] ?? '', 180 ),
-			'url'             => self::http_url( Site_Origin::field( $raw, array( 'url' ) ) ) ?? '',
-			'viewport'        => self::report_text( $raw['viewport'] ?? '', 40 ),
-			'keyphrases'      => $phrases,
-			'keyphraseScore'  => self::report_optional( $raw['keyphraseScore'] ?? '', 16 ),
-			'score'           => self::report_text( $raw['score'] ?? '', 16 ),
-			'error'           => self::report_optional( $raw['error'] ?? '', 180 ),
-			'siteName'        => self::report_optional( $raw['siteName'] ?? '', 80 ),
-			'brokenLinkCount' => self::report_count( $raw['brokenLinkCount'] ?? 0 ),
-			'issueCount'      => self::report_count( $raw['issueCount'] ?? 0 ),
-			'issues'          => self::report_page_issues( $raw['issues'] ?? null ),
+			'title'            => self::report_text( $raw['title'] ?? '', 180 ),
+			'path'             => self::report_text( $raw['path'] ?? '', 180 ),
+			'url'              => self::http_url( Site_Origin::field( $raw, array( 'url' ) ) ) ?? '',
+			'viewport'         => self::report_text( $raw['viewport'] ?? '', 40 ),
+			'keyphrases'       => $phrases,
+			'keyphraseScore'   => self::report_optional( $raw['keyphraseScore'] ?? '', 16 ),
+			'hasTitle'         => ! empty( $raw['hasTitle'] ),
+			'hasDescription'   => ! empty( $raw['hasDescription'] ),
+			'keyphraseRatings' => self::keyphrase_ratings( $raw['keyphraseRatings'] ?? null ),
+			'score'            => self::report_text( $raw['score'] ?? '', 16 ),
+			'error'            => self::report_optional( $raw['error'] ?? '', 180 ),
+			'siteName'         => self::report_optional( $raw['siteName'] ?? '', 80 ),
+			'brokenLinkCount'  => self::report_count( $raw['brokenLinkCount'] ?? 0 ),
+			'issueCount'       => self::report_count( $raw['issueCount'] ?? 0 ),
+			'issues'           => self::report_page_issues( $raw['issues'] ?? null ),
 		);
 		$shot = self::report_shot( $raw['shot'] ?? '' );
 		if ( null !== $shot ) {
@@ -1021,6 +1014,26 @@ final class Pairing {
 			$page['titleKnown'] = ! empty( $raw['titleKnown'] );
 		}
 		return $page;
+	}
+
+	/**
+	 * Keyphrase traffic-light counts. Null unless all three are numeric.
+	 *
+	 * @param mixed $raw Ratings object.
+	 * @return array{green: int, orange: int, red: int}|null
+	 */
+	private static function keyphrase_ratings( $raw ): ?array {
+		if ( ! is_array( $raw ) ) {
+			return null;
+		}
+		$out = array();
+		foreach ( array( 'green', 'orange', 'red' ) as $tone ) {
+			if ( ! isset( $raw[ $tone ] ) || ! is_numeric( $raw[ $tone ] ) ) {
+				return null;
+			}
+			$out[ $tone ] = max( 0, (int) $raw[ $tone ] );
+		}
+		return $out;
 	}
 
 	/**
@@ -1454,6 +1467,36 @@ final class Pairing {
 		return array(
 			'runId'   => Site_Origin::field( $json, array( 'runId', 'run_id' ) ),
 			'service' => Site_Origin::field( $json, array( 'service' ) ),
+		);
+	}
+
+	/**
+	 * Selected-page recrawl acknowledgement.
+	 *
+	 * @param array<string, mixed> $json Response body.
+	 * @return array{runId: string, service: string, reservedPages: int, urls: array<int, string>}
+	 */
+	public static function recrawled_pages( array $json ): array {
+		$urls = array();
+		foreach ( self::rows( $json, array( 'urls' ) ) as $url ) {
+			if ( ! is_string( $url ) ) {
+				continue;
+			}
+			$safe = self::http_url( $url );
+			if ( null === $safe || in_array( $safe, $urls, true ) ) {
+				continue;
+			}
+			$urls[] = $safe;
+		}
+		$service = Site_Origin::field( $json, array( 'service' ) );
+		if ( ! in_array( $service, array( 'seo', 'a11y', 'ai' ), true ) ) {
+			$service = '';
+		}
+		return array(
+			'runId'         => Site_Origin::field( $json, array( 'runId', 'run_id' ) ),
+			'service'       => $service,
+			'reservedPages' => self::report_count( $json['reservedPages'] ?? 0 ),
+			'urls'          => $urls,
 		);
 	}
 

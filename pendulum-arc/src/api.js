@@ -90,7 +90,7 @@ export function fetchReport( service ) {
 export function fetchReportTable(
 	service,
 	table,
-	{ page = 0, q = '', viewport = '', run = '' } = {}
+	{ page = 0, q = '', viewport = '', sort = '', dir = '', run = '' } = {}
 ) {
 	const params = new URLSearchParams();
 	if ( page > 0 ) {
@@ -101,6 +101,10 @@ export function fetchReportTable(
 	}
 	if ( viewport ) {
 		params.set( 'viewport', viewport );
+	}
+	if ( sort && dir ) {
+		params.set( 'sort', sort );
+		params.set( 'dir', dir );
 	}
 	if ( run ) {
 		params.set( 'run', run );
@@ -128,6 +132,14 @@ export function enqueueRuns( services ) {
 		path: '/pendulum-arc/v1/runs',
 		method: 'POST',
 		data: { services },
+	} );
+}
+
+export function recrawlPages( service, urls ) {
+	return apiFetch( {
+		path: `/pendulum-arc/v1/reports/${ encodeURIComponent( service ) }/recrawl`,
+		method: 'POST',
+		data: { urls },
 	} );
 }
 
