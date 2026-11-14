@@ -4,7 +4,7 @@ Tags: seo, analytics
 Requires at least: 6.7
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.9.0
+Stable tag: 0.9.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -70,6 +70,14 @@ Accept allows the optional cookies left checked, and runs the scripts listed on 
 When the GitHub repository is public and a release is newer than this install, WordPress shows the update on the Plugins screen. Update now installs it, and automatic updates install it on their own. Automatic updates are on until you disable them on the Plugins screen. The Arc screens show the same update.
 
 == Changelog ==
+
+= 0.9.1 =
+* Report views load the hero and Issues first. Page analysis, social links, and forms fill in after paint.
+* Table search, paging, and filters show a quiet loading state and keep the previous rows on screen.
+* The SEO score card shows the page score and the keyphrase score, with dashes while a run is in progress.
+* SEO page analysis adds Title, Description, and Keyphrase, including a red No keyphrase state.
+* Page analysis tables sort the full list. Selected pages can be recrawled from the button beside Run.
+* The actions bar stays below the WordPress toolbar while the report scrolls.
 
 = 0.9.0 =
 * Page analysis, social links, and forms show previous and next when the list has more than 50 rows.
